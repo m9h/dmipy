@@ -1,0 +1,660 @@
+Step 1: Imports starting
+Step 2: numpy imported
+Step 3: jax imported
+Step 4: JaxAcquisition imported
+Step 5: get_sandi_model imported
+Step 6: fit_voxel imported
+Starting Validation...
+Setting up Julia environment...
+/Users/mhough/fsl/lib/python3.12/site-packages/julia/juliainfo.py:93: UserWarning: julia warned:
+Precompiling packages...
+ 104042.4 ms  ✓ Pkg
+  1 dependency successfully precompiled in 104 seconds. 25 already precompiled.
+  warnings.warn("{} warned:\n{}".format(julia, stderr))
+Julia initialization failed, trying installing: Exception 'ArgumentError' occurred while calling julia code:
+const PyCall = Base.require(Base.PkgId(Base.UUID("438e738f-606a-5dbb-bf0a-cddfbfd45ab0"), "PyCall"))
+Precompiling packages...
+   4416.6 ms  ✓ InteractiveUtils
+  1 dependency successfully precompiled in 5 seconds. 4 already precompiled.
+[ Info: Julia version info
+[ Info: Julia executable: /usr/local/Cellar/julia/1.12.3/bin/julia
+[ Info: Trying to import PyCall...
+┌ Error: `import PyCall` failed
+│   exception =
+│    ArgumentError: Package PyCall [438e738f-606a-5dbb-bf0a-cddfbfd45ab0] is required but does not seem to be installed:
+│     - Run `Pkg.instantiate()` to install all recorded dependencies.
+│    
+│    Stacktrace:
+│     [1] top-level scope
+│       @ ~/fsl/lib/python3.12/site-packages/julia/install.jl:36
+└ @ Main ~/fsl/lib/python3.12/site-packages/julia/install.jl:38
+[ Info: Installing PyCall...
+    Updating registry at `~/.julia/registries/General.toml`
+   Resolving package versions...
+   Installed PyCall ───────── v1.96.4
+   Installed VersionParsing ─ v1.3.0
+   Installed Conda ────────── v1.10.3
+    Updating `~/.julia/environments/v1.12/Project.toml`
+  [438e738f] + PyCall v1.96.4
+    Updating `~/.julia/environments/v1.12/Manifest.toml`
+  [8f4d0f93] + Conda v1.10.3
+  [438e738f] + PyCall v1.96.4
+  [81def892] + VersionParsing v1.3.0
+  [44cfe95a] ↑ Pkg v1.12.0 ⇒ v1.12.1
+    Building Conda ─→ `~/.julia/scratchspaces/44cfe95a-1eb2-52ea-b672-e2afdf69b78f/8f06b0cfa4c514c7b9546756dbae91fcfbc92dc9/build.log`
+    Building PyCall → `~/.julia/scratchspaces/44cfe95a-1eb2-52ea-b672-e2afdf69b78f/9816a3826b0ebf49ab4926e2b18842ad8b5c8f04/build.log`
+Precompiling packages...
+   1020.5 ms  ✓ RangeArrays
+   1427.5 ms  ✓ RoundingIntegers
+   1790.6 ms  ✓ ScientificTypesBase
+   2302.2 ms  ✓ AbstractFFTs
+   2528.1 ms  ✓ LaTeXStrings
+   2880.8 ms  ✓ IndirectArrays
+   3163.8 ms  ✓ IteratorInterfaceExtensions
+   4013.8 ms  ✓ TensorCore
+   3383.4 ms  ✓ StatsAPI
+   3284.9 ms  ✓ Future
+   3368.6 ms  ✓ Contour
+   4216.5 ms  ✓ VersionParsing
+   6619.8 ms  ✓ UnsafeAtomics
+   5152.6 ms  ✓ InitialValues
+   5229.7 ms  ✓ OffsetArrays
+   4522.4 ms  ✓ Serialization
+   4238.3 ms  ✓ OpenLibm_jll
+   4918.2 ms  ✓ FillArrays
+   6159.4 ms  ✓ Format
+   4269.0 ms  ✓ Measures
+   3300.2 ms  ✓ InverseFunctions
+   3670.2 ms  ✓ Statistics
+   2850.9 ms  ✓ PrettyPrint
+   2821.8 ms  ✓ ArgCheck
+   2996.6 ms  ✓ IterTools
+   3321.0 ms  ✓ SuiteSparse_jll
+   5148.8 ms  ✓ ShowCases
+   4281.7 ms  ✓ DataValueInterfaces
+   5147.6 ms  ✓ Requires
+   3946.0 ms  ✓ RealDot
+   6836.5 ms  ✓ OrderedCollections
+   4410.5 ms  ✓ StableRNGs
+   7390.0 ms  ✓ Grisu
+   6772.7 ms  ✓ Observables
+   2306.5 ms  ✓ Reexport
+   2655.6 ms  ✓ DocStringExtensions
+   9703.4 ms  ✓ MacroTools
+   3509.7 ms  ✓ InlineStrings
+   5576.7 ms  ✓ Unzip
+   3431.6 ms  ✓ URIs
+   3335.0 ms  ✓ SimpleBufferStream
+   3593.5 ms  ✓ Mmap
+   3467.7 ms  ✓ CompositionsBase
+   3069.9 ms  ✓ PtrArrays
+   2777.6 ms  ✓ PCRE2_jll
+   5831.1 ms  ✓ IrrationalConstants
+   3234.5 ms  ✓ TranscodingStreams
+   3145.1 ms  ✓ HashArrayMappedTries
+   2957.0 ms  ✓ DefineSingletons
+   3363.3 ms  ✓ InvertedIndices
+   3193.8 ms  ✓ IfElse
+   3607.2 ms  ✓ EnzymeCore
+   2927.5 ms  ✓ CommonWorldInvalidations
+   3278.7 ms  ✓ DataAPI
+   3902.5 ms  ✓ ProgressLogging
+   5301.7 ms  ✓ ConstructionBase
+   3802.1 ms  ✓ BitFlags
+   3286.0 ms  ✓ SciMLPublic
+   3635.1 ms  ✓ StaticArraysCore
+   3314.0 ms  ✓ MappedArrays
+   6756.1 ms  ✓ Crayons
+   2940.0 ms  ✓ Scratch
+   4608.3 ms  ✓ Baselet
+   3379.9 ms  ✓ LoggingExtras
+   4483.4 ms  ✓ SentinelArrays
+   3610.4 ms  ✓ Preferences
+   3796.0 ms  ✓ LazyArtifacts
+   5500.0 ms  ✓ Compat
+   4875.7 ms  ✓ StatisticalTraits
+   4836.3 ms  ✓ TableTraits
+   5589.8 ms  ✓ Atomix
+   5714.0 ms  ✓ StackViews
+   5744.9 ms  ✓ PaddedViews
+   7767.2 ms  ✓ ConcurrentUtilities
+   6235.4 ms  ✓ InverseFunctions → InverseFunctionsDatesExt
+   9488.1 ms  ✓ NaNMath
+   7867.2 ms  ✓ LazyGrids
+  13776.0 ms  ✓ Distributed
+   8454.6 ms  ✓ FillArrays → FillArraysStatisticsExt
+  15842.8 ms  ✓ FixedPointNumbers
+   6052.6 ms  ✓ Ratios
+   9024.1 ms  ✓ NameResolution
+  19933.3 ms  ✓ Test
+  14161.3 ms  ✓ Distances
+   4880.3 ms  ✓ Adapt
+   3992.9 ms  ✓ Showoff
+   7691.4 ms  ✓ CommonSubexpressions
+   7087.2 ms  ✓ SimpleTraits
+   7734.6 ms  ✓ DelimitedFiles
+   8095.3 ms  ✓ CompositionsBase → CompositionsBaseInverseFunctionsExt
+  14444.3 ms  ✓ IRTools
+   8034.0 ms  ✓ AliasTables
+   5196.9 ms  ✓ ScopedValues
+  19213.2 ms  ✓ FileIO
+   9100.3 ms  ✓ CodecZlib
+  13888.9 ms  ✓ LogExpFunctions
+  56504.2 ms  ✓ MLStyle
+   9344.4 ms  ✓ Missings
+   9171.3 ms  ✓ ConstructionBase → ConstructionBaseLinearAlgebraExt
+   9236.3 ms  ✓ DiffResults
+  13213.0 ms  ✓ PooledArrays
+   7562.1 ms  ✓ RelocatableFolders
+  12397.0 ms  ✓ OpenSSL
+   6389.4 ms  ✓ PrecompileTools
+   8336.0 ms  ✓ JLLWrappers
+   7257.0 ms  ✓ Compat → CompatLinearAlgebraExt
+   6840.4 ms  ✓ SharedArrays
+   6378.9 ms  ✓ ProgressMeter
+   4325.5 ms  ✓ Pidfile
+   6693.9 ms  ✓ Ratios → RatiosFixedPointNumbersExt
+   3551.5 ms  ✓ Hexagons
+   9573.5 ms  ✓ ColorTypes
+   4034.5 ms  ✓ FunctionalCollections
+  14259.1 ms  ✓ MosaicViews
+   8235.2 ms  ✓ ExceptionUnwrapping
+  17442.2 ms  ✓ Tables
+   5337.8 ms  ✓ InverseFunctions → InverseFunctionsTestExt
+   8794.9 ms  ✓ ArrayInterface
+  12095.0 ms  ✓ AbstractFFTs → AbstractFFTsTestExt
+   8832.0 ms  ✓ OffsetArrays → OffsetArraysAdaptExt
+  10494.2 ms  ✓ GPUArraysCore
+   8515.7 ms  ✓ LogExpFunctions → LogExpFunctionsInverseFunctionsExt
+  10968.8 ms  ✓ EnzymeCore → AdaptExt
+  72162.6 ms  ✓ SparseArrays
+  13283.7 ms  ✓ Setfield
+  15273.3 ms  ✓ StringManipulation
+  19724.4 ms  ✓ CategoricalArrays
+  17745.6 ms  ✓ RecipesBase
+  27249.6 ms  ✓ JuliaVariables
+   5574.3 ms  ✓ Libmount_jll
+   5185.3 ms  ✓ EpollShim_jll
+   6323.0 ms  ✓ Graphite2_jll
+   3646.3 ms  ✓ LLVMOpenMP_jll
+   2565.4 ms  ✓ Bzip2_jll
+   3157.9 ms  ✓ Rmath_jll
+ 103771.3 ms  ✓ REPL
+   3732.7 ms  ✓ Xorg_libICE_jll
+   3442.5 ms  ✓ Xorg_libXau_jll
+   3513.4 ms  ✓ libpng_jll
+   3535.1 ms  ✓ libfdk_aac_jll
+   3777.1 ms  ✓ LAME_jll
+   3818.4 ms  ✓ LERC_jll
+   3194.5 ms  ✓ fzf_jll
+   6861.1 ms  ✓ IntelOpenMP_jll
+   3969.9 ms  ✓ JpegTurbo_jll
+  23269.0 ms  ✓ Static
+   4492.8 ms  ✓ XZ_jll
+   3940.0 ms  ✓ Ogg_jll
+   3580.0 ms  ✓ mtdev_jll
+   5033.3 ms  ✓ Xorg_libXdmcp_jll
+   6358.4 ms  ✓ x265_jll
+  41766.4 ms  ✓ StaticArrays
+   8036.3 ms  ✓ oneTBB_jll
+   6119.8 ms  ✓ x264_jll
+   6796.0 ms  ✓ libaom_jll
+   7668.8 ms  ✓ MbedTLS_jll
+   5303.6 ms  ✓ Zstd_jll
+   3872.8 ms  ✓ Expat_jll
+   4500.3 ms  ✓ LZO_jll
+   5493.4 ms  ✓ hicolor_icon_theme_jll
+   6386.9 ms  ✓ Opus_jll
+   6371.4 ms  ✓ iso_codes_jll
+   5463.2 ms  ✓ Xorg_xtrans_jll
+   5557.7 ms  ✓ libevdev_jll
+   6185.0 ms  ✓ Libiconv_jll
+   5775.8 ms  ✓ Libffi_jll
+   5052.2 ms  ✓ eudev_jll
+   5171.8 ms  ✓ FFTW_jll
+   5301.0 ms  ✓ FriBidi_jll
+   5270.9 ms  ✓ Libuuid_jll
+  51148.3 ms  ✓ Parsers
+   4151.4 ms  ✓ ContextVariablesX
+   7266.8 ms  ✓ Functors
+   9588.8 ms  ✓ DataStructures
+   7064.9 ms  ✓ StructArrays
+  10463.4 ms  ✓ ChainRulesCore
+  13573.1 ms  ✓ OpenSpecFun_jll
+  10212.6 ms  ✓ MLCore
+   6319.3 ms  ✓ ArrayInterface → ArrayInterfaceStaticArraysCoreExt
+   5779.8 ms  ✓ SuiteSparse
+   6114.9 ms  ✓ WoodburyMatrices
+   5733.8 ms  ✓ FillArrays → FillArraysSparseArraysExt
+   3463.0 ms  ✓ Statistics → SparseArraysExt
+   8811.6 ms  ✓ ArrayInterface → ArrayInterfaceGPUArraysCoreExt
+  16430.3 ms  ✓ Colors
+   3379.4 ms  ✓ Adapt → AdaptSparseArraysExt
+   3662.1 ms  ✓ ArrayInterface → ArrayInterfaceSparseArraysExt
+  17342.6 ms  ✓ Accessors
+   7371.7 ms  ✓ Distances → DistancesSparseArraysExt
+   9227.5 ms  ✓ SplittablesBase
+  11777.1 ms  ✓ CategoricalArrays → CategoricalArraysSentinelArraysExt
+  15053.1 ms  ✓ CategoricalArrays → CategoricalArraysRecipesBaseExt
+  16552.5 ms  ✓ Pixman_jll
+  13376.6 ms  ✓ MLJModelInterface
+  14202.9 ms  ✓ UnicodeFun
+  16935.8 ms  ✓ FreeType2_jll
+  18151.5 ms  ✓ Rmath
+   8018.5 ms  ✓ Xorg_libSM_jll
+   6906.8 ms  ✓ Xorg_libxcb_jll
+  10572.7 ms  ✓ JLFzf
+  23775.3 ms  ✓ Pkg → REPLExt
+  89864.4 ms  ✓ JLD2
+   5486.0 ms  ✓ Adapt → AdaptStaticArraysExt
+  10923.4 ms  ✓ StaticArrays → StaticArraysStatisticsExt
+   6585.5 ms  ✓ ConstructionBase → ConstructionBaseStaticArraysExt
+  16426.2 ms  ✓ libvorbis_jll
+   6045.7 ms  ✓ MKL_jll
+   5172.4 ms  ✓ Dbus_jll
+  21600.8 ms  ✓ Ghostscript_jll
+   8291.5 ms  ✓ adwaita_icon_theme_jll
+   4257.3 ms  ✓ Wayland_jll
+   5534.1 ms  ✓ libinput_jll
+  17207.2 ms  ✓ XML2_jll
+   9139.4 ms  ✓ JSON
+  15027.0 ms  ✓ GettextRuntime_jll
+  20883.1 ms  ✓ MbedTLS
+   8725.0 ms  ✓ FLoopsBase
+  12168.2 ms  ✓ InlineStrings → ParsersExt
+  25768.1 ms  ✓ Libtiff_jll
+   8684.5 ms  ✓ MLDataDevices
+   9178.5 ms  ✓ SortingAlgorithms
+   8363.3 ms  ✓ StructArrays → StructArraysAdaptExt
+  10383.2 ms  ✓ Reactive
+   9146.7 ms  ✓ StructArrays → StructArraysSparseArraysExt
+   4719.4 ms  ✓ StructArrays → StructArraysLinearAlgebraExt
+  16415.1 ms  ✓ QuadGK
+   6830.4 ms  ✓ AbstractFFTs → AbstractFFTsChainRulesCoreExt
+   4615.0 ms  ✓ Distances → DistancesChainRulesCoreExt
+  11907.7 ms  ✓ StructArrays → StructArraysStaticArraysExt
+   9882.5 ms  ✓ ZygoteRules
+  11381.4 ms  ✓ ChainRulesCore → ChainRulesCoreSparseArraysExt
+   3129.1 ms  ✓ ArrayInterface → ArrayInterfaceChainRulesCoreExt
+   8307.7 ms  ✓ LogExpFunctions → LogExpFunctionsChainRulesCoreExt
+  17238.4 ms  ✓ Optimisers
+   6929.2 ms  ✓ SparseInverseSubset
+  10713.0 ms  ✓ StaticArrays → StaticArraysChainRulesCoreExt
+   9316.3 ms  ✓ PDMats
+  10598.9 ms  ✓ AxisAlgorithms
+  19292.5 ms  ✓ SpecialFunctions
+   7054.5 ms  ✓ Xorg_xcb_util_jll
+  73038.6 ms  ✓ StaticArrayInterface
+  12731.4 ms  ✓ Widgets
+  14204.3 ms  ✓ Accessors → StaticArraysExt
+  13364.3 ms  ✓ BangBang
+   6238.9 ms  ✓ Xorg_libX11_jll
+  21238.1 ms  ✓ Graphics
+   8994.9 ms  ✓ CategoricalArrays → CategoricalArraysJSONExt
+  16119.1 ms  ✓ AssetRegistry
+  17841.3 ms  ✓ Conda
+ 101129.8 ms  ✓ PrettyTables
+  26316.6 ms  ✓ KernelAbstractions
+  36930.6 ms  ✓ Fontconfig_jll
+   8481.5 ms  ✓ MLDataDevices → MLDataDevicesFillArraysExt
+   9017.4 ms  ✓ MLDataDevices → MLDataDevicesChainRulesCoreExt
+   4082.6 ms  ✓ MLDataDevices → MLDataDevicesSparseArraysExt
+  25719.1 ms  ✓ Compose
+  31617.6 ms  ✓ Latexify
+   9451.3 ms  ✓ Optimisers → OptimisersEnzymeCoreExt
+   9223.9 ms  ✓ Optimisers → OptimisersAdaptExt
+  10251.6 ms  ✓ FillArrays → FillArraysPDMatsExt
+  44694.1 ms  ✓ FFTW
+   5717.0 ms  ✓ DiffRules
+  11276.8 ms  ✓ HypergeometricFunctions
+  24157.4 ms  ✓ StatsBase
+  36913.0 ms  ✓ Glib_jll
+  12964.6 ms  ✓ SpecialFunctions → SpecialFunctionsChainRulesCoreExt
+   5506.7 ms  ✓ Xorg_xcb_util_image_jll
+   4969.1 ms  ✓ Xorg_xcb_util_keysyms_jll
+   5481.7 ms  ✓ Xorg_xcb_util_renderutil_jll
+   5736.4 ms  ✓ Xorg_xcb_util_wm_jll
+  23137.6 ms  ✓ Interpolations
+  16143.9 ms  ✓ ColorVectorSpace
+   9199.1 ms  ✓ EllipsisNotation
+   5859.7 ms  ✓ StaticArrayInterface → StaticArrayInterfaceOffsetArraysExt
+   6915.6 ms  ✓ StaticArrayInterface → StaticArrayInterfaceStaticArraysExt
+   6348.1 ms  ✓ BangBang → BangBangChainRulesCoreExt
+   6308.7 ms  ✓ BangBang → BangBangStructArraysExt
+   7424.3 ms  ✓ BangBang → BangBangStaticArraysExt
+   4586.7 ms  ✓ BangBang → BangBangTablesExt
+   5061.8 ms  ✓ MicroCollections
+   5281.5 ms  ✓ Xorg_libXrender_jll
+   5490.7 ms  ✓ Xorg_libXext_jll
+   4508.7 ms  ✓ Xorg_libXfixes_jll
+   5005.6 ms  ✓ Xorg_libxkbfile_jll
+   7682.0 ms  ✓ KernelAbstractions → LinearAlgebraExt
+   5994.2 ms  ✓ StructArrays → StructArraysGPUArraysCoreExt
+   7285.0 ms  ✓ KernelAbstractions → EnzymeExt
+   8673.9 ms  ✓ KernelAbstractions → SparseArraysExt
+   6958.7 ms  ✓ Latexify → SparseArraysExt
+  50380.3 ms  ✓ ChainRules
+   6483.6 ms  ✓ Xorg_xcb_util_cursor_jll
+  20229.8 ms  ✓ CoupledFields
+  29327.9 ms  ✓ ATK_jll
+  32733.8 ms  ✓ ForwardDiff
+  35139.7 ms  ✓ gdk_pixbuf_jll
+  36725.4 ms  ✓ NNlib
+   7609.2 ms  ✓ IntervalSets
+  18233.6 ms  ✓ ColorSchemes
+  95060.4 ms  ✓ HTTP
+   3990.6 ms  ✓ Xorg_libXinerama_jll
+   4665.7 ms  ✓ Xorg_libXrandr_jll
+   6258.1 ms  ✓ Libglvnd_jll
+   5586.7 ms  ✓ Xorg_libXcomposite_jll
+   6823.3 ms  ✓ Xorg_libXdamage_jll
+   6621.9 ms  ✓ Xorg_libXcursor_jll
+   4663.8 ms  ✓ Xorg_libXi_jll
+   5438.2 ms  ✓ Xorg_xkbcomp_jll
+  65025.9 ms  ✓ PyCall
+   9681.7 ms  ✓ ArrayInterface → ArrayInterfaceChainRulesExt
+   9117.3 ms  ✓ MLDataDevices → MLDataDevicesChainRulesExt
+  20790.5 ms  ✓ Cairo_jll
+   9199.9 ms  ✓ ForwardDiff → ForwardDiffStaticArraysExt
+  31028.7 ms  ✓ Transducers
+  19909.0 ms  ✓ StatsFuns
+   8435.2 ms  ✓ NNlib → NNlibForwardDiffExt
+  11182.0 ms  ✓ NNlib → NNlibSpecialFunctionsExt
+  11356.1 ms  ✓ NNlib → NNlibEnzymeCoreExt
+   6467.9 ms  ✓ OneHotArrays
+  12285.6 ms  ✓ NNlib → NNlibFFTWExt
+  10944.0 ms  ✓ ConstructionBase → ConstructionBaseIntervalSetsExt
+  13376.5 ms  ✓ AxisArrays
+  12284.6 ms  ✓ FileIO → HTTPExt
+  12224.0 ms  ✓ Libepoxy_jll
+  15038.7 ms  ✓ WebSockets
+   6013.3 ms  ✓ Xorg_libXtst_jll
+   9652.6 ms  ✓ Xorg_xkeyboard_config_jll
+   7619.2 ms  ✓ Transducers → TransducersAdaptExt
+   6995.4 ms  ✓ StatsFuns → StatsFunsInverseFunctionsExt
+   5029.0 ms  ✓ Loess
+   7378.2 ms  ✓ StatsFuns → StatsFunsChainRulesCoreExt
+   7809.6 ms  ✓ MLDataDevices → MLDataDevicesOneHotArraysExt
+  20610.3 ms  ✓ FLoops
+  22205.3 ms  ✓ HarfBuzz_jll
+   8062.3 ms  ✓ at_spi2_core_jll
+  44519.5 ms  ✓ PlotUtils
+   9102.0 ms  ✓ xkbcommon_jll
+   4776.9 ms  ✓ at_spi2_atk_jll
+  33193.2 ms  ✓ WebIO
+  21481.3 ms  ✓ libass_jll
+  21250.6 ms  ✓ Pango_jll
+ 122113.5 ms  ✓ ImageCore
+  45525.8 ms  ✓ Distributions
+   4625.9 ms  ✓ Vulkan_Loader_jll
+  20086.9 ms  ✓ PlotThemes
+   5256.6 ms  ✓ libdecor_jll
+  11584.5 ms  ✓ CSSUtil
+  12591.8 ms  ✓ JSExpr
+  20691.9 ms  ✓ RecipesPipeline
+  14904.4 ms  ✓ ImageBase
+  25460.3 ms  ✓ Cairo
+  13251.6 ms  ✓ Distributions → DistributionsTestExt
+  63481.1 ms  ✓ MLUtils
+  25522.2 ms  ✓ Librsvg_jll
+   5189.8 ms  ✓ GLFW_jll
+ 182427.5 ms  ✓ DataFrames
+  11395.2 ms  ✓ Distributions → DistributionsChainRulesCoreExt
+  13556.4 ms  ✓ MCMCDiagnosticTools
+  35235.8 ms  ✓ GTK3_jll
+  10468.3 ms  ✓ ImageInTerminal
+  17497.0 ms  ✓ Knockout
+  14488.6 ms  ✓ MLDataDevices → MLDataDevicesMLUtilsExt
+  11481.7 ms  ✓ Latexify → DataFramesExt
+  17249.7 ms  ✓ BangBang → BangBangDataFramesExt
+  13809.1 ms  ✓ Transducers → TransducersDataFramesExt
+  25122.8 ms  ✓ ImageAxes
+ 156072.4 ms  ✓ Zygote
+  74475.4 ms  ✓ FFMPEG_jll
+  14400.5 ms  ✓ ImageMetadata
+  28212.2 ms  ✓ KernelDensity
+  27362.9 ms  ✓ InteractBase
+  10537.2 ms  ✓ MLDataDevices → MLDataDevicesZygoteExt
+  10951.0 ms  ✓ Zygote → ZygoteColorsExt
+  11980.3 ms  ✓ Zygote → ZygoteDistancesExt
+   8296.3 ms  ✓ Interact
+  65976.3 ms  ✓ Qt6Base_jll
+  29588.2 ms  ✓ FFMPEG
+  64339.6 ms  ✓ Gtk
+  31007.8 ms  ✓ Qt6ShaderTools_jll
+  31790.3 ms  ✓ GR_jll
+  49408.8 ms  ✓ Gadfly
+  13704.5 ms  ✓ Qt6Declarative_jll
+   2113.5 ms  ✓ Qt6Wayland_jll
+  33687.5 ms  ✓ GtkReactive
+  65228.6 ms  ✓ Flux
+  12750.9 ms  ✓ GR
+  48912.1 ms  ✓ ImageView
+ 102355.8 ms  ✓ Plots
+   6707.9 ms  ✓ Plots → FileIOExt
+              ✗ Plots → ImageInTerminalExt
+              ✗ Fibers
+              ✗ Microstructure
+  388 dependencies successfully precompiled in 771 seconds. 27 already precompiled.
+  4 dependencies had output during precompilation:
+┌ IntervalSets
+│  WARNING: Constructor for type "UnitRange" was extended in `IntervalSets` without explicit qualification or import.
+│    NOTE: Assumed "UnitRange" refers to `Base.UnitRange`. This behavior is deprecated and may differ in future versions.`
+│    NOTE: This behavior may have differed in Julia versions prior to 1.12.
+│    Hint: If you intended to create a new generic function of the same name, use `function UnitRange end`.
+│    Hint: To silence the warning, qualify `UnitRange` as `Base.UnitRange` in the method signature or explicitly `import Base: UnitRange`.
+└  
+┌ WebSockets
+│  WARNING: Imported binding Logging.termlength was undeclared at import time during import to WebSockets.
+│  WARNING: Imported binding Logging.showvalue was undeclared at import time during import to WebSockets.
+└  
+┌ GtkReactive
+│  WARNING: Constructor for type "Bool" was extended in `GtkReactive` without explicit qualification or import.
+│    NOTE: Assumed "Bool" refers to `Base.Bool`. This behavior is deprecated and may differ in future versions.`
+│    NOTE: This behavior may have differed in Julia versions prior to 1.12.
+│    Hint: If you intended to create a new generic function of the same name, use `function Bool end`.
+│    Hint: To silence the warning, qualify `Bool` as `Base.Bool` in the method signature or explicitly `import Base: Bool`.
+└  
+┌ Interpolations
+│  WARNING: method definition for checkbounds at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/Interpolations.jl:454 declares type variable N but does not use it.
+│  WARNING: method definition for checkbounds at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/Interpolations.jl:457 declares type variable N but does not use it.
+│  WARNING: method definition for GriddedInterpolation at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/gridded/gridded.jl:37 declares type variable pad but does not use it.
+│  WARNING: method definition for GriddedInterpolation at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/gridded/gridded.jl:60 declares type variable pad but does not use it.
+│  WARNING: method definition for interpolate! at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/deprecations.jl:30 declares type variable TWeights but does not use it.
+└  
+
+The following 2 direct dependencies failed to precompile:
+
+Fibers 
+
+Failed to precompile Fibers [79c5424f-e3fe-4f6a-a484-e0e793a8858c] to "/Users/mhough/.julia/compiled/v1.12/Fibers/jl_Q6O4wO".
+ERROR: LoadError: UndefVarError: `ENCODER_BACKEND` not defined in `ImageInTerminal`
+Suggestion: check for spelling errors or missing imports.
+Stacktrace:
+ [1] top-level scope
+   @ ~/.julia/packages/Plots/pxXHF/ext/ImageInTerminalExt.jl:6
+ [2] top-level scope
+   @ stdin:5
+in expression starting at /Users/mhough/.julia/packages/Plots/pxXHF/ext/ImageInTerminalExt.jl:1
+in expression starting at stdin:5
+ERROR: LoadError: Failed to precompile ImageInTerminalExt [eee821b6-0d09-53ea-b39d-e0d59053c068] to "/Users/mhough/.julia/compiled/v1.12/ImageInTerminalExt/jl_quTDeB".
+Stacktrace:
+ [1] compilecache(pkg::Base.PkgId, path::String, internal_stderr::IO, internal_stdout::IO, keep_loaded_modules::Bool; flags::Cmd, cacheflags::Base.CacheFlags, reasons::Dict{String, Int64}, loadable_exts::Vector{Base.PkgId})
+   @ Base ./loading.jl:3311
+ [2] (::Base.var"#__require_prelocked##0#__require_prelocked##1"{Base.PkgId, String, Dict{String, Int64}})()
+   @ Base ./loading.jl:2679
+ [3] mkpidlock(f::Base.var"#__require_prelocked##0#__require_prelocked##1"{Base.PkgId, String, Dict{String, Int64}}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64, wait::Bool})
+   @ FileWatching.Pidfile /usr/local/Cellar/julia/1.12.3/share/julia/stdlib/v1.12/FileWatching/src/pidfile.jl:93
+ [4] top-level scope
+   @ ~/.julia/packages/Fibers/qXSOH/src/Fibers.jl:6
+ [5] top-level scope
+   @ stdin:5
+in expression starting at /Users/mhough/.julia/packages/Fibers/qXSOH/src/show.jl:5
+in expression starting at /Users/mhough/.julia/packages/Fibers/qXSOH/src/Fibers.jl:1
+in expression starting at stdin:5
+Microstructure 
+
+Failed to precompile Microstructure [bb9cb41e-5262-42dc-ac73-4f266bc6ab72] to "/Users/mhough/.julia/compiled/v1.12/Microstructure/jl_U39UpS".
+ERROR: LoadError: UndefVarError: `ENCODER_BACKEND` not defined in `ImageInTerminal`
+Suggestion: check for spelling errors or missing imports.
+Stacktrace:
+ [1] top-level scope
+   @ ~/.julia/packages/Plots/pxXHF/ext/ImageInTerminalExt.jl:6
+ [2] top-level scope
+   @ stdin:5
+in expression starting at /Users/mhough/.julia/packages/Plots/pxXHF/ext/ImageInTerminalExt.jl:1
+in expression starting at stdin:5
+ERROR: LoadError: Failed to precompile ImageInTerminalExt [eee821b6-0d09-53ea-b39d-e0d59053c068] to "/Users/mhough/.julia/compiled/v1.12/ImageInTerminalExt/jl_iW0xgT".
+Stacktrace:
+ [1] compilecache(pkg::Base.PkgId, path::String, internal_stderr::IO, internal_stdout::IO, keep_loaded_modules::Bool; flags::Cmd, cacheflags::Base.CacheFlags, reasons::Dict{String, Int64}, loadable_exts::Vector{Base.PkgId})
+   @ Base ./loading.jl:3311
+ [2] (::Base.var"#__require_prelocked##0#__require_prelocked##1"{Base.PkgId, String, Dict{String, Int64}})()
+   @ Base ./loading.jl:2679
+ [3] mkpidlock(f::Base.var"#__require_prelocked##0#__require_prelocked##1"{Base.PkgId, String, Dict{String, Int64}}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64, wait::Bool})
+   @ FileWatching.Pidfile /usr/local/Cellar/julia/1.12.3/share/julia/stdlib/v1.12/FileWatching/src/pidfile.jl:93
+ [4] top-level scope
+   @ ~/.julia/packages/Fibers/qXSOH/src/Fibers.jl:6
+ [5] top-level scope
+   @ stdin:5
+in expression starting at /Users/mhough/.julia/packages/Fibers/qXSOH/src/show.jl:5
+in expression starting at /Users/mhough/.julia/packages/Fibers/qXSOH/src/Fibers.jl:1
+in expression starting at stdin:5
+ERROR: LoadError: Failed to precompile Fibers [79c5424f-e3fe-4f6a-a484-e0e793a8858c] to "/Users/mhough/.julia/compiled/v1.12/Fibers/jl_zA3xuB".
+Stacktrace:
+ [1] mkpidlock(f::Base.var"#__require_prelocked##0#__require_prelocked##1"{Base.PkgId, String, Dict{String, Int64}}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64, wait::Bool})
+   @ FileWatching.Pidfile /usr/local/Cellar/julia/1.12.3/share/julia/stdlib/v1.12/FileWatching/src/pidfile.jl:93
+ [2] top-level scope
+   @ ~/.julia/packages/Microstructure/xnwqC/src/Microstructure.jl:4
+ [3] top-level scope
+   @ stdin:5
+in expression starting at /Users/mhough/.julia/packages/Microstructure/xnwqC/src/dMRI.jl:4
+in expression starting at /Users/mhough/.julia/packages/Microstructure/xnwqC/src/Microstructure.jl:3
+in expression starting at stdin:5Julia Version 1.12.3
+Commit 966d0af0fd (2025-12-15 11:20 UTC)
+Build Info:
+  Built by Homebrew (v1.12.3)
+
+    Note: This is an unofficial build, please report bugs to the project
+    responsible for this build and not to the Julia project unless you can
+    reproduce the issue using official builds available at https://julialang.org
+
+Platform Info:
+  OS: macOS (x86_64-apple-darwin23.6.0)
+  uname: Darwin 25.2.0 Darwin Kernel Version 25.2.0: Tue Nov 18 21:09:34 PST 2025; root:xnu-12377.61.12~1/RELEASE_X86_64 x86_64 i386
+  CPU: Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz: 
+              speed         user         nice          sys         idle          irq
+       #1  2000 MHz    1453593 s          0 s     752780 s    4412641 s          0 s
+       #2  2000 MHz     236658 s          0 s     103686 s    6303968 s          0 s
+       #3  2000 MHz    1508819 s          0 s     607676 s    4504611 s          0 s
+       #4  2000 MHz     242788 s          0 s     102616 s    6299016 s          0 s
+       #5  2000 MHz    1309005 s          0 s     515488 s    4802768 s          0 s
+       #6  2000 MHz     248136 s          0 s     101089 s    6295970 s          0 s
+       #7  2000 MHz    1212000 s          0 s     452005 s    4968949 s          0 s
+       #8  2000 MHz     255015 s          0 s      99649 s    6291155 s          0 s
+  Memory: 16.0 GB (1241.78515625 MB free)
+  Uptime: 2.6036e6 sec
+  Load Avg:  5.310546875  4.9609375  4.43505859375
+  WORD_SIZE: 64
+  LLVM: libLLVM-18.1.7 (ORCJIT, icelake-client)
+  GC: Built with stock GC
+Threads: 1 default, 1 interactive, 1 GC (on 8 virtual cores)
+Environment:
+  PATH = /Users/mhough/.antigravity/antigravity/bin:/Applications/freesurfer/8.1.0/bin:/Applications/freesurfer/8.1.0/fsfast/bin:/Users/mhough/fsl/share/fsl/bin:/Applications/freesurfer/8.1.0/mni/bin:/Users/mhough/fsl/share/fsl/bin:/Users/mhough/fsl/share/fsl/bin:/usr/local/bin:/usr/local/sbin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/opt/X11/bin:/Users/mhough/.antigravity/antigravity/bin:/Applications/freesurfer/8.1.0/bin:/Applications/freesurfer/8.1.0/fsfast/bin:/Users/mhough/fsl/share/fsl/bin:/Applications/freesurfer/8.1.0/mni/bin:/Users/mhough/.local/bin:/Users/mhough/fsl/bin:/Users/mhough/.antigravity/extensions/ms-python.debugpy-2025.18.0-darwin-x64/bundled/scripts/noConfigScripts:/Users/mhough/fsl/bin
+  HOME = /Users/mhough
+  XPC_FLAGS = 0x0
+  HOMEBREW_PREFIX = /usr/local
+  HOMEBREW_CELLAR = /usr/local/Cellar
+  HOMEBREW_REPOSITORY = /usr/local/Homebrew
+  INFOPATH = /usr/local/share/info:/usr/local/share/info:
+  FREESURFER_HOME = /Applications/freesurfer/8.1.0
+  FREESURFER_HOME_FSPYTHON = /Applications/freesurfer/8.1.0
+  FSFAST_HOME = /Applications/freesurfer/8.1.0/fsfast
+  MNI_DATAPATH = /Applications/freesurfer/8.1.0/mni/data
+  BUNDLED_DEBUGPY_PATH = /Users/mhough/.antigravity/extensions/ms-python.debugpy-2025.18.0-darwin-x64/bundled/libs/debugpy
+  TERM = xterm-256color
+  PYTHONPATH = :/Users/mhough/src/dmipy:/Users/mhough/src/dmipy:/Users/mhough/src/dmipy:/Users/mhough/src/dmipy:/Users/mhough/src/dmipy:/Users/mhough/src/dmipy:/Users/mhough/src/dmipy:.:.:.:.:.:.
+
+Precompiling PyCall...
+Precompiling PyCall... DONE
+PyCall is installed and built successfully.
+WARNING: Imported binding MainInclude.eval was undeclared at import time during import to Main.
+WARNING: import of MainInclude.eval into Main conflicts with an existing identifier; ignored.
+WARNING: Imported binding MainInclude.include was undeclared at import time during import to Main.
+WARNING: import of MainInclude.include into Main conflicts with an existing identifier; ignored.
+WARNING: Imported binding MainInclude.eval was undeclared at import time during import to Main.
+WARNING: import of MainInclude.eval into Main conflicts with an existing identifier; ignored.
+WARNING: Imported binding MainInclude.include was undeclared at import time during import to Main.
+WARNING: import of MainInclude.include into Main conflicts with an existing identifier; ignored.
+Checking for Microstructure.jl...
+WARNING: method definition for checkbounds at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/Interpolations.jl:454 declares type variable N but does not use it.
+WARNING: method definition for checkbounds at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/Interpolations.jl:457 declares type variable N but does not use it.
+WARNING: method definition for GriddedInterpolation at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/gridded/gridded.jl:37 declares type variable pad but does not use it.
+WARNING: method definition for GriddedInterpolation at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/gridded/gridded.jl:60 declares type variable pad but does not use it.
+WARNING: method definition for interpolate! at /Users/mhough/.julia/packages/Interpolations/y4lLj/src/deprecations.jl:30 declares type variable TWeights but does not use it.
+Microstructure.jl is already installed and loaded.
+Generating synthetic data with dmipy-jax...
+Generated synthetic signal. Shape: (31,)
+Preparing Julia environment for fitting...
+Executing Julia code...
+Julia Fit Parameters: [0.e+00 0.e+00 3.e-01 2.e-01 1.e-01 8.e-06 5.e-10]
+Running dmipy-jax fit...
+Traceback (most recent call last):
+  File "/Users/mhough/src/dmipy/tests/validation/run_comparison.py", line 210, in <module>
+  File "/Users/mhough/src/dmipy/tests/validation/run_comparison.py", line 183, in run_validation
+  File "/Users/mhough/src/dmipy/dmipy_jax/fitting.py", line 48, in fit_voxel
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/jaxopt/_src/implicit_diff.py", line 251, in wrapped_solver_fun
+    return make_custom_vjp_solver_fun(solver_fun, keys)(*args, *vals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/jaxopt/_src/implicit_diff.py", line 207, in solver_fun_flat
+    return solver_fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/jaxopt/_src/scipy_wrappers.py", line 459, in run
+    return self._run(init_params, bounds, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/jaxopt/_src/scipy_wrappers.py", line 343, in _run
+    res = osp.optimize.minimize(scipy_fun, jnp_to_onp(init_params, self.dtype),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_minimize.py", line 784, in minimize
+    res = _minimize_lbfgsb(fun, x0, args, jac, bounds,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_lbfgsb_py.py", line 413, in _minimize_lbfgsb
+    sf = _prepare_scalar_function(fun, x0, jac=jac, args=args, epsilon=eps,
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_optimize.py", line 310, in _prepare_scalar_function
+    sf = ScalarFunction(fun, x0, args, grad, hess,
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_differentiable_functions.py", line 274, in __init__
+    self._update_fun()
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_differentiable_functions.py", line 353, in _update_fun
+    fx = self._wrapped_fun(self.x)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/_lib/_util.py", line 590, in __call__
+    fx = self.f(np.copy(x), *self.args)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_optimize.py", line 80, in __call__
+    self._compute_if_needed(x, *args)
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/scipy/optimize/_optimize.py", line 74, in _compute_if_needed
+    fg = self.fun(x, *args)
+         ^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/fsl/lib/python3.12/site-packages/jaxopt/_src/scipy_wrappers.py", line 336, in scipy_fun
+    value, grads = self._value_and_grad_fun(x_jnp, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mhough/src/dmipy/dmipy_jax/fitting.py", line 41, in objective
+TypeError: get_sandi_model.<locals>.sandi_model() missing 1 required positional argument: 'acquisition'
+--------------------
+For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+┌ Error: Error during loading of extension ImageInTerminalExt of Plots, use `Base.retry_load_extensions()` to retry.
+│   exception =
+│    1-element ExceptionStack:
+│    LoadError: UndefVarError: `ENCODER_BACKEND` not defined in `ImageInTerminal`
+│    Suggestion: check for spelling errors or missing imports.
+│    Stacktrace:
+│     [1] top-level scope
+│       @ ~/.julia/packages/Plots/pxXHF/ext/ImageInTerminalExt.jl:6
+│     [2] top-level scope
+│       @ ~/.julia/packages/Fibers/qXSOH/src/Fibers.jl:6
+│     [3] top-level scope
+│       @ ~/.julia/packages/Microstructure/xnwqC/src/Microstructure.jl:4
+│    in expression starting at /Users/mhough/.julia/packages/Plots/pxXHF/ext/ImageInTerminalExt.jl:1
+└ @ Base loading.jl:1617
+Microstructure modules names: [:BiophysicalModel, :Compartment, :Cylinder, :ExCaliber, :Iso, :MTE_SANDI, :MTE_SMT, :Microstructure, :MultiTensor1, :MultiTensor2, :MultiTensor3, :NetworkArg, :Noisemodel, :Protocol, :SANDI, :SANDIdot, :Sampler, :Sphere, :Stick, :Tensor, :TrainingArg, :Zeppelin, :compartment_signals, :create_chain, :create_mlp, :dMRI, :dmri_read, :dmri_read_time, :dmri_read_times, :dmri_read_times!, :dmri_write, :draw_samples, :draw_samples!, :empty_chain!, :findsubfield, :generate_samples, :get_backend, :getsubfield, :increment!, :load_mlp, :logp_gauss, :logp_rician, :losses_corr, :losses_rmse, :losses_rmse_corr, :losses_rmse_kl, :mcmc!, :model_signals, :nn_estimate, :normalize_smt!, :plot_diagnostics, :pre_allocate, :prepare_training, :print_model, :run_diagnostics, :save_mlp, :save_nn_maps, :smt_signals, :spherical_mean, :spherical_mean!, :subsampler, :test, :threading, :train_loop!, :training, :update!]

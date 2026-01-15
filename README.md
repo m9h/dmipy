@@ -4,6 +4,30 @@
 [![Documentation Status](https://readthedocs.org/projects/dmipy/badge/?version=latest)](http://dmipy.readthedocs.io/en/latest/?badge=latest)
 
 
+
+# Dmipy-JAX: Acceleration Port
+
+**Note: This branch contains the JAX port of Dmipy. See below for feature parity status.**
+
+| Feature / Model | dmipy (Original) | dmipy-jax (New) | Notes |
+| :--- | :---: | :---: | :--- |
+| **Infrastructure** | | | |
+| Acquisition Class | ✅ | ✅ | `JaxAcquisition` (Simplified) |
+| Model Composition | ✅ | ✅ | `compose_models` |
+| Fitting (Voxelwise) | ✅ | ✅ | `fit_voxel` (JAXopt) |
+| MCMC Inference | ❌ | ✅ | NUTS Sampler (Blackjax) |
+| **Cylinder Models** | | | |
+| Stick (C1) | ✅ | ✅ | `C1Stick` |
+| Cylinder (C2) | ✅ | ❌ | |
+| Zeppelins | ✅ | ❌ | |
+| **Gaussian Models** | | | |
+| Ball (G1) | ✅ | ✅ | `G1Ball` |
+| Tensor (G2) | ✅ | ❌ | |
+| **Sphere Models** | | | |
+| Sphere (S2) | ✅ | ✅ | `S2SphereStejskalTanner` |
+| **Others** | | | |
+| Exchange | ✅ | ⚠️ | Karger Implementation in progress |
+
 # Dmipy: Diffusion Microstructure Imaging in Python
 
 The Dmipy software package facilitates the **reproducible estimation of diffusion MRI-based microstructure features**. It does this by taking a completely modular approach to Microstructure Imaging. Using Dmipy you can design, fit, and recover the parameters of any multi-compartment microstructure model in usually less than 10 lines of code. Created models can be used to simulate and fit data for any PGSE-based dMRI acquisition, including single shell, multi-shell, multi-diffusion time and multi-TE acquisition schemes. Dmipy's main features include:

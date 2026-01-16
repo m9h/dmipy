@@ -22,6 +22,10 @@ dependencies = [
   "jax",
   "dmipy",
   "numpy",
+  "jaxlib",
+  "jaxopt",
+  "blackjax",
+  "furo",
 ]
 
 [project.urls]
@@ -29,3 +33,13 @@ Homepage = "https://github.com/AthenaEPI/dmipy"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dmipy_jax"]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pyjulia",
+]
+doc = [
+    "sphinx",
+    "furo",
+]

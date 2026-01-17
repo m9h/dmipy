@@ -1,23 +1,10 @@
-import jax.numpy as jnp
+from dmipy_jax.signal_models import c1_stick, c2_cylinder
+from jax import numpy as jnp
 
 class C1Stick:
     r"""
-    The Stick model [1]_ - a cylinder with zero radius - typically used
-    for intra-axonal diffusion. JAX implementation.
-
-    Args:
-        mu (jax.numpy.ndarray): Angles [theta, phi] representing the main orientation
-            on the sphere.
-            - theta: inclination (polar) angle [0, pi].
-            - phi: azimuthal angle [-pi, pi].
-            Shape: (2,).
-        lambda_par (float): Parallel diffusivity in m^2/s.
-
-    References:
-        .. [1] Behrens, T. E. J., et al. "Characterization and propagation of uncertainty
-            in diffusion-weighted MR imaging." Magnetic Resonance in Medicine 50.5
-            (2003): 1077-1088.
-        :cite:p:`zhang2012noddi`
+    The Stick model [1]_ - a cylinder with zero radius.
+    JAX implementation using c1_stick kernel.
     """
 
     parameter_names = ['mu', 'lambda_par']
@@ -28,42 +15,62 @@ class C1Stick:
         self.lambda_par = lambda_par
 
     def __call__(self, bvals, gradient_directions, **kwargs):
-        r'''
-        Estimates the signal attenuation.
-
-        Parameters
-        ----------
-        bvals : jax.numpy.ndarray, shape(N),
-            b-values.
-        gradient_directions : jax.numpy.ndarray, shape(N, 3),
-            gradient directions (n).
-        kwargs: keyword arguments to the model parameter values.
-
-        Returns
-        -------
-        attenuation : jax.numpy.ndarray, shape(N),
-            signal attenuation
-        '''
         lambda_par = kwargs.get('lambda_par', self.lambda_par)
         mu = kwargs.get('mu', self.mu)
 
-        # Convert simple [theta, phi] to cartesian
-        # Assuming mu is [theta, phi]
+        # Convert spherical [theta, phi] to cartesian vector
         theta = mu[0]
         phi = mu[1]
         
-        sintheta = jnp.sin(theta)
-        
-        # Consistent with utils.unitsphere2cart_1d
-        mu_cart_0 = sintheta * jnp.cos(phi)
-        mu_cart_1 = sintheta * jnp.sin(phi)
-        mu_cart_2 = jnp.cos(theta)
-        
-        mu_cart = jnp.array([mu_cart_0, mu_cart_1, mu_cart_2])
+        mu_cart = jnp.array([
+            jnp.sin(theta) * jnp.cos(phi),
+            jnp.sin(theta) * jnp.sin(phi),
+            jnp.cos(theta)
+        ])
 
-        # Calculate attenuation
-        # E = exp(-b * lambda_par * (n . mu)^2)
-        dot_prod = jnp.dot(gradient_directions, mu_cart)
-        E_stick = jnp.exp(-bvals * lambda_par * dot_prod ** 2)
+        return c1_stick(bvals, gradient_directions, mu_cart, lambda_par)
+
+
+class C2Cylinder:
+    r"""
+    The Cylinder model [1]_ - finite radius with Soderman approximation.
+    JAX implementation using c2_cylinder kernel.
+    """
+
+    parameter_names = ['mu', 'lambda_par', 'diameter']
+    parameter_cardinality = {'mu': 2, 'lambda_par': 1, 'diameter': 1}
+
+    def __init__(self, mu=None, lambda_par=None, diameter=None):
+        self.mu = mu
+        self.lambda_par = lambda_par
+        self.diameter = diameter
+
+    def __call__(self, bvals, gradient_directions, **kwargs):
+        # Requires big_delta and small_delta from acquisition scheme/kwargs?
+        # The kernel c2_cylinder needs big_delta, small_delta. 
+        # These are typically in kwargs if passed from acquisition.
+        # But 'compose_models' in composer.py passes bvals, gradient_directions explicitly,
+        # and relies on kwargs to carry other things.
         
-        return E_stick
+        lambda_par = kwargs.get('lambda_par', self.lambda_par)
+        diameter = kwargs.get('diameter', self.diameter)
+        mu = kwargs.get('mu', self.mu)
+        
+        # Acquisition parameters
+        big_delta = kwargs.get('big_delta')
+        small_delta = kwargs.get('small_delta')
+        
+        # If not provided, raise error or assume simplistic case?
+        # For now, we assume they are passed.
+        
+        # Convert spherical [theta, phi] to cartesian vector
+        theta = mu[0]
+        phi = mu[1]
+        
+        mu_cart = jnp.array([
+            jnp.sin(theta) * jnp.cos(phi),
+            jnp.sin(theta) * jnp.sin(phi),
+            jnp.cos(theta)
+        ])
+        
+        return c2_cylinder(bvals, gradient_directions, mu_cart, lambda_par, diameter, big_delta, small_delta)

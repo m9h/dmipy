@@ -151,3 +151,37 @@ class JaxAcquisition:
             delta=delta,
             Delta=Delta
         )
+
+# Register JaxAcquisition as a Pytree node
+# This allows JAX to trace through the object and handle its array fields correctly.
+
+def _acquisition_flatten(acq):
+    # Children are the dynamic array fields
+    children = (
+        acq.bvalues,
+        acq.gradient_directions,
+        acq.delta,
+        acq.Delta,
+        acq.echo_time,
+        acq.total_readout_time
+    )
+    # Aux data is empty/None as we don't have static metadata that affects the structure
+    aux_data = None
+    return children, aux_data
+
+def _acquisition_unflatten(aux_data, children):
+    # Reconstruct the object
+    return JaxAcquisition(
+        bvalues=children[0],
+        gradient_directions=children[1],
+        delta=children[2],
+        Delta=children[3],
+        echo_time=children[4],
+        total_readout_time=children[5]
+    )
+
+jax.tree_util.register_pytree_node(
+    JaxAcquisition,
+    _acquisition_flatten,
+    _acquisition_unflatten
+)

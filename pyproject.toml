@@ -26,6 +26,13 @@ dependencies = [
   "jaxopt",
   "blackjax",
   "furo",
+  "equinox",
+  "optimistix",
+  "lineax",
+  "diffrax",
+  "jaxtyping",
+  "jax-md",
+  "ipython",
 ]
 
 [project.urls]

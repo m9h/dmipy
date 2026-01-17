@@ -14,7 +14,7 @@
 | **Infrastructure** | | | |
 | Acquisition Class | ✅ | ✅ | `JaxAcquisition` (Simplified) |
 | Model Composition | ✅ | ✅ | `compose_models` |
-| Fitting (Voxelwise) | ✅ | ✅ | `fit_voxel` (JAXopt) |
+| Fitting (Voxelwise) | ✅ | ✅ | `fit_voxel` (optimistix) |
 | MCMC Inference | ❌ | ✅ | NUTS Sampler (Blackjax) |
 | **Cylinder Models** | | | |
 | Stick (C1) | ✅ | ✅ | `C1Stick` |
@@ -27,6 +27,11 @@
 | Sphere (S2) | ✅ | ✅ | `S2SphereStejskalTanner` |
 | **Others** | | | |
 | Exchange | ✅ | ⚠️ | Karger Implementation in progress |
+
+### Optimization Engine
+- **Microstructure Fitting**: Uses `optimistix.least_squares` (Deterministic, Precision-focused).
+- **Neural Network Training (Future)**: Uses `optax` (Stochastic, Learning-focused).
+
 
 # Dmipy: Diffusion Microstructure Imaging in Python
 

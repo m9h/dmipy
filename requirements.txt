@@ -4,3 +4,5 @@ dipy
 cvxpy
 boto
 pathlib
+optimistix
+equinox

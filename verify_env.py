@@ -15,3 +15,17 @@ print("Matrix multiplication successful.")
 # Test Sampler Import (Critical for BlackJAX)
 from blackjax import nuts
 print("BlackJAX NUTS sampler imported successfully.")
+
+# Test Scientific JAX Stack
+import equinox
+import optimistix
+import lineax
+import diffrax
+import jaxtyping
+print(f"Equinox Version: {equinox.__version__}")
+print(f"Optimistix Version: {optimistix.__version__}")
+print(f"Lineax Version: {lineax.__version__}")
+print(f"Diffrax Version: {diffrax.__version__}")
+print("Jaxtyping imported successfully.")
+import jax_md
+print(f"JAX-MD Version: {jax_md.__version__}")

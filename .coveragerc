@@ -1,7 +1,0 @@
-[run]
-branch = True
-source = dmipy/*
-include = dmipy/*
-omit = */setup.py
-[report]
-include = dmipy/*

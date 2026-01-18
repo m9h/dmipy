@@ -1,0 +1,10 @@
+# Dmipy-JAX Restricted Models Benchmark
+Device: TFRT_CPU_0
+| Model | JIT Time (s) | 100k Voxels Time (ms) | Throughput (Voxels/s) |
+|---|---|---|---|
+| Restricted Cylinder (Soderman) | FAILED | vmap is only supported for the pure_callback primitive when vmap_method is one of 'sequential', 'sequential_unrolled', 'expand_dims', 'broadcast_all', or 'legacy_vectorized'. Got vmap_method=None. | - |
+| Restricted Cylinder (Callaghan, N=20) | FAILED | vmap is only supported for the pure_callback primitive when vmap_method is one of 'sequential', 'sequential_unrolled', 'expand_dims', 'broadcast_all', or 'legacy_vectorized'. Got vmap_method=None. | - |
+| Sphere (Stejskal-Tanner) | 0.0727 | 5.35 | 1.87e+07 |
+| Sphere (Callaghan, N=20) | FAILED | SphereCallaghan requires 'qvalues' or bvals+timing. | - |
+| Plane (Stejskal-Tanner) | FAILED | PlaneStejskalTanner requires 'qvalues' or bvals+timing. | - |
+| Plane (Callaghan, N=20) | FAILED | PlaneCallaghan requires 'qvalues'. | - |

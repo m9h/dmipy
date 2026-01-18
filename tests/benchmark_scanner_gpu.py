@@ -124,7 +124,7 @@ def main():
         print("GPU Verified.")
 
     # 2. Initialization
-    N_SPINS = 100
+    N_SPINS = 1_000_000
     print(f"Initializing {N_SPINS} isochromats...")
     
     # Random positions in a 10cm cube

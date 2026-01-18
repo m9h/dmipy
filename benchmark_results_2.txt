@@ -1,0 +1,10 @@
+# Dmipy-JAX Restricted Models Benchmark
+Device: TFRT_CPU_0
+| Model | JIT Time (s) | 100k Voxels Time (ms) | Throughput (Voxels/s) |
+|---|---|---|---|
+| Restricted Cylinder (Soderman) | FAILED | bessel_jn() takes 1 positional argument but 2 were given | - |
+| Restricted Cylinder (Callaghan, N=20) | FAILED | bessel_jn() takes 1 positional argument but 2 were given | - |
+| Sphere (Stejskal-Tanner) | 0.0818 | 5.93 | 1.69e+07 |
+| Sphere (Callaghan, N=20) | FAILED | bessel_jn() takes 1 positional argument but 2 were given | - |
+| Plane (Stejskal-Tanner) | 0.0653 | 3.00 | 3.33e+07 |
+| Plane (Callaghan, N=20) | 0.4939 | 240.41 | 4.16e+05 |

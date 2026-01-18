@@ -1,0 +1,7 @@
+Acquisition
+===========
+
+.. automodule:: dmipy_jax.acquisition
+   :members:
+   :undoc-members:
+   :show-inheritance:

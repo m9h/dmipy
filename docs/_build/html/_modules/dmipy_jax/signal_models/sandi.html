@@ -1,0 +1,691 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>dmipy_jax.signal_models.sandi - Bmipy-JAX Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">Bmipy-JAX Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">Bmipy-JAX Documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/first_steps.html">First Steps with dmipy-jax</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for dmipy_jax.signal_models.sandi</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dmipy_jax.acquisition</span><span class="w"> </span><span class="kn">import</span> <span class="n">JaxAcquisition</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dmipy_jax.gaussian</span><span class="w"> </span><span class="kn">import</span> <span class="n">G1Ball</span><span class="p">,</span> <span class="n">G2Zeppelin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dmipy_jax.cylinder</span><span class="w"> </span><span class="kn">import</span> <span class="n">C1Stick</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;SphereGPD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;estimate_soma_density&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;get_sandi_model&#39;</span>
+<span class="p">]</span>
+
+<span class="c1"># Roots of the Bessel function derivative equation for Sphere GPD approximation</span>
+<span class="c1"># Copied from dmipy/signal_models/sphere_models.py</span>
+<span class="n">SPHERE_TRASCENDENTAL_ROOTS</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="mf">2.081575978</span><span class="p">,</span> <span class="mf">5.940369990</span><span class="p">,</span> <span class="mf">9.205840145</span><span class="p">,</span>
+    <span class="mf">12.40444502</span><span class="p">,</span> <span class="mf">15.57923641</span><span class="p">,</span> <span class="mf">18.74264558</span><span class="p">,</span> <span class="mf">21.89969648</span><span class="p">,</span>
+    <span class="mf">25.05282528</span><span class="p">,</span> <span class="mf">28.20336100</span><span class="p">,</span> <span class="mf">31.35209173</span><span class="p">,</span> <span class="mf">34.49951492</span><span class="p">,</span>
+    <span class="mf">37.64596032</span><span class="p">,</span> <span class="mf">40.79165523</span><span class="p">,</span> <span class="mf">43.93676147</span><span class="p">,</span> <span class="mf">47.08139741</span><span class="p">,</span>
+    <span class="mf">50.22565165</span><span class="p">,</span> <span class="mf">53.36959180</span><span class="p">,</span> <span class="mf">56.51327045</span><span class="p">,</span> <span class="mf">59.65672900</span><span class="p">,</span>
+    <span class="mf">62.80000055</span><span class="p">,</span> <span class="mf">65.94311190</span><span class="p">,</span> <span class="mf">69.08608495</span><span class="p">,</span> <span class="mf">72.22893775</span><span class="p">,</span>
+    <span class="mf">75.37168540</span><span class="p">,</span> <span class="mf">78.51434055</span><span class="p">,</span> <span class="mf">81.65691380</span><span class="p">,</span> <span class="mf">84.79941440</span><span class="p">,</span>
+    <span class="mf">87.94185005</span><span class="p">,</span> <span class="mf">91.08422750</span><span class="p">,</span> <span class="mf">94.22655255</span><span class="p">,</span> <span class="mf">97.36883035</span><span class="p">,</span>
+    <span class="mf">100.5110653</span><span class="p">,</span> <span class="mf">103.6532613</span><span class="p">,</span> <span class="mf">106.7954217</span><span class="p">,</span> <span class="mf">109.9375497</span><span class="p">,</span>
+    <span class="mf">113.0796480</span><span class="p">,</span> <span class="mf">116.2217188</span><span class="p">,</span> <span class="mf">119.3637645</span><span class="p">,</span> <span class="mf">122.5057870</span><span class="p">,</span>
+    <span class="mf">125.6477880</span><span class="p">,</span> <span class="mf">128.7897690</span><span class="p">,</span> <span class="mf">131.9317315</span><span class="p">,</span> <span class="mf">135.0736768</span><span class="p">,</span>
+    <span class="mf">138.2156061</span><span class="p">,</span> <span class="mf">141.3575204</span><span class="p">,</span> <span class="mf">144.4994207</span><span class="p">,</span> <span class="mf">147.6413080</span><span class="p">,</span>
+    <span class="mf">150.7831829</span><span class="p">,</span> <span class="mf">153.9250463</span><span class="p">,</span> <span class="mf">157.0668989</span><span class="p">,</span> <span class="mf">160.2087413</span><span class="p">,</span>
+    <span class="mf">163.3505741</span><span class="p">,</span> <span class="mf">166.4923978</span><span class="p">,</span> <span class="mf">169.6342129</span><span class="p">,</span> <span class="mf">172.7760200</span><span class="p">,</span>
+    <span class="mf">175.9178194</span><span class="p">,</span> <span class="mf">179.0596116</span><span class="p">,</span> <span class="mf">182.2013968</span><span class="p">,</span> <span class="mf">185.3431756</span><span class="p">,</span>
+    <span class="mf">188.4849481</span><span class="p">,</span> <span class="mf">191.6267147</span><span class="p">,</span> <span class="mf">194.7684757</span><span class="p">,</span> <span class="mf">197.9102314</span><span class="p">,</span>
+    <span class="mf">201.0519820</span><span class="p">,</span> <span class="mf">204.1937277</span><span class="p">,</span> <span class="mf">207.3354688</span><span class="p">,</span> <span class="mf">210.4772054</span><span class="p">,</span>
+    <span class="mf">213.6189378</span><span class="p">,</span> <span class="mf">216.7606662</span><span class="p">,</span> <span class="mf">219.9023907</span><span class="p">,</span> <span class="mf">223.0441114</span><span class="p">,</span>
+    <span class="mf">226.1858287</span><span class="p">,</span> <span class="mf">229.3275425</span><span class="p">,</span> <span class="mf">232.4692530</span><span class="p">,</span> <span class="mf">235.6109603</span><span class="p">,</span>
+    <span class="mf">238.7526647</span><span class="p">,</span> <span class="mf">241.8943662</span><span class="p">,</span> <span class="mf">245.0360648</span><span class="p">,</span> <span class="mf">248.1777608</span><span class="p">,</span>
+    <span class="mf">251.3194542</span><span class="p">,</span> <span class="mf">254.4611451</span><span class="p">,</span> <span class="mf">257.6028336</span><span class="p">,</span> <span class="mf">260.7445198</span><span class="p">,</span>
+    <span class="mf">263.8862038</span><span class="p">,</span> <span class="mf">267.0278856</span><span class="p">,</span> <span class="mf">270.1695654</span><span class="p">,</span> <span class="mf">273.3112431</span><span class="p">,</span>
+    <span class="mf">276.4529189</span><span class="p">,</span> <span class="mf">279.5945929</span><span class="p">,</span> <span class="mf">282.7362650</span><span class="p">,</span> <span class="mf">285.8779354</span><span class="p">,</span>
+    <span class="mf">289.0196041</span><span class="p">,</span> <span class="mf">292.1612712</span><span class="p">,</span> <span class="mf">295.3029367</span><span class="p">,</span> <span class="mf">298.4446006</span><span class="p">,</span>
+    <span class="mf">301.5862631</span><span class="p">,</span> <span class="mf">304.7279241</span><span class="p">,</span> <span class="mf">307.8695837</span><span class="p">,</span> <span class="mf">311.0112420</span><span class="p">,</span>
+    <span class="mf">314.1528990</span>
+<span class="p">])</span>
+
+<div class="viewcode-block" id="SphereGPD">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sandi.SphereGPD">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SphereGPD</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Gaussian Phase Distribution (GPD) approximation for diffusion inside a sphere.</span>
+<span class="sd">    Used in the SANDI model for representing Soma.</span>
+<span class="sd">    </span>
+<span class="sd">    References:</span>
+<span class="sd">        .. [1] Palombo et al., NeuroImage 2020.</span>
+<span class="sd">        .. [2] Balinov et al., JMR 1993 (GPD approx).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="s1">&#39;diffusion_constant&#39;</span><span class="p">]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diffusion_constant&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">diameter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">diffusion_constant</span><span class="o">=</span><span class="mf">3.0e-9</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">diameter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_constant</span> <span class="o">=</span> <span class="n">diffusion_constant</span>
+        <span class="c1"># Gyromagnetic ratio for protons in m^2/(s*T), typically not needed for b-value formulation </span>
+        <span class="c1"># but needed if inputs were gradients. Here inputs are gradient_strengths derived from b.</span>
+        <span class="c1"># Actually, standard formula uses gamma*G. </span>
+        <span class="c1"># q = gamma * G * delta / (2pi) -&gt; gamma * G = q * 2pi / delta.</span>
+        <span class="c1"># But we act on b-values.</span>
+        <span class="c1"># The GPD formula relies on G, delta, Delta.</span>
+        <span class="c1"># G = sqrt(b / (delta^2 * (Delta - delta/3))) ?</span>
+        <span class="c1"># Let&#39;s derive G from b, delta, Delta safely.</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates signal attenuation. </span>
+<span class="sd">        Requires acquisition to have delta and Delta defined.</span>
+<span class="sd">        </span>
+<span class="sd">        Note: The signature expects bvals, gradient_directions as mandatory, </span>
+<span class="sd">        plus **kwargs for parameters and potentially &#39;acquisition&#39; object if passed.</span>
+<span class="sd">        </span>
+<span class="sd">        However, to access delta/Delta from the acquisition, we ideally need the acquisition object itself</span>
+<span class="sd">        or for delta/Delta to be passed in kwargs.</span>
+<span class="sd">        </span>
+<span class="sd">        The standard call signature in dmipy_jax seems to be (bvals, gradient_directions, **kwargs).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span><span class="p">)</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diffusion_constant&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_constant</span><span class="p">)</span>
+        
+        <span class="c1"># We try to extract delta and Delta from kwargs if present (passed by composer or user)</span>
+        <span class="c1"># Or from an &#39;acquisition&#39; object in kwargs</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;delta&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">Delta</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Delta&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">delta</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">Delta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Fallback: check if &#39;acquisition&#39; is in kwargs</span>
+            <span class="n">acq</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;acquisition&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">acq</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">delta</span> <span class="o">=</span> <span class="n">acq</span><span class="o">.</span><span class="n">delta</span>
+                <span class="n">Delta</span> <span class="o">=</span> <span class="n">acq</span><span class="o">.</span><span class="n">Delta</span>
+        
+        <span class="k">if</span> <span class="n">delta</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">Delta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;SphereGPD require &#39;delta&#39; and &#39;Delta&#39; to be passed in kwargs or via &#39;acquisition&#39; object.&quot;</span><span class="p">)</span>
+            
+        <span class="c1"># Ensure D is positive</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gpd_attenuation</span><span class="p">(</span><span class="n">bvals</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">Delta</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">D</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_gpd_attenuation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvalues</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">Delta</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">D</span><span class="p">):</span>
+        <span class="c1"># Calculate Gradient strength G from b-value</span>
+        <span class="c1"># b = (gamma * G * delta)^2 * (Delta - delta/3)</span>
+        <span class="c1"># =&gt; gamma * G = sqrt( b / (delta^2 * (Delta - delta/3)) )</span>
+        <span class="c1"># The factor &quot;gamma * G&quot; is what appears in the formula as part of q-space or direct calc.</span>
+        
+        <span class="c1"># Avoid division by zero for b=0 or delta=0</span>
+        <span class="n">tau</span> <span class="o">=</span> <span class="n">Delta</span> <span class="o">-</span> <span class="n">delta</span> <span class="o">/</span> <span class="mf">3.0</span>
+        <span class="c1"># q_squared_factor = (gamma * G)^2</span>
+        <span class="c1"># q_squared_factor = b / (delta**2 * tau)</span>
+        
+        <span class="c1"># Handle the case where delta or tau is close to zero?</span>
+        <span class="c1"># Assuming reasonable acquisition parameters.</span>
+        
+        <span class="c1"># first_factor = -2 * (gamma * G)**2 / D  (from dmipy)</span>
+        <span class="c1"># first_factor = -2 * (b / (delta**2 * tau)) / D</span>
+        
+        <span class="c1"># Let&#39;s define:</span>
+        <span class="c1"># gamma_G_sq = bvalues / (delta**2 * tau)</span>
+        
+        <span class="c1"># Depending on input shapes, delta/Delta might be scalars or arrays matching bvalues.</span>
+        <span class="c1"># JAX broadcasting should handle it.</span>
+        
+        <span class="c1"># We use a safe mask for b=0 to avoid NaNs</span>
+        <span class="n">b_safe</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bvalues</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">bvalues</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        
+        <span class="n">denom</span> <span class="o">=</span> <span class="p">(</span><span class="n">delta</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">tau</span><span class="p">)</span>
+        <span class="n">denom_safe</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">denom</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        
+        <span class="n">gamma_G_sq</span> <span class="o">=</span> <span class="n">b_safe</span> <span class="o">/</span> <span class="n">denom_safe</span>
+        
+        <span class="c1"># Only compute where b &gt; 0</span>
+        <span class="n">first_factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">gamma_G_sq</span> <span class="o">/</span> <span class="n">D</span>
+        
+        <span class="n">radius</span> <span class="o">=</span> <span class="n">diameter</span> <span class="o">/</span> <span class="mf">2.0</span>
+        
+        <span class="c1"># alpha = roots / radius</span>
+        <span class="c1"># alpha2 = alpha^2</span>
+        <span class="c1"># alpha2D = alpha2 * D</span>
+        
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">SPHERE_TRASCENDENTAL_ROOTS</span> <span class="o">/</span> <span class="n">radius</span>
+        <span class="n">alpha2</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">alpha2D</span> <span class="o">=</span> <span class="n">alpha2</span> <span class="o">*</span> <span class="n">D</span>
+        
+        <span class="c1"># Shapes:</span>
+        <span class="c1"># alpha: (N_roots,)</span>
+        <span class="c1"># alpha2D: (N_roots,)</span>
+        <span class="c1"># delta, Delta: either scalar or (N_bvals,)</span>
+        
+        <span class="c1"># We need to broadcast alpha terms against b-value/time terms.</span>
+        <span class="c1"># Let&#39;s add dimensions.</span>
+        <span class="c1"># bvalues: (N,)</span>
+        <span class="c1"># alpha: (K,) -&gt; (1, K)</span>
+        
+        <span class="n">alpha2</span> <span class="o">=</span> <span class="n">alpha2</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">alpha2D</span> <span class="o">=</span> <span class="n">alpha2D</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        
+        <span class="c1"># delta, Delta might be (N,) or scalar.</span>
+        <span class="k">if</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ndim</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">delta_</span> <span class="o">=</span> <span class="n">delta</span>
+            <span class="n">Delta_</span> <span class="o">=</span> <span class="n">Delta</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">delta_</span> <span class="o">=</span> <span class="n">delta</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="n">Delta_</span> <span class="o">=</span> <span class="n">Delta</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="c1"># Calculation of summands</span>
+        <span class="c1"># (2*delta - (2 + exp(-a2D(D-d)) - 2exp(-a2Dd) - 2exp(-a2DD) + exp(-a2D(D+d))) / (a2D) )</span>
+        
+        <span class="c1"># Exponentials</span>
+        <span class="c1"># Note: alpha2D has units 1/s.</span>
+        <span class="n">exp_Dm_d</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha2D</span> <span class="o">*</span> <span class="p">(</span><span class="n">Delta_</span> <span class="o">-</span> <span class="n">delta_</span><span class="p">))</span>
+        <span class="n">exp_d</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha2D</span> <span class="o">*</span> <span class="n">delta_</span><span class="p">)</span>
+        <span class="n">exp_D</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha2D</span> <span class="o">*</span> <span class="n">Delta_</span><span class="p">)</span>
+        <span class="n">exp_Dp_d</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha2D</span> <span class="o">*</span> <span class="p">(</span><span class="n">Delta_</span> <span class="o">+</span> <span class="n">delta_</span><span class="p">))</span>
+        
+        <span class="n">numerator</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">exp_Dm_d</span> <span class="o">-</span> <span class="mi">2</span><span class="o">*</span><span class="n">exp_d</span> <span class="o">-</span> <span class="mi">2</span><span class="o">*</span><span class="n">exp_D</span> <span class="o">+</span> <span class="n">exp_Dp_d</span>
+        <span class="n">term_in_paren</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">delta_</span> <span class="o">-</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">alpha2D</span>
+        
+        <span class="c1"># Pre-factor: alpha^(-4) / (alpha^2 * R^2 - 2)</span>
+        <span class="c1"># alpha^2 * R^2 = (roots/R)^2 * R^2 = roots^2</span>
+        <span class="n">roots2</span> <span class="o">=</span> <span class="n">SPHERE_TRASCENDENTAL_ROOTS</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">prefactor</span> <span class="o">=</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">**</span> <span class="o">-</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">roots2</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">prefactor</span> <span class="o">=</span> <span class="n">prefactor</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        
+        <span class="n">summands</span> <span class="o">=</span> <span class="n">prefactor</span> <span class="o">*</span> <span class="n">term_in_paren</span>
+        
+        <span class="c1"># Sum over roots (axis 1)</span>
+        <span class="n">sum_summands</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">summands</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Final E</span>
+        <span class="c1"># E = exp(first_factor * sum_summands)</span>
+        <span class="n">log_E</span> <span class="o">=</span> <span class="n">first_factor</span> <span class="o">*</span> <span class="n">sum_summands</span>
+        
+        <span class="n">E</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_E</span><span class="p">)</span>
+        
+        <span class="c1"># Where b=0, E=1</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bvalues</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="estimate_soma_density">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sandi.estimate_soma_density">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_soma_density</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">bvalues</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Heuristic estimator for soma density (f_sphere) using powder averaging.</span>
+<span class="sd">    </span>
+<span class="sd">    This function computes the &#39;powder average&#39; (mean signal over directions) </span>
+<span class="sd">    for each b-shell. The high-b signal floor in the powder average is largely </span>
+<span class="sd">    driven by restricted diffusion (somas) + immobile water (if any), </span>
+<span class="sd">    while sticks and zeppelins decay faster in the powder average </span>
+<span class="sd">    (specifically Sticks decay as 1/sqrt(b*D)).</span>
+<span class="sd">    </span>
+<span class="sd">    However, for a quick initial guess, we might look at the signal at high b-values.</span>
+<span class="sd">    References suggest estimating f_sphere from high-b powder-averaged data.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        data (jnp.ndarray): Signal data, shape (N_voxels, N_measurements) or (N_measurements,).</span>
+<span class="sd">        bvalues (jnp.ndarray): B-values, shape (N_measurements,).</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        f_sphere_guess (jnp.ndarray): Initial guess for soma density.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Simply grouping by b-shell</span>
+    <span class="c1"># Identify shells</span>
+    <span class="c1"># Round b-values to identifying unique shells</span>
+    <span class="n">b_shells</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">bvalues</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># Round to nearest 100</span>
+    <span class="n">unique_b</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">b_shells</span><span class="p">)</span>
+    
+    <span class="c1"># Check dimensions</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        
+    <span class="n">n_voxels</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="c1"># Ideally, we fit a simplified 1D model to the powder average.</span>
+    <span class="c1"># Signal ~ f_stick * (pi/(b*D_stick))^(1/2) + f_sphere * Sphere_Powder(b, R) + f_ball * exp(-b*D)</span>
+    
+    <span class="c1"># A very rough heuristic:</span>
+    <span class="c1"># At high b (e.g. &gt; 2000), ball is gone. Stick decays as power law. Sphere is relatively constant/slow decay.</span>
+    <span class="c1"># We will just return a placeholder constant guess of 0.1 or similar if specific fitting isn&#39;t implemented.</span>
+    <span class="c1"># Or, return max signal at highest b-value?</span>
+    
+    <span class="c1"># For now, returning a safe starting value of 0.2 for f_sphere seems reasonable for optimization initialization.</span>
+    <span class="c1"># The prompt asked for a &quot;Powder Average estimator&quot;.</span>
+    <span class="c1"># Let&#39;s compute the powder average signal.</span>
+    
+    <span class="c1"># Implementation:</span>
+    <span class="c1"># 1. Compute spherical mean of signal for each shell.</span>
+    <span class="c1"># 2. Return something derived from it.</span>
+    
+    <span class="c1"># Since we can&#39;t easily run a non-linear fit here without loop overhead, let&#39;s return a static reasonable guess</span>
+    <span class="c1"># but provide the powder average calculation logic as a utility.</span>
+    
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_voxels</span><span class="p">,),</span> <span class="mf">0.2</span><span class="p">)</span> </div>
+
+
+
+<div class="viewcode-block" id="get_sandi_model">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sandi.get_sandi_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_sandi_model</span><span class="p">(</span>
+    <span class="n">diffusivity_long</span><span class="o">=</span><span class="mf">3.0e-9</span><span class="p">,</span>  <span class="c1"># m^2/s</span>
+    <span class="n">diffusivity_trans_min</span><span class="o">=</span><span class="mf">0.1e-9</span><span class="p">,</span>
+    <span class="n">sphere_diameter_range</span><span class="o">=</span><span class="p">(</span><span class="mf">6e-6</span><span class="p">,</span> <span class="mf">12e-6</span><span class="p">)</span> <span class="c1"># m</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Factory function to create the SANDI composite model function.</span>
+<span class="sd">    </span>
+<span class="sd">    Composition:</span>
+<span class="sd">    Signal = (1 - f_iso - f_stick - f_sphere) * Zeppelin + f_stick * Stick + f_sphere * Sphere + f_iso * Ball</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    - diffusivity_long: Fixed parallel diffusivity for Stick and Zeppelin (default 3.0 um^2/ms).</span>
+<span class="sd">    - diffusivity_trans_min: Minimum transverse diffusivity for Zeppelin.</span>
+<span class="sd">    - sphere_diameter_range: Bounds for sphere diameter.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        sandi_func (callable): The model function `sandi_model(params, acquisition)`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># Instantiate components</span>
+    <span class="n">stick</span> <span class="o">=</span> <span class="n">C1Stick</span><span class="p">()</span>
+    <span class="n">sphere</span> <span class="o">=</span> <span class="n">SphereGPD</span><span class="p">()</span>
+    <span class="n">zeppelin</span> <span class="o">=</span> <span class="n">G2Zeppelin</span><span class="p">()</span>
+    <span class="n">ball</span> <span class="o">=</span> <span class="n">G1Ball</span><span class="p">()</span>
+    
+    <span class="c1"># Constants</span>
+    <span class="n">D_long</span> <span class="o">=</span> <span class="n">diffusivity_long</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">sandi_model</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">acquisition</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            params: 1D array containing:</span>
+<span class="sd">                [</span>
+<span class="sd">                  # Stick params</span>
+<span class="sd">                  theta, phi,</span>
+<span class="sd">                  </span>
+<span class="sd">                  # Sphere params</span>
+<span class="sd">                  diameter, D_sphere,</span>
+<span class="sd">                  </span>
+<span class="sd">                  # Zeppelin params</span>
+<span class="sd">                  theta_z, phi_z, # Usually linked to Stick orientation? </span>
+<span class="sd">                                  # SANDI assumes aligned Stick and Zeppelin? </span>
+<span class="sd">                                  # Original paper assumes Stick and Zeppelin share orientation (neurite bundles).</span>
+<span class="sd">                  lambda_perp,</span>
+<span class="sd">                  </span>
+<span class="sd">                  # Ball params</span>
+<span class="sd">                  lambda_iso, </span>
+<span class="sd">                  </span>
+<span class="sd">                  # Fractions</span>
+<span class="sd">                  f_stick, f_sphere, f_ball</span>
+<span class="sd">                ]</span>
+<span class="sd">                </span>
+<span class="sd">                However, SANDI usually assumes:</span>
+<span class="sd">                1. Stick and Zeppelin share orientation (mu).</span>
+<span class="sd">                2. Stick and Zeppelin share parallel diffusivity (D_long).</span>
+<span class="sd">                3. Cylinder/Stick radius is 0.</span>
+<span class="sd">                4. Sphere D is often fixed or constrained (D_long or similar).</span>
+<span class="sd">                5. Ball D is D_iso (e.g. 3.0).</span>
+<span class="sd">                </span>
+<span class="sd">                Let&#39;s simplify based on standard SANDI usage:</span>
+<span class="sd">                - Fix D_long = 3.0 um2/ms (3e-9 m2/s).</span>
+<span class="sd">                - Fix D_sphere = D_long.</span>
+<span class="sd">                - Fix D_ball = 3.0 um2/ms.</span>
+<span class="sd">                - Link orientations of Stick and Zeppelin.</span>
+<span class="sd">                - Fit D_perp for Zeppelin? Or fix it? Usually fitted or small.</span>
+<span class="sd">                - Fit R_sphere (diameter).</span>
+<span class="sd">                </span>
+<span class="sd">                Variable Params:</span>
+<span class="sd">                1. mu (theta, phi) - Orientation</span>
+<span class="sd">                2. f_stick</span>
+<span class="sd">                3. f_sphere</span>
+<span class="sd">                4. f_ball</span>
+<span class="sd">                5. diameter</span>
+<span class="sd">                6. lambda_perp (for Zeppelin)</span>
+<span class="sd">                </span>
+<span class="sd">                Total parameters: 2 + 1 + 1 + 1 + 1 + 1 = 7.</span>
+<span class="sd">                </span>
+<span class="sd">                Param Layout:</span>
+<span class="sd">                [theta, phi, f_stick, f_sphere, f_ball, diameter, lambda_perp]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># Extract params</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">])</span>
+        
+        <span class="n">f_stick</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">f_sphere</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">f_ball</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+        
+        <span class="c1"># Fraction constraint check?</span>
+        <span class="c1"># Typically we use transformations (sigmoid / softmax) in the optimization wrapper.</span>
+        <span class="c1"># Here we assume raw fractions are passed, or validated elsewhere.</span>
+        <span class="c1"># We clamp them to be safe or just use them.</span>
+        
+        <span class="n">f_zeppelin</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">f_stick</span> <span class="o">-</span> <span class="n">f_sphere</span> <span class="o">-</span> <span class="n">f_ball</span>
+        
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+        <span class="n">lambda_perp</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+        
+        <span class="c1"># Hardcoded constraints/defaults for SANDI</span>
+        <span class="n">lambda_par</span> <span class="o">=</span> <span class="n">D_long</span> <span class="c1"># 3.0e-9</span>
+        <span class="n">D_sphere</span> <span class="o">=</span> <span class="n">D_long</span>   <span class="c1"># 3.0e-9</span>
+        <span class="n">D_iso_ball</span> <span class="o">=</span> <span class="mf">3.0e-9</span> <span class="c1"># Free water</span>
+        
+        <span class="c1"># Prepare component signals</span>
+        
+        <span class="c1"># Stick</span>
+        <span class="c1"># C1Stick(mu, lambda_par)</span>
+        <span class="n">S_stick</span> <span class="o">=</span> <span class="n">stick</span><span class="p">(</span>
+            <span class="n">bvals</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">bvalues</span><span class="p">,</span>
+            <span class="n">gradient_directions</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">gradient_directions</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
+            <span class="n">lambda_par</span><span class="o">=</span><span class="n">lambda_par</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Sphere</span>
+        <span class="c1"># SphereGPD(diameter, diffusion_constant)</span>
+        <span class="c1"># Needs delta/Delta from acquisition</span>
+        <span class="n">S_sphere</span> <span class="o">=</span> <span class="n">sphere</span><span class="p">(</span>
+            <span class="n">bvals</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">bvalues</span><span class="p">,</span> <span class="c1"># unused but passed</span>
+            <span class="n">gradient_directions</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">gradient_directions</span><span class="p">,</span> <span class="c1"># unused</span>
+            <span class="n">acquisition</span><span class="o">=</span><span class="n">acquisition</span><span class="p">,</span> <span class="c1"># To access delta/Delta</span>
+            <span class="n">diameter</span><span class="o">=</span><span class="n">diameter</span><span class="p">,</span>
+            <span class="n">diffusion_constant</span><span class="o">=</span><span class="n">D_sphere</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Zeppelin</span>
+        <span class="c1"># G2Zeppelin(mu, lambda_par, lambda_perp)</span>
+        <span class="c1"># Orientation shared with Stick</span>
+        <span class="n">S_zeppelin</span> <span class="o">=</span> <span class="n">zeppelin</span><span class="p">(</span>
+            <span class="n">bvals</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">bvalues</span><span class="p">,</span>
+            <span class="n">gradient_directions</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">gradient_directions</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
+            <span class="n">lambda_par</span><span class="o">=</span><span class="n">lambda_par</span><span class="p">,</span>
+            <span class="n">lambda_perp</span><span class="o">=</span><span class="n">lambda_perp</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Ball</span>
+        <span class="c1"># G1Ball(lambda_iso)</span>
+        <span class="n">S_ball</span> <span class="o">=</span> <span class="n">ball</span><span class="p">(</span>
+            <span class="n">bvals</span><span class="o">=</span><span class="n">acquisition</span><span class="o">.</span><span class="n">bvalues</span><span class="p">,</span>
+            <span class="n">lambda_iso</span><span class="o">=</span><span class="n">D_iso_ball</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Compose</span>
+        <span class="n">S_total</span> <span class="o">=</span> <span class="p">(</span><span class="n">f_stick</span> <span class="o">*</span> <span class="n">S_stick</span> <span class="o">+</span> 
+                   <span class="n">f_sphere</span> <span class="o">*</span> <span class="n">S_sphere</span> <span class="o">+</span> 
+                   <span class="n">f_zeppelin</span> <span class="o">*</span> <span class="n">f_zeppelin</span> <span class="o">*</span> <span class="mi">0</span> <span class="o">+</span> <span class="c1"># WAIT, logic error in line above, f_zeppelin * S_zeppelin</span>
+                   <span class="n">f_zeppelin</span> <span class="o">*</span> <span class="n">S_zeppelin</span> <span class="o">+</span>
+                   <span class="n">f_ball</span> <span class="o">*</span> <span class="n">S_ball</span><span class="p">)</span>
+                   
+        <span class="k">return</span> <span class="n">S_total</span>
+        
+    <span class="k">return</span> <span class="n">sandi_model</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Rutger Fick, Demian Wassermann, and Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    </body>
+</html>

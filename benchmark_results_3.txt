@@ -1,0 +1,10 @@
+# Dmipy-JAX Restricted Models Benchmark
+Device: TFRT_CPU_0
+| Model | JIT Time (s) | 100k Voxels Time (ms) | Throughput (Voxels/s) |
+|---|---|---|---|
+| Restricted Cylinder (Soderman) | 1.3818 | 1283.08 | 7.79e+04 |
+| Restricted Cylinder (Callaghan, N=20) | FAILED | Incompatible shapes for broadcasting: shapes=[(1, 20), (3, 1, 60)] | - |
+| Sphere (Stejskal-Tanner) | 0.0940 | 9.37 | 1.07e+07 |
+| Sphere (Callaghan, N=20) | FAILED | 'float' object cannot be interpreted as an integer | - |
+| Plane (Stejskal-Tanner) | 0.0716 | 3.88 | 2.58e+07 |
+| Plane (Callaghan, N=20) | 0.5097 | 254.33 | 3.93e+05 |

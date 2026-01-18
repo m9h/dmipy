@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/mhough/src/dmipy
+configfile: pyproject.toml
+plugins: jaxtyping-0.3.5, anyio-4.12.1
+collected 2 items
+
+dmipy_jax/tests/test_velocity.py ..                                      [100%]
+
+============================== 2 passed in 2.03s ===============================

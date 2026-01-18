@@ -1,0 +1,12 @@
+Fitting
+=======
+
+.. automodule:: dmipy_jax.fitting.neural
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.fitting.optimization
+   :members:
+   :undoc-members:
+   :show-inheritance:

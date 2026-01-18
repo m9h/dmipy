@@ -89,14 +89,12 @@ class JaxMultiCompartmentModel:
             
             if card == 1:
                 # Scalar check
-                if hasattr(val, '__len__') and len(val) > 1:
-                     raise ValueError(f"Parameter '{name}' expects scalar, got {val}")
-                # If array-like of size 1, extract? 
-                # jnp.array(val) handles it usually, but we want flat list.
-                # If val is float, append.
-                # If val is array, extend.
+                # Check for vector input where scalar expected
+                # Use jnp.size to catch arrays with >1 element safely
+                if jnp.size(val) > 1:
+                     raise ValueError(f"Parameter '{name}' expects scalar, got {val} with size {jnp.size(val)}")
                 
-                # Careful: if val is array(0.5), extend works? No.
+                # Append as scalar (squeeze handles 0-d or 1-d of size 1)
                 params_list.append(jnp.squeeze(val))
             else:
                 # Vector
@@ -126,40 +124,69 @@ class JaxMultiCompartmentModel:
         return ret
 
 
-    def fit(self, acquisition, data, method="Levenberg-Marquardt"):
+    def fit(self, acquisition, data, method="Levenberg-Marquardt", compute_uncertainty=True):
         """
         Fits the model to data.
         
         Args:
             acquisition: JaxAcquisition object
             data: Signal data array. Shape (N_meas,) for single voxel or (N_vox, N_meas) for multiple.
+            method: Optimization method (default: "Levenberg-Marquardt").
+            compute_uncertainty: If True, computes CRLB standard deviations (default: True).
         
         Returns:
             dict: Fitted parameters in dictionary format.
+                  If compute_uncertainty is True, includes keys with '_std' suffix.
         """
         # 1. Prepare Ranges for Fitter
         # OptimistixFitter expects a list of (min, max) for every single scalar parameter in the flat array.
         
         flat_ranges = []
+        scales_list = []
         for name in self.parameter_names:
             card = self.parameter_cardinality[name]
             rng = self.parameter_ranges[name]
             
+            # Determine scale for this parameter
+            # Heuristic: use order of magnitude of the upper bound, or 1.0
+            # If (low, high), scale = high if high < 1e-2 or high > 1e2
+            
+            current_scales = []
+            
             if card == 1:
-                # rng should be (min, max)
+                # rng is (min, max)
                 flat_ranges.append(rng)
+                low, high = rng
+                # Pick scale
+                if not jnp.isinf(high) and (high != 0):
+                    s = high
+                elif not jnp.isinf(low) and (low != 0):
+                    s = low
+                else:
+                    s = 1.0
+                current_scales.append(s)
             else:
-                # rng should be list of (min, max) of length card
-                # If user passed single tuple for vector parameter, replicate it?
-                # Usually better to be explicit.
+                # rng is list
                 if isinstance(rng, tuple) and len(rng) == 2 and isinstance(rng[0], (int, float)):
-                     # Assume applies to all axes
+                     # Replicate
                      flat_ranges.extend([rng] * card)
+                     low, high = rng
+                     s = high if not jnp.isinf(high) and high!=0 else 1.0
+                     current_scales.extend([s] * card)
                 else:
                      flat_ranges.extend(rng)
+                     for r in rng:
+                         l, h = r
+                         s = h if not jnp.isinf(h) and h!=0 else 1.0
+                         current_scales.append(s)
+            
+            scales_list.extend(current_scales)
+
+        scales = jnp.array(scales_list)
 
         # 2. Instantiate Fitter
-        fitter = OptimistixFitter(self.model_func, flat_ranges)
+        # Pass scales to OptimistixFitter
+        fitter = OptimistixFitter(self.model_func, flat_ranges, scales=scales)
         
         # 3. Initial Guess
         # Ideally, we should use a smarter init. For now, mean of bounds.
@@ -177,19 +204,46 @@ class JaxMultiCompartmentModel:
         init_params = jnp.array(init_params_list)
         
         # 4. Run Fit
+        from dmipy_jax.core.uncertainty_utils import compute_crlb_std
+        
+        # Helper to compute residual sigma for CRLB
+        def estimate_sigma(params, data, acquisition):
+            pred = self.model_func(params, acquisition)
+            mse = jnp.mean((data - pred)**2)
+            return jnp.sqrt(mse)
+
         if data.ndim == 1:
             fitted, _ = fitter.fit(data, acquisition, init_params)
-            return self.parameter_array_to_dictionary(fitted)
+            ret = self.parameter_array_to_dictionary(fitted)
+            
+            if compute_uncertainty:
+                sigma_est = estimate_sigma(fitted, data, acquisition)
+                # Compute CRLB
+                # jacobian needs model_func, params, acq
+                # But compute_crlb_std separates jacobian calc? No, I defined `compute_jacobian` in utils as separate.
+                # Let's reuse compute_jacobian from utils or just do it here if simple.
+                from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
+                
+                J = compute_jacobian(self.model_func, fitted, acquisition)
+                stds = compute_crlb_std(J, sigma=sigma_est)
+                
+                # Unpack stds
+                idx = 0
+                for name in self.parameter_names:
+                    card = self.parameter_cardinality[name]
+                    if card == 1:
+                        ret[f"{name}_std"] = stds[idx]
+                        idx += 1
+                    else:
+                        ret[f"{name}_std"] = stds[idx:idx+card]
+                        idx += card
+            return ret
+
         else:
             # VMAP over voxels
-            # data: (N_vox, N_meas)
-            # init_params: (N_params,) -> replicated? 
-            # jitter.fit signature: (data, acq, init)
-            
             fit_vmapped = jax.vmap(fitter.fit, in_axes=(0, None, None))
             fitted_batch, _ = fit_vmapped(data, acquisition, init_params)
             
-            # Helper for batch dict
             ret = {}
             idx = 0
             for name in self.parameter_names:
@@ -200,4 +254,26 @@ class JaxMultiCompartmentModel:
                 else:
                     ret[name] = fitted_batch[:, idx:idx+card]
                     idx += card
+            
+            if compute_uncertainty:
+                # Vmap uncertainty calculation
+                from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
+                
+                def single_pixel_uncertainty(params, data_voxel):
+                    sigma_est = estimate_sigma(params, data_voxel, acquisition)
+                    J = compute_jacobian(self.model_func, params, acquisition)
+                    return compute_crlb_std(J, sigma=sigma_est)
+                
+                stds_batch = jax.vmap(single_pixel_uncertainty)(fitted_batch, data)
+                
+                idx = 0
+                for name in self.parameter_names:
+                    card = self.parameter_cardinality[name]
+                    if card == 1:
+                        ret[f"{name}_std"] = stds_batch[:, idx]
+                        idx += 1
+                    else:
+                        ret[f"{name}_std"] = stds_batch[:, idx:idx+card]
+                        idx += card
+                        
             return ret

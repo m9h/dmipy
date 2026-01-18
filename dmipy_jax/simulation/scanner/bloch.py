@@ -50,18 +50,9 @@ def bloch_dynamics(t, Magnetization, args):
     # Given the prompt mentions "Get G(t) and B1(t)", we'll stick to vector math.
     
     # Pad B1 to 3D if needed
-    bw = B1_t.shape[0]
-    B1_vec = jax.lax.cond(
-        bw == 2,
-        lambda b: jnp.array([b[0], b[1], 0.0]),
-        lambda b: jax.lax.cond(
-             bw == 1,
-             lambda bb: jnp.array([bb[0], 0.0, 0.0]), # Unlikely but safe fallback
-             lambda bb: bb, # Assume 3
-             b
-        ),
-        B1_t
-    )
+    # Pad B1 to 3D if needed
+    B1_vec = jnp.zeros(3, dtype=B1_t.dtype)
+    B1_vec = B1_vec.at[:B1_t.shape[0]].set(B1_t)
     
     # 2. Compute Bloc = B0 + (G . r) + delta_B_inhom
     # In rotating frame, B0 is effectively removed (or reduced to off-resonance).

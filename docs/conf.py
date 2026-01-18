@@ -5,7 +5,7 @@ import sys
 
 # -- Project information -----------------------------------------------------
 project = 'dmipy-jax'
-copyright = '2025, Rutger Fick, Demian Wassermann, and Contributors'
+copyright = '2026, Rutger Fick, Demian Wassermann, and Contributors'
 author = 'Rutger Fick, Demian Wassermann'
 release = '0.1.0'
 
@@ -28,7 +28,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'furo'
 html_static_path = ['_static']
-html_title = "Bmipy-JAX Documentation"
+html_title = "Dmipy-JAX Documentation"
 
 # -- Path setup --------------------------------------------------------------
 # If extensions (or modules to document with autodoc) are in another directory,

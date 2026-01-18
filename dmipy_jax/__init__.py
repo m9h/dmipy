@@ -21,6 +21,7 @@ from dmipy_jax import cylinder
 from dmipy_jax import gaussian
 from dmipy_jax import sphere
 from dmipy_jax import fitting
+from dmipy_jax import inverse
 from dmipy_jax import composer
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     'gaussian',
     'sphere',
     'fitting',
+    'inverse',
     'composer',
 ]

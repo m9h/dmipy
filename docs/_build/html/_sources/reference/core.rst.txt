@@ -1,0 +1,17 @@
+Core
+====
+
+.. automodule:: dmipy_jax.core.modeling_framework
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.core.particle_engine
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.core.solvers
+   :members:
+   :undoc-members:
+   :show-inheritance:

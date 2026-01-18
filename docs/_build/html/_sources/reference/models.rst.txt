@@ -1,0 +1,12 @@
+Models
+======
+
+.. automodule:: dmipy_jax.models.c_noddi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.models.fw_dti
+   :members:
+   :undoc-members:
+   :show-inheritance:

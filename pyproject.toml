@@ -33,6 +33,8 @@ dependencies = [
   "jaxtyping",
   "jax-md",
   "ipython",
+  "pypulseq",
+  "scico",
 ]
 
 [project.urls]
@@ -49,4 +51,7 @@ test = [
 doc = [
     "sphinx",
     "furo",
+    "myst-parser",
+    "sphinx-copybutton",
+    "sphinxcontrib-bibtex",
 ]

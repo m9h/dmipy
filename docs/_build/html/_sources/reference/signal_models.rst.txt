@@ -1,0 +1,42 @@
+Signal Models
+=============
+
+.. automodule:: dmipy_jax.signal_models.bingham
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.cylinder_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.gaussian_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.mte_noddi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.sandi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.sphere_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.stick
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.zeppelin
+   :members:
+   :undoc-members:
+   :show-inheritance:

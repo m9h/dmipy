@@ -68,6 +68,13 @@ or you can manually
 - python setup.py install
 
 See solutions to [common issues](https://github.com/AthenaEPI/dmipy/blob/master/common_issues.md)
+
+## Development Environment
+This project uses **`uv`** for dependency management. Please do not use `pip` or `conda` manually.
+- **Install dependencies:** `uv sync`
+- **Run tests:** `uv run pytest`
+- **Add package:** `uv add <package>`
+
 ## Dependencies
 Recommended to use Anaconda Python distribution.
 - numpy >= 1.13

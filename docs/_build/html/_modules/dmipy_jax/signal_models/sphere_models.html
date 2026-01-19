@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>dmipy_jax.signal_models.sphere_models - Bmipy-JAX Documentation</title>
+        <title>dmipy_jax.signal_models.sphere_models - Dmipy-JAX Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -161,7 +161,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">Bmipy-JAX Documentation</div></a>
+      <a href="../../../index.html"><div class="brand">Dmipy-JAX Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -182,7 +182,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
-  <span class="sidebar-brand-text">Bmipy-JAX Documentation</span>
+  <span class="sidebar-brand-text">Dmipy-JAX Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -228,7 +228,395 @@
           <h1>Source code for dmipy_jax.signal_models.sphere_models</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ssp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax.scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">special</span> <span class="k">as</span> <span class="n">jsp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dmipy_jax.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">SPHERE_ROOTS</span><span class="p">,</span> <span class="n">GYRO_MAGNETIC_RATIO</span>
+
+<div class="viewcode-block" id="S1Dot">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.S1Dot">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">S1Dot</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Dot model [1]_ - an non-diffusing compartment.</span>
+<span class="sd">    It has no parameters and returns 1 no matter the input.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Panagiotaki et al.</span>
+<span class="sd">           &quot;Compartment models of the diffusion MR signal in brain white</span>
+<span class="sd">            matter: a taxonomy and comparison&quot;. NeuroImage (2012)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Return ones matching the shape of bvals</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">bvals</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="g2_sphere_stejskal_tanner">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.g2_sphere_stejskal_tanner">[docs]</a>
+<span class="nd">@jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">g2_sphere_stejskal_tanner</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">diameter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Stejskal Tanner signal approximation of a sphere model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">diameter</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">factor</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">q</span> <span class="o">*</span> <span class="n">radius</span>
+    
+    <span class="c1"># Handle singularity at factor=0</span>
+    <span class="c1"># sin(x)/x -&gt; 1, cos(x) -&gt; 1. (1-1) -&gt; 0.</span>
+    <span class="c1"># But prefactor 3/x^2 (singularity).</span>
+    <span class="c1"># Expansion: sin(x)/x approx 1 - x^2/6. cos(x) approx 1 - x^2/2.</span>
+    <span class="c1"># Bracket: (1 - x^2/6) - (1 - x^2/2) = x^2/3.</span>
+    <span class="c1"># Result: 3/x^2 * (x^2/3) = 1.</span>
+    
+    <span class="c1"># Use safe division</span>
+    <span class="n">is_nonzero</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-6</span>
+    <span class="n">safe_factor</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">is_nonzero</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    
+    <span class="n">term</span> <span class="o">=</span> <span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">safe_factor</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_factor</span><span class="p">)</span> <span class="o">-</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">safe_factor</span><span class="p">)</span>
+    
+    <span class="c1"># E = [3 * j1(z) / z]^2</span>
+    <span class="c1"># term = z * j1(z)</span>
+    <span class="c1"># We want 3 * (term/z) / z = 3 * term / z^2</span>
+    
+    <span class="n">E</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">term</span> <span class="o">/</span> <span class="p">(</span><span class="n">safe_factor</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">**</span> <span class="mi">2</span>
+    
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">is_nonzero</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="SphereStejskalTanner">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SphereStejskalTanner</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Stejskal Tanner signal approximation of a sphere model.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    diameter : float</span>
+<span class="sd">        sphere diameter in meters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;diameter&#39;</span><span class="p">]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">20e-6</span><span class="p">)}</span> <span class="c1"># Typical range</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">diameter</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">diameter</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span><span class="p">)</span>
+        
+        <span class="c1"># We need qvalues.</span>
+        <span class="c1"># Check if &#39;qvalues&#39; in kwargs, else derive from bvals/tau approx?</span>
+        <span class="c1"># Stejskal Tanner theory strictly uses q.</span>
+        <span class="c1"># q = 1/(2pi) * sqrt(b/tau) ?</span>
+        <span class="c1"># Assuming acquisition provides &#39;qvalues&#39; or we calculate q_mag.</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;qvalues&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+             <span class="n">q</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;qvalues&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s1">&#39;bvals&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">or</span> <span class="n">bvals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+             <span class="c1"># Try to derive q from bvals if tau provided</span>
+             <span class="c1"># But bvals not passed if we use **kwargs? bvals passed explicitly in __call__ usually.</span>
+             
+             <span class="c1"># Fallback to approximating q from bvals if tau known is dangerous without G info.</span>
+             <span class="c1"># However, typically in dMipy acquisition scheme, q is precalculated.</span>
+             <span class="c1"># OptimistixFitter wrapper usually unpacks acquisition.</span>
+             <span class="c1"># Let&#39;s try to calculate q if tau (or big/small delta) is present.</span>
+             
+             <span class="k">if</span> <span class="s1">&#39;tau&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                 <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;tau&#39;</span><span class="p">]</span>
+                 <span class="n">q</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">bvals</span> <span class="o">/</span> <span class="p">(</span><span class="n">tau</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+             <span class="k">elif</span> <span class="s1">&#39;big_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="s1">&#39;small_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                 <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;big_delta&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;small_delta&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">3.0</span>
+                 <span class="n">q</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">bvals</span> <span class="o">/</span> <span class="p">(</span><span class="n">tau</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+             <span class="k">else</span><span class="p">:</span>
+                 <span class="c1"># Last resort: if bvals are 0, q is 0.</span>
+                 <span class="c1"># If bvals &gt; 0, we need timing.</span>
+                 <span class="c1"># Raise error if timing missing.</span>
+                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;SphereStejskalTanner requires &#39;qvalues&#39; or timing info (&#39;tau&#39; or &#39;big_delta&#39;/&#39;small_delta&#39;) to derive q.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;SphereStejskalTanner requires &#39;qvalues&#39; in kwargs.&quot;</span><span class="p">)</span>
+             
+        <span class="k">return</span> <span class="n">g2_sphere_stejskal_tanner</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">diameter</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="jsph_derivative">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.jsph_derivative">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">jsph_derivative</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Derivative of spherical Bessel function j_n(z).</span>
+<span class="sd">    Formula: j_n&#39;(z) = j_{n-1}(z) - (n+1)/z * j_n(z)</span>
+<span class="sd">    Or: j_n&#39;(z) = n/z * j_n(z) - j_{n+1}(z)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Using python control flow for n? n is integer loop variable.</span>
+    <span class="c1"># jax.scipy.special.spherical_jn requires fixed order usually? no, v is float.</span>
+    <span class="c1"># However, safe division by z needed.</span>
+    
+    <span class="n">jn</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">))</span>
+    <span class="c1"># Wait, jax.scipy.special doesn&#39;t have spherical_jn directly? </span>
+    <span class="c1"># It has bessel_jn. spherical_jn(n, z) = sqrt(pi/2z) * J_{n+0.5}(z).</span>
+    
+    <span class="c1"># Actually, let&#39;s check if jsp has spherical_jn.</span>
+    <span class="c1"># If not, implement it. </span>
+    <span class="c1"># Current doc says jax.scipy.special has bessel_jn.</span>
+    
+    <span class="c1"># We will use the formula j_n&#39;(z) = j_{n-1}(z) - (n+1)/z * j_n(z).</span>
+    <span class="c1"># Only need to handle z=0 case (derivative is 0 for n&gt;1?).</span>
+    
+    <span class="c1"># Let&#39;s implement a helper using bessel_jn.</span>
+    <span class="k">pass</span></div>
+
+
+<span class="c1"># Helper for spherical bessel</span>
+<div class="viewcode-block" id="spherical_jn_jax">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.spherical_jn_jax">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">spherical_jn_jax</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+    <span class="c1"># sqrt(pi / (2z)) * J(n + 0.5, z)</span>
+    <span class="c1"># Handle z=0: if n=0, 1. if n&gt;0, 0.</span>
+    
+    <span class="n">safe_z</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">z</span> <span class="o">&lt;</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">safe_z</span><span class="p">))</span> <span class="o">*</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">safe_z</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">n</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="spherical_jn_derivative_jax">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.spherical_jn_derivative_jax">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">spherical_jn_derivative_jax</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+    <span class="c1"># j_n&#39;(z) = j_{n-1}(z) - (n+1)/z * j_n(z)</span>
+    <span class="c1"># Be careful at z=0.</span>
+    <span class="c1"># For Callaghan sphere, we evaluate at q_argument.</span>
+    
+    <span class="n">safe_z</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">z</span> <span class="o">&lt;</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    
+    <span class="n">j_n</span> <span class="o">=</span> <span class="n">spherical_jn_jax</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">safe_z</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># j0(z) = sin(z)/z</span>
+        <span class="c1"># j0&#39;(z) = -j1(z)</span>
+        <span class="n">j_n_plus_1</span> <span class="o">=</span> <span class="n">spherical_jn_jax</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">safe_z</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">j_n_plus_1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">j_n_minus_1</span> <span class="o">=</span> <span class="n">spherical_jn_jax</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">safe_z</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">j_n_minus_1</span> <span class="o">-</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_z</span> <span class="o">*</span> <span class="n">j_n</span></div>
+
+
+
+<div class="viewcode-block" id="g3_sphere_callaghan">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.g3_sphere_callaghan">[docs]</a>
+<span class="nd">@jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">g3_sphere_callaghan</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">diffusion_constant</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Callaghan sphere model kernel.</span>
+<span class="sd">    alpha: roots (n_roots, n_functions)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">diameter</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">q_argument</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">q</span> <span class="o">*</span> <span class="n">radius</span>
+    <span class="n">q_argument_2</span> <span class="o">=</span> <span class="n">q_argument</span> <span class="o">**</span> <span class="mi">2</span>
+    
+    <span class="c1"># If q is 0, signal is 1.</span>
+    
+    <span class="c1"># Jder = spherical_jn_jax(0, q_argument, derivative=True) ??</span>
+    <span class="c1"># Legacy uses `special.spherical_jn(q_argument, derivative=True)` which returns values for ALL n?</span>
+    <span class="c1"># No, scipy.special.spherical_jn(n, z) returns for specific n if n is scalar.</span>
+    <span class="c1"># If n is not given? &quot;If n is an array_like, the result is computed for each n.&quot;</span>
+    
+    <span class="c1"># Legacy code:</span>
+    <span class="c1"># Jder = special.spherical_jn(q_argument, derivative=True)</span>
+    <span class="c1"># Wait, check legacy line 190 in P3SphereCallaghan?</span>
+    <span class="c1"># &quot;Jder = special.spherical_jn(q_argument, derivative=True)&quot;</span>
+    <span class="c1"># This might be incorrect reading of legacy code or legacy code relies on a deprecated behavior? </span>
+    <span class="c1"># Or maybe it calls derivative w.r.t argument?</span>
+    <span class="c1"># Actually, looking at the loop in legacy:</span>
+    <span class="c1"># `for n in range(0, self.alpha.shape[1]):` it uses n.</span>
+    <span class="c1"># But `update *= q_argument * Jder` in the loop.</span>
+    <span class="c1"># Where does `Jder` depend on `n` in legacy?</span>
+    <span class="c1"># Ah, checking legacy snippet:</span>
+    <span class="c1"># `Jder = special.spherical_jn(q_argument, derivative=True)`</span>
+    <span class="c1"># This looks like it calls it without `n`? </span>
+    <span class="c1"># In scipy &lt;= 0.18 spherical_jn took n. In newer scipy, it might be different.</span>
+    <span class="c1"># Actually `scipy.special.spherical_jn(n, z, derivative=False)`.</span>
+    <span class="c1"># Attempting to call it without n usually fails?</span>
+    <span class="c1"># Unless q_argument is interpreted as n? No, q_argument is array of floats.</span>
+    
+    <span class="c1"># Let&#39;s assume Jder depends on n.</span>
+    <span class="c1"># Inside the loop over n: `update *= q_argument * Jder`.</span>
+    <span class="c1"># If Jder was constant for all n, that would be weird.</span>
+    <span class="c1"># Oh, wait. In the legacy snippet I viewed earlier (Step 146):</span>
+    <span class="c1"># `Jder = special.spherical_jn(q_argument, derivative=True)` is OUTSIDE the loops!</span>
+    <span class="c1"># And it&#39;s used inside.</span>
+    <span class="c1"># This implies Jder is `j_0&#39;(q)`? Or maybe `spherical_jn` returns list if n omitted?</span>
+    <span class="c1"># checking scipy docs... `spherical_jn(n, z)`</span>
+    <span class="c1"># The snippet seems suspicious or relies on old behavior.</span>
+    
+    <span class="c1"># However, let&#39;s look at the math from Callaghan 1995.</span>
+    <span class="c1"># Formula usually involves summing over zeros of derivatives.</span>
+    <span class="c1"># It likely involves weighting by the value of the function (or derivative) at q.</span>
+    <span class="c1"># If legacy computes `Jder` once, it might be an error in legacy or my reading.</span>
+    
+    <span class="c1"># Let&#39;s re-read legacy loop carefully in Step 146.</span>
+    <span class="c1"># Line 190: `Jder = special.spherical_jn(q_argument, derivative=True)`</span>
+    <span class="c1"># Line 191: `for k in range...`</span>
+    <span class="c1"># Line 192: `for n in range...`</span>
+    <span class="c1"># Line 197: `update *= q_argument * Jder`</span>
+    
+    <span class="c1"># This suggests `Jder` does NOT depend on `n` or `k`.</span>
+    <span class="c1"># This implies `n=0` or it&#39;s array of shape (N_q,)?</span>
+    <span class="c1"># If `special.spherical_jn` is called with just `q_argument` (as n?), that would be n=q_argument? No.</span>
+    <span class="c1"># Maybe `n` defaults to 0?</span>
+    
+    <span class="c1"># Let&#39;s assume it requires proper `j_n&#39;(qR)`.</span>
+    <span class="c1"># We will implement the correct math:</span>
+    <span class="c1"># Sum_n Sum_k [ ... * (qR * j_n&#39;(qR))^2? or something ]</span>
+    <span class="c1"># Re-reading: `update *= q_argument * Jder` -&gt; `update *= qR * j?&#39;(qR)`</span>
+    <span class="c1"># And `update /= (qR**2 - alpha**2)**2`</span>
+    
+    <span class="c1"># Warning: If legacy code is buggy, we should fix it or match it?</span>
+    <span class="c1"># &quot;We follow the notation of Balinov&quot;.</span>
+    <span class="c1"># I will assume JAX implementation should be mathematically correct.</span>
+    <span class="c1"># I will construct the term properly dependent on n if the math requires it.</span>
+    
+    <span class="c1"># Actually, `spherical_jn(n, z)` in scipy.</span>
+    <span class="c1"># If I implement `j_n&#39;` I should use it inside the loop for `n`.</span>
+    
+    <span class="c1"># Let&#39;s implement the loop over n and k.</span>
+    
+    <span class="c1"># Initialize res</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+    
+    <span class="n">n_roots</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">n_functions</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1"># We iterate n (functions) and k (roots).</span>
+    
+    <span class="c1"># Precompute q_argument</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">body_fun</span><span class="p">(</span><span class="n">carry</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="c1"># n is loop index (0 to n_functions-1)</span>
+        <span class="n">res_bh</span> <span class="o">=</span> <span class="n">carry</span>
+        
+        <span class="c1"># Calculate Jder_n for this n</span>
+        <span class="n">Jder_n</span> <span class="o">=</span> <span class="n">spherical_jn_derivative_jax</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">q_argument</span><span class="p">)</span>
+        
+        <span class="k">def</span><span class="w"> </span><span class="nf">root_body</span><span class="p">(</span><span class="n">carry_k</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+            <span class="n">res_k</span> <span class="o">=</span> <span class="n">carry_k</span>
+            <span class="n">alpha_nk</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">]</span>
+            <span class="n">alpha_nk2</span> <span class="o">=</span> <span class="n">alpha_nk</span><span class="o">**</span><span class="mi">2</span>
+            
+            <span class="c1"># Update term</span>
+            <span class="c1"># exp(-alpha^2 * D * tau / R^2)</span>
+            <span class="n">E_time</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha_nk2</span> <span class="o">*</span> <span class="n">diffusion_constant</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">/</span> <span class="n">radius</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+            
+            <span class="c1"># Weighting</span>
+            <span class="c1"># (2n+1)alpha^2 / (alpha^2 - (n+0.5)^2 + 0.25)</span>
+            <span class="c1"># note: (n+0.5)^2 - 0.25 = n^2 + n + 0.25 - 0.25 = n(n+1)</span>
+            <span class="c1"># So denom is alpha^2 - n(n+1).</span>
+            <span class="n">denom_weight</span> <span class="o">=</span> <span class="n">alpha_nk2</span> <span class="o">-</span> <span class="n">n</span><span class="o">*</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">alpha_nk2</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom_weight</span>
+            
+            <span class="c1"># Geometric term</span>
+            <span class="c1"># q_argument * Jder_n / (q_argument^2 - alpha^2)</span>
+            <span class="c1"># Legacy squares the denominator `(q_argument_2 - a_nk2) ** 2`.</span>
+            <span class="c1"># And `update *= q_argument * Jder`.</span>
+            <span class="c1"># Wait, legacy didn&#39;t square `(q_argument * Jder)`? </span>
+            <span class="c1"># In Cylinder `c3`, it was `(q*J&#39;)^2`.</span>
+            <span class="c1"># Here legacy says: `update *= q_argument * Jder`. </span>
+            <span class="c1"># Then `update /= (q_argument_2 - a_nk2) ** 2`.</span>
+            <span class="c1"># Is `update` pre-accumulated with something?</span>
+            <span class="c1"># `update = np.exp(...)`. Then *= weight. Then *= qJder. Then /= denom^2.</span>
+            <span class="c1"># This results in linear term in Jder?</span>
+            <span class="c1"># Verify dimensionality. Signal is amplitude squared? No, typically real valued attenuation E.</span>
+            <span class="c1"># Usually E = Sum [ ... ].</span>
+            
+            <span class="c1"># I will trust the formula:</span>
+            <span class="c1"># Term ~ (qR * j_n&#39;(qR))^2? </span>
+            <span class="c1"># Let&#39;s assume legacy might be right about linear `q * Jder` IF `sphere_attenuation` returns simple E? </span>
+            <span class="c1"># Wait, sphere attenuation usually decays.</span>
+            
+            <span class="c1"># Let&#39;s use the exact legacy formula logic for now to ensure equivalence, </span>
+            <span class="c1"># BUT assuming Jder depends on n.</span>
+            
+            <span class="n">term</span> <span class="o">=</span> <span class="n">E_time</span> <span class="o">*</span> <span class="n">weight</span> <span class="o">*</span> <span class="p">(</span><span class="n">q_argument</span> <span class="o">*</span> <span class="n">Jder_n</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">q_argument_2</span> <span class="o">-</span> <span class="n">alpha_nk2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            
+            <span class="k">return</span> <span class="n">res_k</span> <span class="o">+</span> <span class="n">term</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="c1"># scan over k</span>
+        <span class="n">sum_k</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">root_body</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">res</span><span class="p">),</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_roots</span><span class="p">))</span>
+        
+        <span class="k">return</span> <span class="n">res_bh</span> <span class="o">+</span> <span class="n">sum_k</span><span class="p">,</span> <span class="kc">None</span>
+    
+    <span class="c1"># We can unroll the loops since n_functions ~ 50 is small enough? </span>
+    <span class="c1"># Or use python loop for n (easier derivative dispatch).</span>
+    
+    <span class="n">accum</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_functions</span><span class="p">)):</span>
+        <span class="n">Jder_n</span> <span class="o">=</span> <span class="n">spherical_jn_derivative_jax</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">q_argument</span><span class="p">)</span>
+        
+        <span class="c1"># Vectorize over k (roots)</span>
+        <span class="c1"># alpha[:, n] -&gt; (K,)</span>
+        <span class="n">alphas_n</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[:,</span> <span class="n">n</span><span class="p">]</span>
+        <span class="n">alphas_n2</span> <span class="o">=</span> <span class="n">alphas_n</span><span class="o">**</span><span class="mi">2</span>
+        
+        <span class="n">E_times</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alphas_n2</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">diffusion_constant</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">/</span> <span class="n">radius</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># (K, N)??</span>
+        <span class="c1"># q is (N,). alphas is (K,).</span>
+        <span class="c1"># We need broadcasting.</span>
+        
+        <span class="c1"># (K, 1)</span>
+        <span class="n">an2_col</span> <span class="o">=</span> <span class="n">alphas_n2</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+        
+        <span class="n">E_times</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">an2_col</span> <span class="o">*</span> <span class="n">diffusion_constant</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">/</span> <span class="n">radius</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># (K, N) if tau scalar?</span>
+        <span class="c1"># If tau is (N,), then (K, N).</span>
+        
+        <span class="n">denom_weight</span> <span class="o">=</span> <span class="n">an2_col</span> <span class="o">-</span> <span class="n">n</span><span class="o">*</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Handle 0/0 for n=0, k=0 (alpha=0)?</span>
+        <span class="c1"># If alpha=0, denom=0.</span>
+        <span class="c1"># Legacy: alpha[0,0]=0.</span>
+        <span class="c1"># `update` for 0,0:</span>
+        <span class="c1"># exp(0) * (1*0)/(0) -&gt; NaN?</span>
+        <span class="c1"># Legacy likely handles `alpha=0` by skipping or specialized limit?</span>
+        <span class="c1"># Legacy loop: `range(0, roots)`.</span>
+        <span class="c1"># `(2*n+1)*a^2 / (a^2 - n(n+1))`.</span>
+        <span class="c1"># If n=0, a=0: 0 / 0.</span>
+        <span class="c1"># We should safe guard or skip alpha=0?</span>
+        <span class="c1"># Actually legacy `alpha[0,0] = 0`.</span>
+        <span class="c1"># I&#39;ll implement safe division.</span>
+        
+        <span class="n">weight</span> <span class="o">=</span> <span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">an2_col</span><span class="p">)</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom_weight</span><span class="o">==</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">denom_weight</span><span class="p">)</span>
+        
+        <span class="c1"># J_term</span>
+        <span class="c1"># q_arg (N,)</span>
+        <span class="n">num_geom</span> <span class="o">=</span> <span class="n">q_argument</span> <span class="o">*</span> <span class="n">Jder_n</span> <span class="c1"># (N,)</span>
+        <span class="n">denom_geom</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_argument_2</span> <span class="o">-</span> <span class="n">an2_col</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="c1"># (K, N)</span>
+        
+        <span class="c1"># Full term</span>
+        <span class="n">term</span> <span class="o">=</span> <span class="n">E_times</span> <span class="o">*</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">num_geom</span> <span class="o">/</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom_geom</span><span class="o">&lt;</span><span class="mf">1e-12</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">,</span> <span class="n">denom_geom</span><span class="p">)</span>
+        
+        <span class="n">accum</span> <span class="o">+=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># 2 * sum ...</span>
+    <span class="c1"># Wait, does the legacy formula have a factor of 2 outside?</span>
+    <span class="c1"># No, it calculates `update` and sums.</span>
+    <span class="c1"># Where does the 2 come from in Cylinder/Plane?</span>
+    <span class="c1"># Here Sphere legacy doesn&#39;t show a 2.</span>
+    
+    <span class="k">return</span> <span class="n">accum</span> <span class="o">*</span> <span class="mi">2</span> <span class="c1"># Adding *2 because usually there&#39;s a prefactor, and legacy P3Plane has 2.</span>
+    <span class="c1"># Wait, legacy S3Sphere logic viewed in Step 146 lines 182-200 DOES NOT have *2 at the end.</span>
+    <span class="c1"># It just returns `res`.</span>
+    <span class="c1"># I will stick to returning `accum` but double check if scaling needed.</span>
+    <span class="c1"># Actually, let&#39;s strictly follow legacy lines 194-198.</span>
+    <span class="c1"># No global factor 2 seen.</span>
+    
+    <span class="k">return</span> <span class="n">accum</span>    </div>
+
+
 
 <div class="viewcode-block" id="g3_sphere">
 <a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.g3_sphere">[docs]</a>
@@ -281,6 +669,65 @@
     
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_E</span><span class="p">)</span></div>
 
+
+
+<div class="viewcode-block" id="SphereCallaghan">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.sphere_models.SphereCallaghan">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SphereCallaghan</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Callaghan model [1]_ of diffusion inside a sphere.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="s1">&#39;diffusion_constant&#39;</span><span class="p">]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diffusion_constant&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">20e-6</span><span class="p">),</span>
+        <span class="s1">&#39;diffusion_constant&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.1e-9</span><span class="p">,</span> <span class="mf">3e-9</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">diameter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">diffusion_constant</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">number_of_roots</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">number_of_functions</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">diameter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_constant</span> <span class="o">=</span> <span class="n">diffusion_constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">number_of_roots</span> <span class="o">=</span> <span class="n">number_of_roots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">number_of_functions</span> <span class="o">=</span> <span class="n">number_of_functions</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_precompute_roots</span><span class="p">(</span><span class="n">number_of_roots</span><span class="p">,</span> <span class="n">number_of_functions</span><span class="p">)</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">_precompute_roots</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_roots</span><span class="p">,</span> <span class="n">n_functions</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">n_roots</span><span class="p">,</span> <span class="n">n_functions</span><span class="p">))</span>
+        <span class="n">alpha</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">n_roots</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">alpha</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">ssp</span><span class="o">.</span><span class="n">jnp_zeros</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_roots</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_functions</span><span class="p">):</span>
+            <span class="n">alpha</span><span class="p">[:,</span> <span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">ssp</span><span class="o">.</span><span class="n">jnp_zeros</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">n_roots</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span><span class="p">)</span>
+        <span class="n">diff_const</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diffusion_constant&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_constant</span><span class="p">)</span>
+        
+        <span class="c1"># Need q and tau.</span>
+        <span class="k">if</span> <span class="s1">&#39;qvalues&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;qvalues&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">bvals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;big_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="s1">&#39;small_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+             <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;big_delta&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;small_delta&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">3.0</span>
+             <span class="n">q</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">bvals</span> <span class="o">/</span> <span class="p">(</span><span class="n">tau</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">bvals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;tau&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+             <span class="c1"># If tau provided but not big/small</span>
+             <span class="n">q</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">bvals</span> <span class="o">/</span> <span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;tau&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;SphereCallaghan requires &#39;qvalues&#39; or bvals+timing.&quot;</span><span class="p">)</span>
+             
+        <span class="k">if</span> <span class="s1">&#39;tau&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;tau&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s1">&#39;big_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="s1">&#39;small_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;big_delta&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;small_delta&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">3.0</span>
+        <span class="k">else</span><span class="p">:</span>
+             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;SphereCallaghan requires &#39;tau&#39; or &#39;big_delta&#39;/&#39;small_delta&#39;.&quot;</span><span class="p">)</span>
+             
+        <span class="k">return</span> <span class="n">g3_sphere_callaghan</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">diff_const</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span></div>
+
 </pre></div>
         </article>
       </div>
@@ -293,7 +740,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2025, Rutger Fick, Demian Wassermann, and Contributors
+                Copyright &#169; 2026, Rutger Fick, Demian Wassermann, and Contributors
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             

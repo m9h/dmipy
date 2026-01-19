@@ -1,0 +1,21 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py:30: UserWarning: Specified RF delay 0.00 us is less than the dead time 100 us. Delay was increased to the dead time.
+  rf90 = pp.make_sinc_pulse(flip_angle=90 * np.pi/180, duration=2e-3, system=system,
+/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py:32: UserWarning: Specified RF delay 0.00 us is less than the dead time 100 us. Delay was increased to the dead time.
+  rf180 = pp.make_block_pulse(flip_angle=180 * np.pi/180, duration=2e-3, system=system)
+=== JAX-POSSUM Demo: PyPulseSeq + BigMac ===
+Generating PyPulseSeq sequence...
+Converting to JAX-POSSUM GeneralSequence (rasterizing)...
+Error rasterizing sequence: 'Sequence' object has no attribute 'blocks'
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 92, in <module>
+    main()
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 63, in main
+    jax_seq = pulseq_to_general(seq, dt=dt)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/dmipy_jax/io/pulseq.py", line 265, in pulseq_to_general
+    raise e
+  File "/home/mhough/src/dmipy/dmipy_jax/io/pulseq.py", line 131, in pulseq_to_general
+    for b_idx in seq.blocks:
+                 ^^^^^^^^^^
+AttributeError: 'Sequence' object has no attribute 'blocks'

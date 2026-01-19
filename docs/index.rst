@@ -11,6 +11,7 @@ Contents:
    :maxdepth: 2
 
    tutorials/first_steps
+   tutorials/simulation_basics
    reference/index
 
 Indices and tables

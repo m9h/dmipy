@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from typing import List, Tuple, Optional, Union
+import numpy as np
 import scico
 from scico import functional, linop, loss, operator, optimize
 from scico.numpy import BlockArray
@@ -41,16 +42,6 @@ class MicrostructureOperator(operator.Operator):
         else:
              # Fallback: Run dummy
              dummy_params = jnp.zeros(input_shape[-1]) # Correct size?
-             # We need to be careful about model.parameter_cardinality
-             # But the operator expects a flat vector/array for the last dim.
-             # JaxMultiCompartmentModel takes a DICT typically for `model_func` if using compose?
-             # No, `model_func` from `compose_models` takes (params_flat, acquisition).
-             # So we are good.
-             
-             # But wait, JaxMultiCompartmentModel.model_func expects flat array of params.
-             # So dummy run:
-             # We'll do this lazily or in eval.
-             # But we need output_shape for super().__init__
              pass
 
         # For super init, we need input_shape and output_shape.
@@ -128,26 +119,117 @@ class AMICOSolver:
         
         Args:
             resolution_grid: Dictionary defining grid for each parameter.
-                             key: param_name, value: array of values.
-                             Structure should match AMICO requirements.
+                             Keys must match the unique parameter names in self.model.parameter_names.
+                             Values should be 1D arrays/lists of values to iterate.
                              
-        For now, we implement a simplified version where we iterate over combinations.
+        Returns:
+            JAX Array of shape (N_meas, N_atoms). Also sets self.dictionary.
         """
-        # This needs to align with how legacy AMICO builds atoms.
-        # Legacy iterates model names, then parameters.
-        # For this task, we will construct a basic atom generator.
+        import itertools
         
-        atoms = []
-        # Logic to build atoms from grid
-        # This is complex to generalize perfectly without specific schema, 
-        # so we'll implement a 'flat' construction:
-        # Assume resolution_grid provides a list of parameter vectors defining the dictionary.
-        # OR, we follow the Plan: "Wrap dmipy models... Port AMICO".
+        full_dictionary_parts = []
         
-        # Simplified Dictionary Build:
-        # We essentially need a list of parameter vectors p_1, ..., p_K.
-        # Then M_i = model_func(p_i).
-        pass # To be fleshed out or used with external Matrix construction.
+        # Re-construct parameter name mapping to match JaxMultiCompartmentModel logic
+        # We need this to verify which grid entry corresponds to which model parameter.
+        
+        # Tracking seen names to replicate collision logic
+        seen_names = []
+        
+        for i, sub_model in enumerate(self.model.models):
+            # 1. Identify Parameter Names for this sub-model
+            # We map: unique_name_in_mcm -> original_name_in_submodel
+            sub_model_params = [] # List of (orig_name, unique_name)
+            
+            for pname in sub_model.parameter_names:
+                unique_name = pname
+                if unique_name in seen_names:
+                     unique_name = f"{pname}_{i+1}"
+                seen_names.append(unique_name)
+                sub_model_params.append((pname, unique_name))
+            
+            # 2. Extract Grids for this sub-model
+            # We prepare lists of values for itertools.product
+            # Order matters: we must pass args/kwargs in correct order to sub_model call.
+            
+            val_lists = []
+            param_order = []
+            
+            # We need to know which parameters are required by the sub-model.
+            # Usually `sub_model.parameter_names` covers inputs.
+            # But we must check if they are provided in grid or fixed in instance.
+            
+            skip_model = False
+            
+            for orig_name, unique_name in sub_model_params:
+                if unique_name in resolution_grid:
+                    # Grid provided
+                    vals = resolution_grid[unique_name]
+                    # Ensure iterable
+                    if not isinstance(vals, (list, tuple, jnp.ndarray, np.ndarray)):
+                        vals = [vals]
+                    val_lists.append(vals)
+                    param_order.append(orig_name)
+                    
+                elif hasattr(sub_model, orig_name) and getattr(sub_model, orig_name) is not None:
+                     # Fixed parameter in model definition
+                     val = getattr(sub_model, orig_name)
+                     val_lists.append([val])
+                     param_order.append(orig_name)
+                else:
+                    # Parameter missing from grid and not fixed?
+                    # Check cardinality. If cardinality is for vector (e.g. mu),
+                    # we might key it by unique_name in grid.
+                    # If missing, we can't generate atoms.
+                    # Warn or Error?
+                    # For now, assume user provides all necessary grids.
+                    print(f"Warning: Parameter {unique_name} not in grid and not fixed. Using defaults if possible.")
+                    pass
+
+            if not val_lists:
+                # No parameters to vary? Maybe 0-param model?
+                # Just call once?
+                if not sub_model_params:
+                     val_lists = [[]] # One combination: empty
+                else:
+                     # Missing params
+                     continue
+            
+            # 3. Generate Combinations
+            combinations = list(itertools.product(*val_lists))
+            
+            if not combinations:
+                continue
+                
+            # 4. Batched Signal Generation
+            # Convert to JAX arrays for vmap
+            # combinations is list of tuples: [ (v1, v2), (v1', v2'), ... ]
+            # Transpose to: [ (v1, v1'...), (v2, v2'...) ]
+            flat_params_columns = list(zip(*combinations))
+            flat_params_arrays = [jnp.array(col) for col in flat_params_columns]
+            
+            # Wrapper for vmap to unpack args to kwargs
+            def eval_sub_model_wrapper(*args):
+                kwargs = dict(zip(param_order, args))
+                return sub_model(self.acquisition.bvals, self.acquisition.gradient_directions, **kwargs)
+            
+            if len(flat_params_arrays) > 0:
+                # Map over the batch dimension
+                batch_signals = jax.vmap(eval_sub_model_wrapper)(*flat_params_arrays)
+                # Shape: (N_atoms_for_model, N_meas)
+                full_dictionary_parts.append(batch_signals.T) # (N_meas, N_atoms)
+            else:
+                 # Case 0 params (isotropic fixed?)
+                 # Just call once
+                 sig = sub_model(self.acquisition.bvals, self.acquisition.gradient_directions)
+                 full_dictionary_parts.append(sig[:, None])
+
+        # Concatenate all atoms from all sub-models
+        if full_dictionary_parts:
+            self.dictionary = jnp.concatenate(full_dictionary_parts, axis=1)
+        else:
+            self.dictionary = jnp.zeros((getattr(self.acquisition, 'N_measurements', 0), 0))
+            
+        return self.dictionary
         
     def fit(self, data, dictionary_matrix, lambda_l1=1e-3, lambda_l2=0.0, rho=1.0, maxiter=100):
         """
@@ -169,29 +251,21 @@ class AMICOSolver:
         M = jnp.array(dictionary_matrix)
         y = jnp.array(data)
         
-        # Determine dimensions
-        # If data is (N_meas,), result is (N_atoms,).
-        # If data is (N_vox, N_meas), we want (N_vox, N_atoms).
-        # We will wrap the single voxel solver with vmap for efficiency.
-
+        # Calculate Lipschitz constant for step size
+        # L = ||M||_2^2
+        # Use simple power method or full SVD if small
+        # For AMICO, M is usually (N_meas, N_atoms). N_meas ~ 100. N_atoms ~ 1000.
+        # jnp.linalg.norm(M, 2) computes spectral norm (largest singular value).
+        L_spectral = jnp.linalg.norm(M, ord=2)**2
+        
         def solve_single_voxel(y_voxel):
             # A: Linear Operator for M
             A = linop.MatrixOperator(M)
             
             # Loss: 1/2 || Ax - y ||^2
-            # Prox of this is (A^T A + rho I)^-1 (A^T y + rho v)
-            # scico SquaredL2Loss handles this if we use it as 'f' in ADMM
-            # provided we check if it supports the linear operator efficiently.
-            # Actually, using PGM (FISTA) is often better for L1+Pos problems (Sparse coding).
-            # Prox of L1+Pos is analytic. Gradient of L2 is cheap (A^T(Ax-y)).
-            
             f = loss.SquaredL2Loss(y=y_voxel, A=A)
             
-            # Composite Regularizer: L1 + NonNegative
-            # We can define a custom functional or use sum if supported.
-            # Simpler: Use PGM with a functional that represents L1 + NonNeg.
-            # Prox_{lambda L1 + NonNeg}(v) = ReLU(SoftThresh(v, lambda))
-            
+            # Composite Regularizer
             class L1PlusNonNeg(functional.Functional):
                 has_eval = True
                 has_prox = True
@@ -199,11 +273,9 @@ class AMICOSolver:
                     self.alpha = alpha
                     
                 def __call__(self, x):
-                    return self.alpha * jnp.sum(jnp.abs(x)) # + inf if x<0 technically
+                    return self.alpha * jnp.sum(jnp.abs(x))
                 
                 def prox(self, v, s):
-                    # prox_{s * (alpha L1 + NonNeg)}(v)
-                    # effective threshold = s * alpha
                     thresh = s * self.alpha
                     return jnp.maximum(0.0, jnp.sign(v) * jnp.maximum(0.0, jnp.abs(v) - thresh))
             
@@ -212,12 +284,10 @@ class AMICOSolver:
             solver = optimize.PGM(
                 f=f,
                 g=g,
-                L0=1.0,
+                L0=L_spectral, # Use exact Lipschitz constant
                 x0=jnp.zeros(M.shape[1]),
                 maxiter=maxiter,
-                step_size=None, # Auto-estimate
-                history_size=5,
-                itstat_view_interval=maxiter+1
+                step_size=None,
             )
             
             return solver.solve()
@@ -225,7 +295,6 @@ class AMICOSolver:
         if y.ndim == 1:
             return solve_single_voxel(y)
         else:
-            # y is (N_vox, N_meas). vmap over 0-th axis.
             return jax.vmap(solve_single_voxel)(y)
 
 class GlobalOptimizer:
@@ -255,21 +324,11 @@ class GlobalOptimizer:
         f = loss.SquaredL2Loss(y=y, A=self.op)
         
         # 2. Regularizer g(x) = lambda_tv * TV(x)
-        # Note: input_shape is (Nx, Ny, Nz, Nparams) or similar.
-        # TV should effectively be sum of TVs for each parameter channel?
-        # scico.functional.TotalVariation default sums over specified axes.
-        # We assume independent TV for each parameter map for now.
-        # We apply TV over spatial axes: typically 0, 1, (2). 
-        # The last axis is params.
-        
         spatial_axes = tuple(range(len(self.op.input_shape) - 1))
-        g = lambda_tv * functional.TotalVariation(axis=spatial_axes)
+        # Pass input_shape to avoid lazy init jit errors
+        g = lambda_tv * functional.AnisotropicTVNorm(axes=spatial_axes, input_shape=self.op.input_shape)
         
         # 3. Solver
-        # Using PGM (FISTA)
-        
-        # Initial guess: simple starting point (e.g. 0.5)
-        # Or better: use a cheap voxel-wise fit if available.
         x0 = jnp.ones(self.op.input_shape) * 0.5
         
         solver = optimize.PGM(
@@ -278,7 +337,6 @@ class GlobalOptimizer:
             L0=L0,
             x0=x0,
             maxiter=maxiter,
-            itstat_view_interval=maxiter // 5 if maxiter >= 5 else 1,
         )
         
         result = solver.solve()

@@ -15,3 +15,13 @@ Core
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. automodule:: dmipy_jax.core.integration_grids
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.core.invariants
+   :members:
+   :undoc-members:
+   :show-inheritance:

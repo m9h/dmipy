@@ -45,6 +45,6 @@
 - **Status:** In Progress
 - **Goal:** Bridge the gap between sequence design (PyPulseq) and high-performance simulation (Dmipy-JAX).
 - **Features:** 
-    - `dmipy_jax.io.pulseq`: Bridge module to convert `.seq` files or objects into JAX-compatible structures.
+    - `dmipy_jax.external.pulseq`: Bridge module to convert `.seq` files or objects into JAX-compatible structures.
     - Support for `GeneralSequence` (dense waveforms) for Bloch simulation.
     - Support for `JaxAcquisition` (b-vals/b-vecs) for microstructure fitting.

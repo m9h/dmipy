@@ -1,0 +1,67 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py:30: UserWarning: Specified RF delay 0.00 us is less than the dead time 100 us. Delay was increased to the dead time.
+  rf90 = pp.make_sinc_pulse(flip_angle=90 * np.pi/180, duration=2e-3, system=system,
+/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py:32: UserWarning: Specified RF delay 0.00 us is less than the dead time 100 us. Delay was increased to the dead time.
+  rf180 = pp.make_block_pulse(flip_angle=180 * np.pi/180, duration=2e-3, system=system)
+=== JAX-POSSUM Demo: PyPulseSeq + BigMac ===
+Generating PyPulseSeq sequence...
+Converting to JAX-POSSUM GeneralSequence (rasterizing)...
+Sequence Duration: 0.0742 s
+Time steps: 743
+Creating BigMac Phantom...
+Phantom created with 1000 spins.
+Running Bloch Simulation on GPU (if available)...
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/interpreters/pxla.py", line 1371, in __call__
+    results = self.xla_executable.execute_sharded(input_bufs, with_tokens=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+jax.errors.JaxRuntimeError: INTERNAL: CpuCallback error calling callback: Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/callback.py", line 784, in _wrapped_callback
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/callback.py", line 223, in _callback
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/callback.py", line 95, in pure_callback_impl
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/callback.py", line 70, in __call__
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/equinox/_errors.py", line 88, in raises
+_EquinoxRuntimeError: The maximum number of solver steps was reached. Try increasing `max_steps`.
+
+
+--------------------
+An error occurred during the runtime of your JAX program! Unfortunately you do not appear to be using `equinox.filter_jit` (perhaps you are using `jax.jit` instead?) and so further information about the error cannot be displayed. (Probably you are seeing a very large but uninformative error message right now.) Please wrap your program with `equinox.filter_jit`.
+--------------------
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 92, in <module>
+    main()
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 81, in main
+    signal = simulate_acquisition(phantom, jax_seq, duration=duration)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/equinox/_jit.py", line 209, in __call__
+    return _call(self, False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/equinox/_jit.py", line 263, in _call
+    marker, _, _ = out = jit_wrapper._cached(
+                         ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/traceback_util.py", line 195, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/pjit.py", line 264, in cache_miss
+    executable, pgle_profiler, const_args) = _python_pjit_helper(
+                                             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/pjit.py", line 146, in _python_pjit_helper
+    out_flat, compiled, profiler, const_args = _pjit_call_impl_python(
+                                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/pjit.py", line 1642, in _pjit_call_impl_python
+    return (compiled.unsafe_call(*computation.const_args, *args),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/profiler.py", line 359, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/jax/_src/interpreters/pxla.py", line 1367, in __call__
+    with profiler.PGLEProfiler.trace(self.pgle_profiler):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/miniconda3/lib/python3.12/contextlib.py", line 141, in __exit__
+    def __exit__(self, typ, value, traceback):
+
+KeyboardInterrupt

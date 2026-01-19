@@ -1,0 +1,46 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+=== JAX-POSSUM Demo: PyPulseSeq + BigMac ===
+Generating PyPulseSeq sequence...
+/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py:30: UserWarning: Specified RF delay 0.00 us is less than the dead time 100 us. Delay was increased to the dead time.
+  rf90 = pp.make_sinc_pulse(flip_angle=90 * np.pi/180, duration=2e-3, system=system,
+/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py:32: UserWarning: Specified RF delay 0.00 us is less than the dead time 100 us. Delay was increased to the dead time.
+  rf180 = pp.make_block_pulse(flip_angle=180 * np.pi/180, duration=2e-3, system=system)
+Converting to JAX-POSSUM GeneralSequence (rasterizing)...
+Sequence Duration: 0.0742 s
+Time steps: 743
+Creating BigMac Phantom...
+Phantom created with 1000 spins.
+Running Bloch Simulation on GPU (if available)...
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 92, in <module>
+    main()
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 81, in main
+    signal = simulate_acquisition(phantom, jax_seq, duration=duration)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+EquinoxRuntimeError: Above is the stack outside of JIT. Below is the stack inside of JIT:
+  File "/home/mhough/src/dmipy/dmipy_jax/simulation/scanner/bloch.py", line 263, in simulate_acquisition
+    sol = diffrax.diffeqsolve(
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/diffrax/_integrate.py", line 1502, in diffeqsolve
+    sol = result.error_if(sol, jnp.invert(is_okay(result)))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.12/site-packages/equinox/_module/_prebuilt.py", line 33, in __call__
+    return self.__func__(self.__self__, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+equinox.EquinoxRuntimeError: The maximum number of solver steps was reached. Try increasing `max_steps`.
+
+-------------------
+
+An error occurred during the runtime of your JAX program.
+
+1) Setting the environment variable `EQX_ON_ERROR=breakpoint` is usually the most useful
+way to debug such errors. This can be interacted with using most of the usual commands
+for the Python debugger: `u` and `d` to move up and down frames, the name of a variable
+to print its value, etc.
+
+2) You may also like to try setting `JAX_DISABLE_JIT=1`. This will mean that you can
+(mostly) inspect the state of your program as if it was normal Python.
+
+3) See `https://docs.kidger.site/equinox/api/debug/` for more suggestions.
+

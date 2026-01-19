@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>dmipy_jax.signal_models.cylinder_models - Bmipy-JAX Documentation</title>
+        <title>dmipy_jax.signal_models.cylinder_models - Dmipy-JAX Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -161,7 +161,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">Bmipy-JAX Documentation</div></a>
+      <a href="../../../index.html"><div class="brand">Dmipy-JAX Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -182,7 +182,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
-  <span class="sidebar-brand-text">Bmipy-JAX Documentation</span>
+  <span class="sidebar-brand-text">Dmipy-JAX Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -229,15 +229,12 @@
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ssp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">pure_callback</span><span class="p">,</span> <span class="n">jit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax.scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">special</span> <span class="k">as</span> <span class="n">jsp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">pure_callback</span><span class="p">,</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dmipy_jax.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">GYRO_MAGNETIC_RATIO</span>
 
-<div class="viewcode-block" id="j1">
-<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.j1">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">j1</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-    <span class="c1"># Callback to scipy.special.j1</span>
-    <span class="n">result_shape</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">ShapeDtypeStruct</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">pure_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">ssp</span><span class="o">.</span><span class="n">j1</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">result_shape</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span></div>
+
+<span class="c1"># Removed pure_callback wrappers. Using jax.scipy.special directly.</span>
 
 
 <div class="viewcode-block" id="c2_cylinder">
@@ -293,7 +290,7 @@
     <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">argument</span> <span class="o">&gt;</span> <span class="mf">1e-6</span>
     <span class="n">safe_arg</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">valid_mask</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     
-    <span class="n">j1_term</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j1</span><span class="p">(</span><span class="n">safe_arg</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_arg</span>
+    <span class="n">j1_term</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">safe_arg</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_arg</span>
     <span class="n">signal_perp</span> <span class="o">=</span> <span class="n">j1_term</span> <span class="o">**</span> <span class="mi">2</span>
     
     <span class="c1"># If argument is small, signal is 1.0</span>
@@ -327,6 +324,322 @@
     <span class="n">signal</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">bvals</span> <span class="o">*</span> <span class="n">lambda_par</span> <span class="o">*</span> <span class="p">(</span><span class="n">dot_prod</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">signal</span></div>
 
+
+
+<div class="viewcode-block" id="RestrictedCylinder">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RestrictedCylinder</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Stejskal-Tanner approximation of the cylinder model with finite radius [1]_.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mu : array, shape(2)</span>
+<span class="sd">        angles [theta, phi] representing main orientation on the sphere.</span>
+<span class="sd">    lambda_par : float</span>
+<span class="sd">        parallel diffusivity in mm^2/s.</span>
+<span class="sd">    diameter : float</span>
+<span class="sd">        cylinder diameter in meters.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Soderman, Olle, and Bengt Jonsson. &quot;Restricted diffusion in</span>
+<span class="sd">            cylindrical geometry.&quot; Journal of Magnetic Resonance, Series A</span>
+<span class="sd">            117.1 (1995): 94-97.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">]),</span>
+        <span class="s1">&#39;lambda_par&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.1e-9</span><span class="p">,</span> <span class="mf">3e-9</span><span class="p">),</span>
+        <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-7</span><span class="p">,</span> <span class="mf">20e-6</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lambda_par</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">diameter</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu</span> <span class="o">=</span> <span class="n">mu</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_par</span> <span class="o">=</span> <span class="n">lambda_par</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">diameter</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">lambda_par</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambda_par</span><span class="p">)</span>
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span><span class="p">)</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">)</span>
+        
+        <span class="n">big_delta</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;big_delta&#39;</span><span class="p">)</span>
+        <span class="n">small_delta</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;small_delta&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">big_delta</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">small_delta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;RestrictedCylinder requires &#39;big_delta&#39; and &#39;small_delta&#39; in kwargs/acquisition.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Convert spherical [theta, phi] to cartesian vector</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+        <span class="n">st</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">sp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">cp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        
+        <span class="n">mu_cart</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">st</span> <span class="o">*</span> <span class="n">cp</span><span class="p">,</span> <span class="n">st</span> <span class="o">*</span> <span class="n">sp</span><span class="p">,</span> <span class="n">ct</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">c2_cylinder</span><span class="p">(</span><span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="n">mu_cart</span><span class="p">,</span> <span class="n">lambda_par</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">big_delta</span><span class="p">,</span> <span class="n">small_delta</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="jvp_v1">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.jvp_v1">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">jvp_v1</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the first derivative of Bessel function of the first kind Jv(z) with respect to z.</span>
+<span class="sd">    Formula: Jv&#39;(z) = 0.5 * (J(v-1, z) - J(v+1, z))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="c3_cylinder_callaghan">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.c3_cylinder_callaghan">[docs]</a>
+<span class="nd">@jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">c3_cylinder_callaghan</span><span class="p">(</span><span class="n">bvals</span><span class="p">,</span> <span class="n">bvecs</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">lambda_par</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">diffusion_perp</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes signal for a Cylinder with finite radius using Callaghan&#39;s approximation.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        bvals: (N,) array of b-values in s/mm^2.</span>
+<span class="sd">        bvecs: (N, 3) array of gradient directions.</span>
+<span class="sd">        mu: (3,) array defining the fiber orientation.</span>
+<span class="sd">        lambda_par: Scalar diffusivity along the fiber (mm^2/s).</span>
+<span class="sd">        diameter: Cylinder diameter in meters.</span>
+<span class="sd">        diffusion_perp: Perpendicular diffusivity (m^2/s) - typically same as intrinsic or smaller.</span>
+<span class="sd">        tau: Diffusion time (s).</span>
+<span class="sd">        alpha: (n_roots, n_functions) array of roots of J_n&#39;(x)=0.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (N,) array of signal attenuation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 1. Parallel Signal (Stick)</span>
+    <span class="c1"># Project gradients onto fiber axis: (g . mu)</span>
+    <span class="n">dot_prod</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">bvecs</span><span class="p">,</span> <span class="n">mu</span><span class="p">)</span>
+    <span class="n">signal_par</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">bvals</span> <span class="o">*</span> <span class="n">lambda_par</span> <span class="o">*</span> <span class="p">(</span><span class="n">dot_prod</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    
+    <span class="c1"># 2. Perpendicular Signal (Callaghan)</span>
+    <span class="c1"># Need q-values.</span>
+    <span class="c1"># q = sqrt(b / tau) / (2pi) if we assume narrow pulse approximation for the q definition in Callaghan?</span>
+    <span class="c1"># Legacy code uses q directly from acquisition.</span>
+    <span class="c1"># q_mag = sqrt(b / tau) / (2pi) approx for Stejskal Tanner?</span>
+    <span class="c1"># Actually, legacy uses: q = acquisition_scheme.qvalues</span>
+    <span class="c1"># Here we typically start from bvals. </span>
+    <span class="c1"># Let&#39;s approximate q from bvals and tau assuming SGP or similar effective time.</span>
+    <span class="c1"># q = 1/(2*pi) * sqrt(b/tau)</span>
+    <span class="c1"># This matches the SGP relation b = (2pi q)^2 * tau.</span>
+    
+    <span class="n">q_mag</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">bvals</span> <span class="o">/</span> <span class="p">(</span><span class="n">tau</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    
+    <span class="c1"># Project gradients perpendicular to fiber axis</span>
+    <span class="n">sin_theta_sq</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">dot_prod</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">sin_theta_sq</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">sin_theta_sq</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span> 
+    <span class="n">q_perp</span> <span class="o">=</span> <span class="n">q_mag</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sin_theta_sq</span><span class="p">)</span>
+    
+    <span class="n">radius</span> <span class="o">=</span> <span class="n">diameter</span> <span class="o">/</span> <span class="mf">2.0</span>
+    
+    <span class="c1"># Pre-calculate common terms</span>
+    <span class="c1"># Pre-calculate common terms</span>
+    <span class="c1"># Pre-calculate common terms</span>
+    <span class="n">q_argument</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">q_perp</span> <span class="o">*</span> <span class="n">radius</span>
+    <span class="n">q_argument_2</span> <span class="o">=</span> <span class="n">q_argument</span> <span class="o">**</span> <span class="mi">2</span>
+    
+    <span class="c1"># Initialize response (summing updates)</span>
+    <span class="c1"># We will accumulate signal attenuation.</span>
+    <span class="c1"># Note: legacy code calculates the attenuation E_perp, then multiplies.</span>
+    
+    <span class="c1"># --- m = 0 case ---</span>
+    <span class="c1"># alpha[k, 0] roots</span>
+    <span class="n">alpha_0</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="c1"># (K,)</span>
+    
+    <span class="c1"># J0 term (actually eq uses J1 for m=0 term update?)</span>
+    <span class="c1"># Legacy: J = special.j1(q_argument) ** 2</span>
+    <span class="c1"># update = 4 * exp(...) * q_arg^2 / (q_arg^2 - alpha^2)^2 * J</span>
+    
+    <span class="n">J_m0</span> <span class="o">=</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">q_argument</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="c1"># (N,)</span>
+    
+    <span class="c1"># Vectorized compute over K roots for m=0</span>
+    <span class="c1"># exp_factor: (K,) scalar (per root)</span>
+    <span class="c1"># But tau is (N,) or scalar? usually scalar per shell, but can be array.</span>
+    <span class="c1"># Let&#39;s assume tau is scalar for now or broadcastable.</span>
+    
+    <span class="c1"># We need to broadcast (N, K).</span>
+    <span class="c1"># q_argument: (N,)</span>
+    <span class="c1"># alpha_0: (K,)</span>
+    
+    <span class="c1"># Reshape for broadcasting</span>
+    <span class="n">q_arg_2_expanded</span> <span class="o">=</span> <span class="n">q_argument_2</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="c1"># (N, 1)</span>
+    <span class="n">alpha_0_expanded</span> <span class="o">=</span> <span class="n">alpha_0</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>      <span class="c1"># (1, K)</span>
+    <span class="n">alpha_0_sq</span> <span class="o">=</span> <span class="n">alpha_0_expanded</span> <span class="o">**</span> <span class="mi">2</span>
+    
+    <span class="c1"># exp_term: (1, K) usually, if tau is scalar. If tau is (N,), then (N, K).</span>
+    <span class="c1"># diffusion_perp is scalar. radius is scalar.</span>
+    <span class="n">exp_term_0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha_0_sq</span> <span class="o">*</span> <span class="n">diffusion_perp</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">/</span> <span class="p">(</span><span class="n">radius</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    
+    <span class="n">denom_0</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_arg_2_expanded</span> <span class="o">-</span> <span class="n">alpha_0_sq</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    
+    <span class="c1"># Prevent division by zero if q_arg ~ alpha (resonance)</span>
+    <span class="n">denom_0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">denom_0</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)</span>
+    
+    <span class="n">term_0</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">exp_term_0</span> <span class="o">*</span> <span class="n">q_arg_2_expanded</span> <span class="o">/</span> <span class="n">denom_0</span><span class="p">)</span>
+    
+    <span class="c1"># Sum over k</span>
+    <span class="n">sum_0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">term_0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># (N,)</span>
+    
+    <span class="n">res</span> <span class="o">=</span> <span class="n">sum_0</span> <span class="o">*</span> <span class="n">J_m0</span>
+    
+    <span class="c1"># --- m &gt; 0 cases ---</span>
+    <span class="c1"># We loop over m efficiently.</span>
+    <span class="c1"># Since m ranges 1..50, we can Python-loop and accumulate.</span>
+    <span class="c1"># It adds nodes to the graph but 50 is manageable.</span>
+    
+    <span class="n">n_functions</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">loop_body</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">accumulated_res</span><span class="p">):</span>
+        <span class="c1"># alpha for this m</span>
+        <span class="n">alpha_m</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[:,</span> <span class="n">m</span><span class="p">]</span> <span class="c1"># (K,)</span>
+        <span class="n">alpha_m_sq</span> <span class="o">=</span> <span class="n">alpha_m</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">**</span> <span class="mi">2</span> <span class="c1"># (1, K)</span>
+        
+        <span class="c1"># J term: J&#39;m(q_arg)</span>
+        <span class="c1"># Legacy: J = special.jvp(m, q_argument, 1)</span>
+        <span class="n">J_val</span> <span class="o">=</span> <span class="n">jvp_v1</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">q_argument</span><span class="p">)</span> <span class="c1"># (N,)</span>
+        
+        <span class="n">q_arg_J</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_argument</span> <span class="o">*</span> <span class="n">J_val</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="c1"># (N,)</span>
+        <span class="n">q_arg_J_expanded</span> <span class="o">=</span> <span class="n">q_arg_J</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="c1"># (N, 1)</span>
+        
+        <span class="c1"># Denom</span>
+        <span class="n">denom_m</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_arg_2_expanded</span> <span class="o">-</span> <span class="n">alpha_m_sq</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">denom_m</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">denom_m</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)</span>
+        
+        <span class="c1"># exp term</span>
+        <span class="n">exp_term_m</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">alpha_m_sq</span> <span class="o">*</span> <span class="n">diffusion_perp</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">/</span> <span class="p">(</span><span class="n">radius</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+        
+        <span class="c1"># Update term</span>
+        <span class="c1"># 8 * exp(...) * alpha^2 / (alpha^2 - m^2) * q_arg_J / denom</span>
+        
+        <span class="n">numerator_factor</span> <span class="o">=</span> <span class="n">alpha_m_sq</span> <span class="o">/</span> <span class="p">(</span><span class="n">alpha_m_sq</span> <span class="o">-</span> <span class="n">m</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># (1, K)</span>
+        
+        <span class="n">term_m</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">exp_term_m</span> <span class="o">*</span> <span class="n">numerator_factor</span> <span class="o">*</span> <span class="n">q_arg_J_expanded</span> <span class="o">/</span> <span class="n">denom_m</span><span class="p">)</span>
+        
+        <span class="n">sum_m</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">term_m</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># (N,)</span>
+        
+        <span class="k">return</span> <span class="n">accumulated_res</span> <span class="o">+</span> <span class="n">sum_m</span>
+    
+    <span class="c1"># Iterate m from 1 to n_functions - 1</span>
+    <span class="c1"># We can use jax.lax.fori_loop if we want to condense the graph, </span>
+    <span class="c1"># but that requires &#39;m&#39; to be dynamic in &#39;bessel_jn&#39; or handled carefully.</span>
+    <span class="c1"># bessel_jn supports float v, so dynamic m (as generic int/float) in scan/fori should work.</span>
+    <span class="c1"># However, alpha slice `alpha[:, m]` needs dynamic index.</span>
+    
+    <span class="c1"># Using python loop for now to be safe + explicit</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_functions</span><span class="p">)):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">loop_body</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+        
+    <span class="c1"># Handle q_perp = 0 case (no attenuation perpendicular)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">q_perp</span> <span class="o">&gt;</span> <span class="mf">1e-9</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">signal_par</span> <span class="o">*</span> <span class="n">res</span></div>
+
+
+
+<div class="viewcode-block" id="CallaghanRestrictedCylinder">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CallaghanRestrictedCylinder</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Callaghan model [1]_ - a cylinder with finite radius - typically</span>
+<span class="sd">    used for intra-axonal diffusion. The perpendicular diffusion is modelled</span>
+<span class="sd">    after Callaghan&#39;s solution for the disk. Is dependent on both q-value</span>
+<span class="sd">    and diffusion time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mu : array, shape(2)</span>
+<span class="sd">        angles [theta, phi] representing main orientation on the sphere.</span>
+<span class="sd">    lambda_par : float</span>
+<span class="sd">        parallel diffusivity in mm^2/s.</span>
+<span class="sd">    diameter : float</span>
+<span class="sd">        cylinder (axon) diameter in meters.</span>
+<span class="sd">    diffusion_perpendicular : float</span>
+<span class="sd">        intra-cylindrical perpendicular diffusivity (m^2/s).</span>
+<span class="sd">    number_of_roots : integer</span>
+<span class="sd">        number of roots to use for the Callaghan cylinder model.</span>
+<span class="sd">    number_of_functions : integer</span>
+<span class="sd">        number of functions to use for the Callaghan cylinder model.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Callaghan, Paul T. &quot;Pulsed-gradient spin-echo NMR for planar,</span>
+<span class="sd">            cylindrical, and spherical pores under conditions of wall</span>
+<span class="sd">            relaxation.&quot; Journal of magnetic resonance, Series A 113.1 (1995):</span>
+<span class="sd">            53-59.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">]),</span>
+        <span class="s1">&#39;lambda_par&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.1e-9</span><span class="p">,</span> <span class="mf">3e-9</span><span class="p">),</span>
+        <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-7</span><span class="p">,</span> <span class="mf">20e-6</span><span class="p">),</span>
+        <span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.1e-9</span><span class="p">,</span> <span class="mf">3e-9</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lambda_par</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">diameter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                 <span class="n">diffusion_perpendicular</span><span class="o">=</span><span class="mf">1.7e-9</span><span class="p">,</span> <span class="n">number_of_roots</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">number_of_functions</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu</span> <span class="o">=</span> <span class="n">mu</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_par</span> <span class="o">=</span> <span class="n">lambda_par</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span> <span class="o">=</span> <span class="n">diameter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_perpendicular</span> <span class="o">=</span> <span class="n">diffusion_perpendicular</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">number_of_roots</span> <span class="o">=</span> <span class="n">number_of_roots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">number_of_functions</span> <span class="o">=</span> <span class="n">number_of_functions</span>
+        
+        <span class="c1"># Pre-calculate alpha (roots) using scipy.special (on CPU/host)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_precompute_roots</span><span class="p">(</span><span class="n">number_of_roots</span><span class="p">,</span> <span class="n">number_of_functions</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_precompute_roots</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_roots</span><span class="p">,</span> <span class="n">n_functions</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="c1"># Use numpy for this ensuring it runs at instantiation</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">n_roots</span><span class="p">,</span> <span class="n">n_functions</span><span class="p">))</span>
+        <span class="n">alpha</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">n_roots</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">alpha</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">ssp</span><span class="o">.</span><span class="n">jnp_zeros</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_roots</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_functions</span><span class="p">):</span>
+            <span class="n">alpha</span><span class="p">[:,</span> <span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">ssp</span><span class="o">.</span><span class="n">jnp_zeros</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">n_roots</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">lambda_par</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambda_par</span><span class="p">)</span>
+        <span class="n">diameter</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diameter</span><span class="p">)</span>
+        <span class="n">diffusion_perp</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">diffusion_perpendicular</span><span class="p">)</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">)</span>
+        
+        <span class="c1"># Need tau (diffusion time)</span>
+        <span class="c1"># Prefer &#39;tau&#39; from kwargs, else derive from big_delta/small_delta</span>
+        <span class="k">if</span> <span class="s1">&#39;tau&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;tau&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s1">&#39;big_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="s1">&#39;small_delta&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+             <span class="n">tau</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;big_delta&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;small_delta&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">3.0</span>
+        <span class="k">else</span><span class="p">:</span>
+             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;CallaghanRestrictedCylinder requires &#39;tau&#39; or &#39;big_delta&#39;/&#39;small_delta&#39; in kwargs.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Convert spherical [theta, phi] to cartesian vector</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">sp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">cp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">mu_cart</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">st</span> <span class="o">*</span> <span class="n">cp</span><span class="p">,</span> <span class="n">st</span> <span class="o">*</span> <span class="n">sp</span><span class="p">,</span> <span class="n">ct</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">c3_cylinder_callaghan</span><span class="p">(</span>
+            <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="n">mu_cart</span><span class="p">,</span> <span class="n">lambda_par</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">diffusion_perp</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="p">)</span></div>
+
+
 </pre></div>
         </article>
       </div>
@@ -339,7 +652,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2025, Rutger Fick, Demian Wassermann, and Contributors
+                Copyright &#169; 2026, Rutger Fick, Demian Wassermann, and Contributors
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             

@@ -23,6 +23,7 @@ from dmipy_jax import sphere
 from dmipy_jax import fitting
 from dmipy_jax import inverse
 from dmipy_jax import composer
+from dmipy_jax import simulation
 
 __all__ = [
     'acquisition',
@@ -32,4 +33,5 @@ __all__ = [
     'fitting',
     'inverse',
     'composer',
+    'simulation',
 ]

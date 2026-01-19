@@ -1,0 +1,12 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 10, in <module>
+    from dmipy_jax.simulation.scanner.phantoms import BigMacPhantom
+  File "/home/mhough/src/dmipy/dmipy_jax/__init__.py", line 24, in <module>
+    from dmipy_jax import inverse
+  File "/home/mhough/src/dmipy/dmipy_jax/inverse/__init__.py", line 2, in <module>
+    from .amico import AMICOSolver
+  File "/home/mhough/src/dmipy/dmipy_jax/inverse/amico.py", line 145, in <module>
+    weights: Float[Array, "... n_atoms"],
+             ^^^^^
+NameError: name 'Float' is not defined. Did you mean: 'float'?

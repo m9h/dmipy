@@ -1,0 +1,30 @@
+Simulation
+==========
+
+.. automodule:: dmipy_jax.simulation.monte_carlo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Scanner
+-------
+
+.. automodule:: dmipy_jax.simulation.scanner.bloch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.simulation.scanner.objects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.simulation.scanner.phantoms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.simulation.scanner.sequences
+   :members:
+   :undoc-members:
+   :show-inheritance:

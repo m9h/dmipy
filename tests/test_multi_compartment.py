@@ -8,7 +8,6 @@ from dmipy_jax.core.modeling_framework import JaxMultiCompartmentModel
 from dmipy_jax.acquisition import JaxAcquisition
 
 # Fixture for setup
-@pytest.fixture
 def model_setup():
     # 1. Setup Acquisition
     # Create simple acquisition
@@ -162,8 +161,21 @@ def test_noisy_fit(model_setup):
     assert jnp.allclose(fitted_params['partial_volume_0'], true_params['partial_volume_0'], rtol=rtol, atol=0.1)
 
 if __name__ == "__main__":
-    # Manual run for debugging if pytest fails
+    print("Starting JaxMultiCompartmentModel tests...")
+
+    print("Setting up model...")
     acq, mcm = model_setup()
+    
+    print("Running test_single_voxel_fit...")
     test_single_voxel_fit((acq, mcm))
+    print("PASS: test_single_voxel_fit")
+    
+    print("Running test_multi_voxel_fit...")
     test_multi_voxel_fit((acq, mcm))
+    print("PASS: test_multi_voxel_fit")
+    
+    print("Running test_noisy_fit...")
     test_noisy_fit((acq, mcm))
+    print("PASS: test_noisy_fit")
+    
+    print("All tests passed!")

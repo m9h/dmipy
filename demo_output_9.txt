@@ -1,0 +1,11 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 10, in <module>
+    from dmipy_jax.simulation.scanner.phantoms import BigMacPhantom
+  File "/home/mhough/src/dmipy/dmipy_jax/__init__.py", line 24, in <module>
+    from dmipy_jax import inverse
+  File "/home/mhough/src/dmipy/dmipy_jax/inverse/__init__.py", line 1, in <module>
+    from .solvers import MicrostructureOperator, GlobalOptimizer
+  File "/home/mhough/src/dmipy/dmipy_jax/inverse/solvers.py", line 205
+    class GlobalOptimizer:
+IndentationError: expected an indented block after 'else' statement on line 203

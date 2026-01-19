@@ -9,3 +9,4 @@ API Reference
    models
    signal_models
    fitting
+   simulation

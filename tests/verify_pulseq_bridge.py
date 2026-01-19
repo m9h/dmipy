@@ -14,7 +14,7 @@ except ImportError:
     # Create a mock module structure
     sys.modules["pypulseq"] = MagicMock()
     
-from dmipy_jax.io.pulseq import pulseq_to_general, check_pypulseq_installed
+from dmipy_jax.external.pulseq import pulseq_to_general, check_pypulseq_installed
 
 def verify_bridge():
     print("Verifying PyPulseq Bridge...")

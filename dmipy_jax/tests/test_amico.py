@@ -2,7 +2,7 @@
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from dmipy_jax.inverse.amico import AMICOSolver
+from dmipy_jax.inverse.amico import AMICOSolver, calculate_mean_parameter_map
 from shapely.geometry import Point # Dummy import if needed, but likely not
 # Using simple callable for model to avoid dependencies on specific signal models being perfect
 # But let's try to mimic a Stick model structure
@@ -101,6 +101,25 @@ class TestAMICOSolver:
         assert jnp.allclose(weights_batch[0], w0, atol=1e-2)
         assert jnp.allclose(weights_batch[1], w1, atol=1e-2)
 
+    def test_calculate_mean_parameter(self):
+        # Setup: 2 atoms. Atom 0: d=1. Atom 1: d=5.
+        dict_params = {'diffusivity': jnp.array([1.0, 5.0])}
+        
+        # Case 1: Pure Atom 0 -> Mean=1.0
+        w1 = jnp.array([1.0, 0.0])
+        m1 = calculate_mean_parameter_map(w1, dict_params, 'diffusivity')
+        assert jnp.allclose(m1, 1.0)
+        
+        # Case 2: Equal mix -> Mean=3.0
+        w2 = jnp.array([0.5, 0.5])
+        m2 = calculate_mean_parameter_map(w2, dict_params, 'diffusivity')
+        assert jnp.allclose(m2, 3.0)
+        
+        # Case 3: Batch
+        w_batch = jnp.stack([w1, w2])
+        m_batch = calculate_mean_parameter_map(w_batch, dict_params, 'diffusivity')
+        assert jnp.allclose(m_batch, jnp.array([1.0, 3.0]))
+
 if __name__ == "__main__":
     # If running directly
     t = TestAMICOSolver()
@@ -108,4 +127,5 @@ if __name__ == "__main__":
     t.test_fit_sparse_recovery()
     t.test_fit_mixture()
     t.test_vmap_batch_fit()
+    t.test_calculate_mean_parameter()
     print("All tests passed manually.")

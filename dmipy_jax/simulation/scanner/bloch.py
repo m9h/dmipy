@@ -2,6 +2,7 @@
 import jax
 import jax.numpy as jnp
 import diffrax
+import equinox as eqx
 from functools import partial
 
 # Gyromagnetic ratio for Hydrogen (Hz/T) - reduced/angular frequency form often used
@@ -126,7 +127,7 @@ def _make_continuous_func(discrete_data, dt, duration):
         
     return vector_func
 
-@jax.jit
+@eqx.filter_jit
 def simulate_acquisition(phantom, sequence, duration):
     """
     Simulates MRI acquisition.
@@ -158,19 +159,35 @@ def simulate_acquisition(phantom, sequence, duration):
     # If they are functions already, great. If arrays, we wrap them.
     # Let's assume they are JAX arrays representing timepoints.
     
+    # Infer dt if possible
+    dt_seq = None
+    if hasattr(sequence, 'time_points') and len(sequence.time_points) > 1:
+        dt_seq = sequence.time_points[1] - sequence.time_points[0]
+    elif hasattr(sequence, 'dt'):
+        dt_seq = sequence.dt
+
     if callable(sequence.gradients):
         grad_func = sequence.gradients
     else:
         # Create interpolator
-        grad_func = _make_continuous_func(sequence.gradients, sequence.dt, duration)
+        # _make_continuous_func doesn't actually use 'dt' arg (it uses duration/len), 
+        # but we kept the signature. Let's pass dt_seq or dummy.
+        grad_func = _make_continuous_func(sequence.gradients, dt_seq, duration)
         
-    if callable(sequence.rf):
+    if callable(getattr(sequence, 'rf', None)):
         B1_func = sequence.rf
     else:
         # Handle RF complex waveform -> B1 vec
-        # RF is usually complex (Bx + iBy)
-        rf_data = sequence.rf # (steps,) complex or (steps, 2)
-        
+        # Check if we have combined rf or split amp/phase
+        if hasattr(sequence, 'rf'):
+            rf_data = sequence.rf # (steps,) complex or (steps, 2)
+        elif hasattr(sequence, 'rf_amplitude') and hasattr(sequence, 'rf_phase'):
+            # Reconstruct complex
+            rf_data = sequence.rf_amplitude * jnp.exp(1j * sequence.rf_phase)
+        else:
+             # Assume zero
+             rf_data = jnp.zeros(len(sequence.time_points), dtype=jnp.complex64) if hasattr(sequence, 'time_points') else jnp.array([0j])
+
         # Helper to convert to (steps, 2) real
         if jnp.iscomplexobj(rf_data):
             rf_vec_data = jnp.stack([rf_data.real, rf_data.imag], axis=-1)
@@ -181,7 +198,7 @@ def simulate_acquisition(phantom, sequence, duration):
         else:
             rf_vec_data = rf_data # Assume (steps, 2)
             
-        B1_func = _make_continuous_func(rf_vec_data, sequence.dt, duration)
+        B1_func = _make_continuous_func(rf_vec_data, dt_seq, duration)
 
     # Initial Magnetization: All spins relaxed along Z
     # M_init = [0, 0, 1] for all N
@@ -237,8 +254,8 @@ def simulate_acquisition(phantom, sequence, duration):
     t0 = 0.0
     t1 = duration
     dt0 = duration / 100.0 # Initial guess, controller will adjust
-    if hasattr(sequence, 'dt'):
-         dt0 = sequence.dt # Better guess if available
+    if dt_seq is not None:
+         dt0 = dt_seq # Better guess if available
          
     # Args
     solver_args = (T1s, T2s, grad_func, B1_func, positions, B0_inhom)
@@ -252,7 +269,7 @@ def simulate_acquisition(phantom, sequence, duration):
         y0=m_init,
         args=solver_args,
         stepsize_controller=stepsize_controller,
-        max_steps=100000 # Safety limit
+        max_steps=1000000 # Increased safety limit
     )
     
     # Final state

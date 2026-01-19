@@ -4,6 +4,9 @@ import scipy.special as ssp
 from jax.scipy import special as jsp
 from jax import pure_callback, jit, vmap
 from dmipy_jax.constants import GYRO_MAGNETIC_RATIO
+import equinox as eqx
+from jaxtyping import Array, Float
+from typing import Any, Tuple
 
 
 # Removed pure_callback wrappers. Using jax.scipy.special directly.
@@ -60,7 +63,7 @@ def c2_cylinder(bvals, bvecs, mu, lambda_par, diameter, big_delta, small_delta):
     valid_mask = argument > 1e-6
     safe_arg = jnp.where(valid_mask, argument, 1.0)
     
-    j1_term = 2 * jsp.bessel_jn(safe_arg, v=1) / safe_arg
+    j1_term = 2 * jsp.jn(1, safe_arg) / safe_arg
     signal_perp = j1_term ** 2
     
     # If argument is small, signal is 1.0
@@ -92,7 +95,7 @@ def c1_stick(bvals, bvecs, mu, lambda_par):
     return signal
 
 
-class RestrictedCylinder:
+class RestrictedCylinder(eqx.Module):
     r"""
     The Stejskal-Tanner approximation of the cylinder model with finite radius [1]_.
     
@@ -111,8 +114,12 @@ class RestrictedCylinder:
             cylindrical geometry." Journal of Magnetic Resonance, Series A
             117.1 (1995): 94-97.
     """
+    
+    mu: Any = None
+    lambda_par: Any = None
+    diameter: Any = None
 
-    parameter_names = ['mu', 'lambda_par', 'diameter']
+    parameter_names = ('mu', 'lambda_par', 'diameter')
     parameter_cardinality = {'mu': 2, 'lambda_par': 1, 'diameter': 1}
     parameter_ranges = {
         'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),
@@ -137,15 +144,27 @@ class RestrictedCylinder:
              raise ValueError("RestrictedCylinder requires 'big_delta' and 'small_delta' in kwargs/acquisition.")
 
         # Convert spherical [theta, phi] to cartesian vector
-        theta = mu[0]
-        phi = mu[1]
+        mu = jnp.asarray(mu)
+        if mu.ndim > 0:
+             theta = mu[0]
+             phi = mu[1]
+        else:
+             theta = mu
+             phi = 0.0 # Should not happen for RestrictedCylinder
+             
+        # jax.debug.print("mu shape: {}", mu.shape)
         
         st = jnp.sin(theta)
         ct = jnp.cos(theta)
         sp = jnp.sin(phi)
         cp = jnp.cos(phi)
         
+        # Ensure mu_cart is (3,)
         mu_cart = jnp.array([st * cp, st * sp, ct])
+        if mu_cart.ndim > 1:
+            mu_cart = jnp.squeeze(mu_cart)
+            
+        jax.debug.print("RestrictedCylinder call: bvals {}, mu {}, mu_cart {}", bvals.shape, mu.shape, mu_cart.shape)
 
         return c2_cylinder(bvals, gradient_directions, mu_cart, lambda_par, diameter, big_delta, small_delta)
 
@@ -304,7 +323,7 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     return signal_par * res
 
 
-class CallaghanRestrictedCylinder:
+class CallaghanRestrictedCylinder(eqx.Module):
     r"""
     The Callaghan model [1]_ - a cylinder with finite radius - typically
     used for intra-axonal diffusion. The perpendicular diffusion is modelled
@@ -333,8 +352,17 @@ class CallaghanRestrictedCylinder:
             relaxation." Journal of magnetic resonance, Series A 113.1 (1995):
             53-59.
     """
+    
+    mu: Any = None
+    lambda_par: Any = None
+    diameter: Any = None
+    diffusion_perpendicular: Any = 1.7e-9
+    number_of_roots: int = eqx.field(static=True, default=20)
+    number_of_functions: int = eqx.field(static=True, default=50)
+    # alpha should be a field to be part of the pytree
+    alpha: Array = eqx.field(init=False)
 
-    parameter_names = ['mu', 'lambda_par', 'diameter', 'diffusion_perpendicular']
+    parameter_names = ('mu', 'lambda_par', 'diameter', 'diffusion_perpendicular')
     parameter_cardinality = {'mu': 2, 'lambda_par': 1, 'diameter': 1, 'diffusion_perpendicular': 1}
     parameter_ranges = {
         'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),

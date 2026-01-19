@@ -232,12 +232,29 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-dmipy_jax.signal_models.cylinder_models">
-<span id="signal-models"></span><h1>Signal Models<a class="headerlink" href="#module-dmipy_jax.signal_models.cylinder_models" title="Link to this heading">¶</a></h1>
+          <section id="module-dmipy_jax.signal_models.bingham">
+<span id="signal-models"></span><h1>Signal Models<a class="headerlink" href="#module-dmipy_jax.signal_models.bingham" title="Link to this heading">¶</a></h1>
 <dl class="py class">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.bingham.BinghamNODDI">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.bingham.</span></span><span class="sig-name descname"><span class="pre">BinghamNODDI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/bingham.html#BinghamNODDI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.bingham.BinghamNODDI" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Bingham-NODDI model using numerical integration.</p>
+<p>The signal is defined as:
+S = int_{S^2} P(mathbf{n} | mu, kappa_1, kappa_2) S_{stick}(mathbf{n}, b, g) dmathbf{n}</p>
+<p>The Bingham PDF is modeled as:
+P(mathbf{n}) propto exp( - kappa_1 n_x^2 - kappa_2 n_y^2 )
+defined in a frame where the peak is along Z, then rotated to mu.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>grid_points</strong> (<em>int</em>) – Number of points for numerical integration.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class" id="module-dmipy_jax.signal_models.cylinder_models">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.cylinder_models.</span></span><span class="sig-name descname"><span class="pre">CallaghanRestrictedCylinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_perpendicular</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.7e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_roots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_functions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/cylinder_models.html#CallaghanRestrictedCylinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
 <p>The Callaghan model <a href="#id12"><span class="problematic" id="id1">[1]_</span></a> - a cylinder with finite radius - typically
 used for intra-axonal diffusion. The perpendicular diffusion is modelled
 after Callaghan’s solution for the disk. Is dependent on both q-value
@@ -265,13 +282,48 @@ relaxation.” Journal of magnetic resonance, Series A 113.1 (1995):
 </aside>
 </aside>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.alpha">
+<span class="sig-name descname"><span class="pre">alpha</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.alpha" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diameter">
+<span class="sig-name descname"><span class="pre">diameter</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diameter" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diffusion_perpendicular">
+<span class="sig-name descname"><span class="pre">diffusion_perpendicular</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.7e-09</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diffusion_perpendicular" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.lambda_par">
+<span class="sig-name descname"><span class="pre">lambda_par</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.lambda_par" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.mu">
+<span class="sig-name descname"><span class="pre">mu</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.mu" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.number_of_functions">
+<span class="sig-name descname"><span class="pre">number_of_functions</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">50</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.number_of_functions" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.number_of_roots">
+<span class="sig-name descname"><span class="pre">number_of_roots</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.number_of_roots" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_cardinality">
 <span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">1,</span> <span class="pre">'diffusion_perpendicular':</span> <span class="pre">1,</span> <span class="pre">'lambda_par':</span> <span class="pre">1,</span> <span class="pre">'mu':</span> <span class="pre">2}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_cardinality" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['mu',</span> <span class="pre">'lambda_par',</span> <span class="pre">'diameter',</span> <span class="pre">'diffusion_perpendicular']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_names" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('mu',</span> <span class="pre">'lambda_par',</span> <span class="pre">'diameter',</span> <span class="pre">'diffusion_perpendicular')</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_names" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -284,7 +336,7 @@ relaxation.” Journal of magnetic resonance, Series A 113.1 (1995):
 <dl class="py class">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.cylinder_models.</span></span><span class="sig-name descname"><span class="pre">RestrictedCylinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/cylinder_models.html#RestrictedCylinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
 <p>The Stejskal-Tanner approximation of the cylinder model with finite radius <a href="#id13"><span class="problematic" id="id3">[1]_</span></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -305,13 +357,28 @@ cylindrical geometry.” Journal of Magnetic Resonance, Series A
 </aside>
 </aside>
 <dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.diameter">
+<span class="sig-name descname"><span class="pre">diameter</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.diameter" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.lambda_par">
+<span class="sig-name descname"><span class="pre">lambda_par</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.lambda_par" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.mu">
+<span class="sig-name descname"><span class="pre">mu</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.mu" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_cardinality">
 <span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">1,</span> <span class="pre">'lambda_par':</span> <span class="pre">1,</span> <span class="pre">'mu':</span> <span class="pre">2}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_cardinality" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['mu',</span> <span class="pre">'lambda_par',</span> <span class="pre">'diameter']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_names" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('mu',</span> <span class="pre">'lambda_par',</span> <span class="pre">'diameter')</span></span><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_names" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -392,7 +459,29 @@ cylindrical geometry.” Journal of Magnetic Resonance, Series A
 Formula: Jv’(z) = 0.5 * (J(v-1, z) - J(v+1, z))</p>
 </dd></dl>
 
-<dl class="py function" id="module-dmipy_jax.signal_models.gaussian_models">
+<dl class="py class" id="module-dmipy_jax.signal_models.gaussian_models">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.gaussian_models.Ball">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.gaussian_models.</span></span><span class="sig-name descname"><span class="pre">Ball</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lambda_iso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/gaussian_models.html#Ball"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.gaussian_models.Ball" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Isotropic Ball model class.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.gaussian_models.Ball.parameter_cardinality">
+<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'lambda_iso':</span> <span class="pre">1}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.gaussian_models.Ball.parameter_cardinality" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.gaussian_models.Ball.parameter_names">
+<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['lambda_iso']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.gaussian_models.Ball.parameter_names" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.gaussian_models.Ball.parameter_ranges">
+<span class="sig-name descname"><span class="pre">parameter_ranges</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'lambda_iso':</span> <span class="pre">(0.0,</span> <span class="pre">3e-09)}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.gaussian_models.Ball.parameter_ranges" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.gaussian_models.g1_ball">
 <span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.gaussian_models.</span></span><span class="sig-name descname"><span class="pre">g1_ball</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bvals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bvecs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_iso</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/gaussian_models.html#g1_ball"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.gaussian_models.g1_ball" title="Link to this definition">¶</a></dt>
 <dd><p>Computes signal for an Isotropic Ball (Free Diffusion).</p>
@@ -712,6 +801,11 @@ JAX implementation using c1_stick kernel.</p>
 <span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['mu',</span> <span class="pre">'lambda_par']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.stick.Stick.parameter_names" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dmipy_jax.signal_models.stick.Stick.parameter_ranges">
+<span class="sig-name descname"><span class="pre">parameter_ranges</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'lambda_par':</span> <span class="pre">(1e-10,</span> <span class="pre">3e-09),</span> <span class="pre">'mu':</span> <span class="pre">([0,</span> <span class="pre">3.141592653589793],</span> <span class="pre">[-3.141592653589793,</span> <span class="pre">3.141592653589793])}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.stick.Stick.parameter_ranges" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class" id="module-dmipy_jax.signal_models.zeppelin">
@@ -780,13 +874,24 @@ JAX implementation using c1_stick kernel.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Signal Models</a><ul>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.bingham.BinghamNODDI"><code class="docutils literal notranslate"><span class="pre">BinghamNODDI</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder</span></code></a><ul>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.alpha"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.alpha</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diameter"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.diameter</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diffusion_perpendicular"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.diffusion_perpendicular</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.lambda_par"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.lambda_par</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.mu"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.mu</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.number_of_functions"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.number_of_functions</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.number_of_roots"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.number_of_roots</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.parameter_cardinality</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_names"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.parameter_names</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.parameter_ranges</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder</span></code></a><ul>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.diameter"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder.diameter</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.lambda_par"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder.lambda_par</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.mu"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder.mu</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder.parameter_cardinality</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_names"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder.parameter_names</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">RestrictedCylinder.parameter_ranges</span></code></a></li>
@@ -796,6 +901,12 @@ JAX implementation using c1_stick kernel.</p>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.c2_cylinder"><code class="docutils literal notranslate"><span class="pre">c2_cylinder()</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.c3_cylinder_callaghan"><code class="docutils literal notranslate"><span class="pre">c3_cylinder_callaghan()</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.jvp_v1"><code class="docutils literal notranslate"><span class="pre">jvp_v1()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.Ball"><code class="docutils literal notranslate"><span class="pre">Ball</span></code></a><ul>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.Ball.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">Ball.parameter_cardinality</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.Ball.parameter_names"><code class="docutils literal notranslate"><span class="pre">Ball.parameter_names</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.Ball.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">Ball.parameter_ranges</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.g1_ball"><code class="docutils literal notranslate"><span class="pre">g1_ball()</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.g2_tensor"><code class="docutils literal notranslate"><span class="pre">g2_tensor()</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.g2_zeppelin"><code class="docutils literal notranslate"><span class="pre">g2_zeppelin()</span></code></a></li>
@@ -839,6 +950,7 @@ JAX implementation using c1_stick kernel.</p>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick"><code class="docutils literal notranslate"><span class="pre">Stick</span></code></a><ul>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">Stick.parameter_cardinality</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick.parameter_names"><code class="docutils literal notranslate"><span class="pre">Stick.parameter_names</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">Stick.parameter_ranges</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.zeppelin.Zeppelin"><code class="docutils literal notranslate"><span class="pre">Zeppelin</span></code></a><ul>

@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -227,13 +227,399 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="core">
-<h1>Core<a class="headerlink" href="#core" title="Link to this heading">¶</a></h1>
+          <section id="module-dmipy_jax.core.modeling_framework">
+<span id="core"></span><h1>Core<a class="headerlink" href="#module-dmipy_jax.core.modeling_framework" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.modeling_framework.</span></span><span class="sig-name descname"><span class="pre">JaxMultiCompartmentModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">models</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/modeling_framework.html#JaxMultiCompartmentModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class for combining multiple signal models into a Multi-Compartment Model (MCM).</p>
+<p>This class wraps the <cite>compose_models</cite> functional composition with an object-oriented
+interface compatible with the <cite>OptimistixFitter</cite> and user-friendly parameter
+management (dictionaries).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">acquisition</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Levenberg-Marquardt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/modeling_framework.html#JaxMultiCompartmentModel.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.fit" title="Link to this definition">¶</a></dt>
+<dd><p>Fits the model to data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>acquisition</strong> – JaxAcquisition object</p></li>
+<li><p><strong>data</strong> – Signal data array. Shape (N_meas,) for single voxel or (N_vox, N_meas) for multiple.</p></li>
+<li><p><strong>method</strong> – Optimization method (default: “Levenberg-Marquardt”).</p></li>
+<li><p><strong>compute_uncertainty</strong> – If True, computes CRLB standard deviations (default: True).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Fitted parameters in dictionary format.</dt><dd><p>If compute_uncertainty is True, includes keys with ‘_std’ suffix.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.get_flat_bounds">
+<span class="sig-name descname"><span class="pre">get_flat_bounds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/modeling_framework.html#JaxMultiCompartmentModel.get_flat_bounds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.get_flat_bounds" title="Link to this definition">¶</a></dt>
+<dd><p>Returns flat lists of lower and upper bounds for all parameters.
+:returns: lower_bounds, upper_bounds
+:rtype: (jnp.ndarray, jnp.ndarray)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.parameter_array_to_dictionary">
+<span class="sig-name descname"><span class="pre">parameter_array_to_dictionary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_array</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/modeling_framework.html#JaxMultiCompartmentModel.parameter_array_to_dictionary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.parameter_array_to_dictionary" title="Link to this definition">¶</a></dt>
+<dd><p>Converts the flat result array back to a user-friendly dictionary.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.parameter_dictionary_to_array">
+<span class="sig-name descname"><span class="pre">parameter_dictionary_to_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_dictionary</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/modeling_framework.html#JaxMultiCompartmentModel.parameter_dictionary_to_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.parameter_dictionary_to_array" title="Link to this definition">¶</a></dt>
+<dd><p>Converts a dictionary of parameters to the flat array expected by the kernel.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function" id="module-dmipy_jax.core.particle_engine">
+<dt class="sig sig-object py" id="dmipy_jax.core.particle_engine.brownian_step">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.particle_engine.</span></span><span class="sig-name descname"><span class="pre">brownian_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shift_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_coeff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kT</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="reference internal" href="../_modules/dmipy_jax/core/particle_engine.html#brownian_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.particle_engine.brownian_step" title="Link to this definition">¶</a></dt>
+<dd><p>Computes one step of Brownian motion with potentially anisotropic diffusion.</p>
+<p>Adapted from jax_md.simulate.brownian but supports Tensor diffusion coefficients.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – PRNGKey for noise generation.</p></li>
+<li><p><strong>positions</strong> – (N, dim) array of particle positions.</p></li>
+<li><p><strong>shift_fn</strong> – Function to apply boundary conditions.</p></li>
+<li><p><strong>diffusion_coeff</strong> – <ul>
+<li><p>Scalar: Isotropic, homogenous diffusion.</p></li>
+<li><p>(3,) Vector: Anisotropic diagonal diffusion (axis-aligned).</p></li>
+<li><p>(N, 3, 3) Tensor: Fully anisotropic diffusion per particle.
+(Note: Spatially varying maps would need a lookup mechanism,</p>
+<blockquote>
+<div><p>here we assume D is provided per-particle or globally).</p>
+</div></blockquote>
+</li>
+</ul>
+</p></li>
+<li><p><strong>dt</strong> – Time step.</p></li>
+<li><p><strong>kT</strong> – Temperature (default 1.0).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New positions (N, dim).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.particle_engine.check_gpu_visibility">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.particle_engine.</span></span><span class="sig-name descname"><span class="pre">check_gpu_visibility</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/particle_engine.html#check_gpu_visibility"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.particle_engine.check_gpu_visibility" title="Link to this definition">¶</a></dt>
+<dd><p>Checks if JAX can see the GPU and prints the status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if GPU is available, False otherwise.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.particle_engine.create_neighbor_list">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.particle_engine.</span></span><span class="sig-name descname"><span class="pre">create_neighbor_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">displacement_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capacity_multiplier</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disable_cell_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NeighborList</span></span></span><a class="reference internal" href="../_modules/dmipy_jax/core/particle_engine.html#create_neighbor_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.particle_engine.create_neighbor_list" title="Link to this definition">¶</a></dt>
+<dd><p>Creates a basic neighbor list for collision/barrier detection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>displacement_fn</strong> – Function to compute displacement (metric).</p></li>
+<li><p><strong>box_size</strong> – The size of the simulation box.</p></li>
+<li><p><strong>r_cutoff</strong> – Cutoff distance for neighbors.</p></li>
+<li><p><strong>capacity_multiplier</strong> – Multiplier for initial capacity estimation.</p></li>
+<li><p><strong>disable_cell_list</strong> – If True, uses O(N^2) global search (good for small N).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <cite>init_fn, apply_fn</cite> tuple (or NeighborList object in newer jax-md).
+You typically call <cite>.allocate(positions)</cite> on this.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.particle_engine.non_periodic_box">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.particle_engine.</span></span><span class="sig-name descname"><span class="pre">non_periodic_box</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/dmipy_jax/core/particle_engine.html#non_periodic_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.particle_engine.non_periodic_box" title="Link to this definition">¶</a></dt>
+<dd><p>Defines a non-periodic (infinite) box for whole-brain tracking.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(displacement_fn, shift_fn) pair compatible with jax-md.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.particle_engine.periodic_box">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.particle_engine.</span></span><span class="sig-name descname"><span class="pre">periodic_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">box_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Callable</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/dmipy_jax/core/particle_engine.html#periodic_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.particle_engine.periodic_box" title="Link to this definition">¶</a></dt>
+<dd><p>Defines a periodic box for tissue simulations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>box_size</strong> – The side length of the cubic box.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(displacement_fn, shift_fn) pair compatible with jax-md.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class" id="module-dmipy_jax.core.solvers">
+<dt class="sig sig-object py" id="dmipy_jax.core.solvers.BlochSimulator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.solvers.</span></span><span class="sig-name descname"><span class="pre">BlochSimulator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/solvers.html#BlochSimulator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.solvers.BlochSimulator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Simulates the Bloch equations for Nuclear Magnetic Resonance.</p>
+<p>dM/dt = M x gamma B - R(M - M0)</p>
+<p>where:
+M is the magnetization vector [Mx, My, Mz]
+B is the magnetic field vector [Bx, By, Bz]
+gamma is the gyromagnetic ratio
+R is the relaxation matrix (diagonal with 1/T2, 1/T2, 1/T1)
+M0 is the equilibrium magnetization</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dmipy_jax.core.solvers.BlochSimulator.vector_field">
+<span class="sig-name descname"><span class="pre">vector_field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/solvers.html#BlochSimulator.vector_field"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.solvers.BlochSimulator.vector_field" title="Link to this definition">¶</a></dt>
+<dd><p>Rate of change dM/dt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> – Time</p></li>
+<li><p><strong>m</strong> – Magnetization vector M(t)</p></li>
+<li><p><strong>args</strong> – Tuple containing (gradient_func, position)
+gradient_func: G(t) -&gt; array (3,) [T/m] or similar scaling
+position: r -&gt; array (3,) [m]</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.solvers.solve_diffusion_sde">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.solvers.</span></span><span class="sig-name descname"><span class="pre">solve_diffusion_sde</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t_span</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drift</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PRNGKey</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SaveAt</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/solvers.html#solve_diffusion_sde"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.solvers.solve_diffusion_sde" title="Link to this definition">¶</a></dt>
+<dd><p>Solve a Stochastic Differential Equation for diffusion.</p>
+<p>dY = drift(t, Y) dt + diffusion(t, Y) dW</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t_span</strong> – (t_start, t_end)</p></li>
+<li><p><strong>y0</strong> – Initial state (e.g. positions of particles), shape (N, D).</p></li>
+<li><p><strong>drift</strong> – Function f(t, y, args) -&gt; (N, D)</p></li>
+<li><p><strong>diffusion</strong> – Function g(t, y, args) -&gt; (N, D, BrownianDim) or (N, D)
+representing scale of noise.</p></li>
+<li><p><strong>dt0</strong> – Step size.</p></li>
+<li><p><strong>key</strong> – JAX PRNG Key for noise.</p></li>
+<li><p><strong>args</strong> – Extra arguments for drift/diffusion functions.</p></li>
+<li><p><strong>save_at</strong> – Checkpoints.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>diffrax solution.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function" id="module-dmipy_jax.core.integration_grids">
+<dt class="sig sig-object py" id="dmipy_jax.core.integration_grids.get_spherical_fibonacci_grid">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.integration_grids.</span></span><span class="sig-name descname"><span class="pre">get_spherical_fibonacci_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/integration_grids.html#get_spherical_fibonacci_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.integration_grids.get_spherical_fibonacci_grid" title="Link to this definition">¶</a></dt>
+<dd><p>Generates a Spherical Fibonacci Lattice of N points.</p>
+<p>This is an approximate “equal area” grid on the sphere, suitable for
+numerical integration where strict quadrature rules (like Lebedev)
+are not strictly required or are too heavy to implement inline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>n_points</strong> (<em>int</em>) – Number of points on the sphere.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>(N, 3) array of Cartesian coordinates on unit sphere.
+weights (jnp.ndarray): (N,) array of integration weights. For Fibonacci,</p>
+<blockquote>
+<div><p>these are approximately uniform (4*pi / N).</p>
+</div></blockquote>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>points (jnp.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function" id="module-dmipy_jax.core.invariants">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.associated_legendre">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">associated_legendre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#associated_legendre"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.associated_legendre" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the Associated Legendre Polynomial P_l^m(x) using recurrence relations.
+This implementation is designed for small l and JIT compilation.
+Matches scipy.special.lpmv (with unnormalized definition).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> – degree (int)</p></li>
+<li><p><strong>m</strong> – order (int, 0 &lt;= m &lt;= l)</p></li>
+<li><p><strong>x</strong> – argument (float or array in [-1, 1])</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.cart2sphere">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">cart2sphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#cart2sphere"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.cart2sphere" title="Link to this definition">¶</a></dt>
+<dd><p>Convert Cartesian coordinates to Spherical coordinates.
+Returns radius r, inclination theta [0, pi], azimuth phi [-pi, pi].</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.compute_invariants">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">compute_invariants</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bvecs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#compute_invariants"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.compute_invariants" title="Link to this definition">¶</a></dt>
+<dd><p>Main function to compute SH rotational invariants from DWI signal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>signal</strong> – (N_vox, N_dirs) Signal array.</p></li>
+<li><p><strong>bvecs</strong> – (N_dirs, 3) B-vectors.</p></li>
+<li><p><strong>max_order</strong> – Maximum SH order (default 6).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(N_vox, N_orders) Power spectrum [P0, P2, P4, P6].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>invariants</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.compute_invariants_jit">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">compute_invariants_jit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bvecs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dmipy_jax.core.invariants.compute_invariants_jit" title="Link to this definition">¶</a></dt>
+<dd><p>Main function to compute SH rotational invariants from DWI signal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>signal</strong> – (N_vox, N_dirs) Signal array.</p></li>
+<li><p><strong>bvecs</strong> – (N_dirs, 3) B-vectors.</p></li>
+<li><p><strong>max_order</strong> – Maximum SH order (default 6).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(N_vox, N_orders) Power spectrum [P0, P2, P4, P6].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>invariants</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.factorial">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">factorial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#factorial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.factorial" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.fit_sh_coefficients">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">fit_sh_coefficients</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">basis_matrix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#fit_sh_coefficients"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.fit_sh_coefficients" title="Link to this definition">¶</a></dt>
+<dd><p>Fits Spherical Harmonic coefficients using Least Squares.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>signal</strong> – (…, N_dirs) DWI signal intensity. (Assumes last dim is directions)</p></li>
+<li><p><strong>basis_matrix</strong> – (N_dirs, N_coeffs) SH basis matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(…, N_coeffs) Estimated SH coefficients.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>coeffs</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.power_spectrum">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">power_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coeffs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#power_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.power_spectrum" title="Link to this definition">¶</a></dt>
+<dd><p>Calculates the Rotational Invariant Power Spectrum (energy per band).
+P_l = sum_{m=-l}^l <a href="#id1"><span class="problematic" id="id2">|</span></a>c_lm|^2</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>coeffs</strong> – (…, N_coeffs) SH coefficients.</p></li>
+<li><p><strong>max_order</strong> – Max order used in coefficients (must match coeffs size).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(…, l_max/2 + 1) -&gt; [P0, P2, P4, …]</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>invariants</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.real_spherical_harmonic">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">real_spherical_harmonic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#real_spherical_harmonic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.real_spherical_harmonic" title="Link to this definition">¶</a></dt>
+<dd><p>Computes Real Spherical Harmonic Y_lm(theta, phi).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> – Degree (int)</p></li>
+<li><p><strong>m</strong> – Order (int) [-l, l]</p></li>
+<li><p><strong>theta</strong> – Inclination [0, pi]</p></li>
+<li><p><strong>phi</strong> – Azimuth [-pi, pi]</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.sph_harm_basis">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">sph_harm_basis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bvecs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#sph_harm_basis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.sph_harm_basis" title="Link to this definition">¶</a></dt>
+<dd><p>Constructs the Real Spherical Harmonic basis matrix for given directions.
+Only even orders l=0, 2, …, max_order are used (symmetric diffusion).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bvecs</strong> – (N_dirs, 3) Gradient directions (cartesian).</p></li>
+<li><p><strong>max_order</strong> – Maximum SH order (even int).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(N_dirs, N_coeffs) Basis matrix.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>B</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dmipy_jax.core.invariants.sph_harm_normalization">
+<span class="sig-prename descclassname"><span class="pre">dmipy_jax.core.invariants.</span></span><span class="sig-name descname"><span class="pre">sph_harm_normalization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/core/invariants.html#sph_harm_normalization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.core.invariants.sph_harm_normalization" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the normalization constant K_lm for Real Spherical Harmonics.
+Y_lm = K_lm * P_l^|m| * trig_term</p>
+<p>Orthonormalized such that integral over sphere is 1.</p>
+</dd></dl>
+
 </section>
 
         </article>
@@ -261,8 +647,54 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Core</a><ul>
+<li><a class="reference internal" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel"><code class="docutils literal notranslate"><span class="pre">JaxMultiCompartmentModel</span></code></a><ul>
+<li><a class="reference internal" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.fit"><code class="docutils literal notranslate"><span class="pre">JaxMultiCompartmentModel.fit()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.get_flat_bounds"><code class="docutils literal notranslate"><span class="pre">JaxMultiCompartmentModel.get_flat_bounds()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.parameter_array_to_dictionary"><code class="docutils literal notranslate"><span class="pre">JaxMultiCompartmentModel.parameter_array_to_dictionary()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel.parameter_dictionary_to_array"><code class="docutils literal notranslate"><span class="pre">JaxMultiCompartmentModel.parameter_dictionary_to_array()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dmipy_jax.core.particle_engine.brownian_step"><code class="docutils literal notranslate"><span class="pre">brownian_step()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.particle_engine.check_gpu_visibility"><code class="docutils literal notranslate"><span class="pre">check_gpu_visibility()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.particle_engine.create_neighbor_list"><code class="docutils literal notranslate"><span class="pre">create_neighbor_list()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.particle_engine.non_periodic_box"><code class="docutils literal notranslate"><span class="pre">non_periodic_box()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.particle_engine.periodic_box"><code class="docutils literal notranslate"><span class="pre">periodic_box()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.solvers.BlochSimulator"><code class="docutils literal notranslate"><span class="pre">BlochSimulator</span></code></a><ul>
+<li><a class="reference internal" href="#dmipy_jax.core.solvers.BlochSimulator.vector_field"><code class="docutils literal notranslate"><span class="pre">BlochSimulator.vector_field()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dmipy_jax.core.solvers.solve_diffusion_sde"><code class="docutils literal notranslate"><span class="pre">solve_diffusion_sde()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.integration_grids.get_spherical_fibonacci_grid"><code class="docutils literal notranslate"><span class="pre">get_spherical_fibonacci_grid()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.associated_legendre"><code class="docutils literal notranslate"><span class="pre">associated_legendre()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.cart2sphere"><code class="docutils literal notranslate"><span class="pre">cart2sphere()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.compute_invariants"><code class="docutils literal notranslate"><span class="pre">compute_invariants()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.compute_invariants_jit"><code class="docutils literal notranslate"><span class="pre">compute_invariants_jit()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.factorial"><code class="docutils literal notranslate"><span class="pre">factorial()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.fit_sh_coefficients"><code class="docutils literal notranslate"><span class="pre">fit_sh_coefficients()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.power_spectrum"><code class="docutils literal notranslate"><span class="pre">power_spectrum()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.real_spherical_harmonic"><code class="docutils literal notranslate"><span class="pre">real_spherical_harmonic()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.sph_harm_basis"><code class="docutils literal notranslate"><span class="pre">sph_harm_basis()</span></code></a></li>
+<li><a class="reference internal" href="#dmipy_jax.core.invariants.sph_harm_normalization"><code class="docutils literal notranslate"><span class="pre">sph_harm_normalization()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

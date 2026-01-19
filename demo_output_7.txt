@@ -1,8 +1,0 @@
-warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
-Traceback (most recent call last):
-  File "/home/mhough/src/dmipy/examples/demo_pypulseq_bigmac.py", line 12, in <module>
-    from dmipy_jax.simulation.scanner.bloch import simulate_acquisition
-  File "/home/mhough/src/dmipy/dmipy_jax/simulation/scanner/bloch.py", line 272
-    stepsize_controller=stepsize_controller,
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-SyntaxError: keyword argument repeated: stepsize_controller

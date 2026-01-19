@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from dmipy_jax.simulation.scanner.objects import IsochromatPhantom
 
-def BigMacPhantom(n_spins: int = 10000, radius: float = 0.05, seed: int = 42) -> IsochromatPhantom:
+def SyntheticBigMacPhantom(n_spins: int = 10000, radius: float = 0.05, seed: int = 42) -> IsochromatPhantom:
     """
     Generates a synthetic 'BigMac' phantom composed of multiple concentric tissue layers.
     
@@ -82,4 +82,94 @@ def BigMacPhantom(n_spins: int = 10000, radius: float = 0.05, seed: int = 42) ->
         T2=jnp.array(T2, dtype=jnp.float32),
         M0=jnp.array(M0, dtype=jnp.float32),
         off_resonance=jnp.array(off_resonance, dtype=jnp.float32)
+    )
+    )
+
+from dmipy_jax.io.datasets import load_bigmac_mri
+
+def RealBigMacPhantom(dataset_path: str, downsample: int = 1) -> IsochromatPhantom:
+    """
+    Creates a phantom from the Real BigMac dataset.
+    
+    Args:
+        dataset_path: Path to the BigMac data directory.
+        downsample: Factor to downsample coordinates for lighter simulation (stride).
+        
+    Returns:
+        IsochromatPhantom populated with real T1/T2/ProtonDensity.
+    """
+    data_dict = load_bigmac_mri(dataset_path)
+    
+    if 'T1' not in data_dict or 'T2' not in data_dict:
+        raise ValueError("Dataset must contain T1 and T2 maps.")
+        
+    T1_map = data_dict['T1']
+    T2_map = data_dict['T2']
+    
+    # Masking
+    if 'mask' in data_dict:
+        mask = data_dict['mask'] > 0
+    else:
+        # Generate simple mask from non-zero T1
+        mask = T1_map > 0
+        
+    # Extract voxels
+    # Create coordinate grid
+    ndim = T1_map.ndim
+    shape = T1_map.shape
+    
+    # Assuming standard orientation, or we need affine.
+    # For simulation, we often center at 0.
+    # Let's generate indices.
+    x, y, z = jnp.meshgrid(jnp.arange(shape[0]), jnp.arange(shape[1]), jnp.arange(shape[2]), indexing='ij')
+    
+    # Flatten
+    x_flat = x[mask]
+    y_flat = y[mask]
+    z_flat = z[mask]
+    
+    # Apply downsampling if needed to reduce spin count
+    if downsample > 1:
+        x_flat = x_flat[::downsample]
+        y_flat = y_flat[::downsample]
+        z_flat = z_flat[::downsample]
+        
+        # Need to re-mask properties
+        # Actually easier to downsample indices
+        
+    positions = jnp.stack([x_flat, y_flat, z_flat], axis=1)
+    
+    # Scale positions to meters?
+    # BigMac is usually 0.6mm isotropic.
+    # 0.6mm = 0.0006 m
+    voxel_size = 0.0006 
+    positions = positions * voxel_size
+    
+    # Center the phantom
+    center = jnp.mean(positions, axis=0)
+    positions = positions - center
+    
+    # Properties
+    T1_vals = T1_map[mask]
+    T2_vals = T2_map[mask]
+    
+    # Downsample props
+    if downsample > 1:
+        T1_vals = T1_vals[::downsample]
+        T2_vals = T2_vals[::downsample]
+        
+    # M0 - use T1 map intensity or uniform?
+    # Real M0 map is usually PD. If not available, assume uniform or T1w intensity (masked).
+    # Ideally should use quantitative M0/PD if in dataset.
+    M0_vals = jnp.ones_like(T1_vals) 
+    
+    # Off-resonance
+    off_resonance = jnp.zeros_like(T1_vals) 
+    
+    return IsochromatPhantom(
+        positions=positions.astype(jnp.float32),
+        T1=T1_vals.astype(jnp.float32),
+        T2=T2_vals.astype(jnp.float32),
+        M0=M0_vals.astype(jnp.float32),
+        off_resonance=off_resonance.astype(jnp.float32)
     )

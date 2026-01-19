@@ -232,6 +232,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax.scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">special</span> <span class="k">as</span> <span class="n">jsp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">pure_callback</span><span class="p">,</span> <span class="n">jit</span><span class="p">,</span> <span class="n">vmap</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dmipy_jax.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">GYRO_MAGNETIC_RATIO</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">equinox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">eqx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jaxtyping</span><span class="w"> </span><span class="kn">import</span> <span class="n">Array</span><span class="p">,</span> <span class="n">Float</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span>
 
 
 <span class="c1"># Removed pure_callback wrappers. Using jax.scipy.special directly.</span>
@@ -290,7 +293,8 @@
     <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">argument</span> <span class="o">&gt;</span> <span class="mf">1e-6</span>
     <span class="n">safe_arg</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">valid_mask</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     
-    <span class="n">j1_term</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">safe_arg</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_arg</span>
+    <span class="c1"># bessel_jn returns values for orders 0 to v. We need v=1 (index 1).</span>
+    <span class="n">j1_term</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">safe_arg</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">safe_arg</span>
     <span class="n">signal_perp</span> <span class="o">=</span> <span class="n">j1_term</span> <span class="o">**</span> <span class="mi">2</span>
     
     <span class="c1"># If argument is small, signal is 1.0</span>
@@ -328,7 +332,7 @@
 
 <div class="viewcode-block" id="RestrictedCylinder">
 <a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">RestrictedCylinder</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RestrictedCylinder</span><span class="p">(</span><span class="n">eqx</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The Stejskal-Tanner approximation of the cylinder model with finite radius [1]_.</span>
 <span class="sd">    </span>
@@ -347,8 +351,12 @@
 <span class="sd">            cylindrical geometry.&quot; Journal of Magnetic Resonance, Series A</span>
 <span class="sd">            117.1 (1995): 94-97.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">mu</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">lambda_par</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diameter</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">]</span>
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">)</span>
     <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
     <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">]),</span>
@@ -373,15 +381,23 @@
              <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;RestrictedCylinder requires &#39;big_delta&#39; and &#39;small_delta&#39; in kwargs/acquisition.&quot;</span><span class="p">)</span>
 
         <span class="c1"># Convert spherical [theta, phi] to cartesian vector</span>
-        <span class="n">theta</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">phi</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mu</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+             <span class="n">theta</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+             <span class="n">phi</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+             <span class="n">theta</span> <span class="o">=</span> <span class="n">mu</span>
+             <span class="n">phi</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="c1"># Should not happen for RestrictedCylinder</span>
+             
         <span class="n">st</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
         <span class="n">ct</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
         <span class="n">sp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
         <span class="n">cp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
         
+        <span class="c1"># Ensure mu_cart is (3,)</span>
         <span class="n">mu_cart</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">st</span> <span class="o">*</span> <span class="n">cp</span><span class="p">,</span> <span class="n">st</span> <span class="o">*</span> <span class="n">sp</span><span class="p">,</span> <span class="n">ct</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">mu_cart</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">mu_cart</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">mu_cart</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">c2_cylinder</span><span class="p">(</span><span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="n">mu_cart</span><span class="p">,</span> <span class="n">lambda_par</span><span class="p">,</span> <span class="n">diameter</span><span class="p">,</span> <span class="n">big_delta</span><span class="p">,</span> <span class="n">small_delta</span><span class="p">)</span></div>
 
@@ -549,7 +565,7 @@
 
 <div class="viewcode-block" id="CallaghanRestrictedCylinder">
 <a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">CallaghanRestrictedCylinder</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CallaghanRestrictedCylinder</span><span class="p">(</span><span class="n">eqx</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The Callaghan model [1]_ - a cylinder with finite radius - typically</span>
 <span class="sd">    used for intra-axonal diffusion. The perpendicular diffusion is modelled</span>
@@ -578,8 +594,17 @@
 <span class="sd">            relaxation.&quot; Journal of magnetic resonance, Series A 113.1 (1995):</span>
 <span class="sd">            53-59.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">mu</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">lambda_par</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diameter</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diffusion_perpendicular</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="mf">1.7e-9</span>
+    <span class="n">number_of_roots</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">eqx</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+    <span class="n">number_of_functions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">eqx</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+    <span class="c1"># alpha should be a field to be part of the pytree</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">Array</span> <span class="o">=</span> <span class="n">eqx</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">]</span>
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mu&#39;</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">,</span> <span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">)</span>
     <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;lambda_par&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;diffusion_perpendicular&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
     <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;mu&#39;</span><span class="p">:</span> <span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">pi</span><span class="p">]),</span>

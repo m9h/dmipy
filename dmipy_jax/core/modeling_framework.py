@@ -74,6 +74,39 @@ class JaxMultiCompartmentModel:
             self.parameter_cardinality[fname] = 1
             self.parameter_ranges[fname] = (0.0, 1.0)
 
+    def get_flat_bounds(self):
+        """
+        Returns flat lists of lower and upper bounds for all parameters.
+        Returns:
+            (jnp.ndarray, jnp.ndarray): lower_bounds, upper_bounds
+        """
+        lows = []
+        highs = []
+        
+        for name in self.parameter_names:
+            card = self.parameter_cardinality[name]
+            rng = self.parameter_ranges[name]
+            
+            if card == 1:
+                l, h = rng
+                lows.append(l)
+                highs.append(h)
+            else:
+                if isinstance(rng, tuple) and len(rng) == 2 and isinstance(rng[0], (int, float)):
+                    # Uniform range for vector
+                    l, h = rng
+                    lows.extend([l] * card)
+                    highs.extend([h] * card)
+                else:
+                    # List of ranges
+                    for r in rng:
+                        l, h = r
+                        lows.append(l)
+                        highs.append(h)
+                        
+        return jnp.array(lows), jnp.array(highs)
+
+
 
     def parameter_dictionary_to_array(self, parameter_dictionary):
         """
@@ -189,19 +222,45 @@ class JaxMultiCompartmentModel:
         fitter = OptimistixFitter(self.model_func, flat_ranges, scales=scales)
         
         # 3. Initial Guess
-        # Ideally, we should use a smarter init. For now, mean of bounds.
-        init_params_list = []
-        for low, high in flat_ranges:
-            if jnp.isinf(low) and jnp.isinf(high):
-                init_params_list.append(0.5) # Fallback
-            elif jnp.isinf(high):
-                init_params_list.append(low + 1.0)
-            elif jnp.isinf(low):
-                init_params_list.append(high - 1.0)
-            else:
-                init_params_list.append((low + high) / 2.0)
-                
-        init_params = jnp.array(init_params_list)
+        # Use GlobalBruteInitializer (Random Search in this implementation)
+        from dmipy_jax.fitting.initialization import GlobalBruteInitializer
+        
+        # Determine number of initialization points.
+        # For single voxel: 50 points? For 1M voxels, maybe fewer per voxel or shared?
+        # If we use random grid, we can generate ONE grid and check it against all voxels (vmapped)
+        
+        initializer = GlobalBruteInitializer(self)
+        
+        # Generate random candidates
+        lows, highs = self.get_flat_bounds()
+        
+        # Handle infinities for random sampling
+        # Replace inf with practical limits
+        safe_lows = jnp.where(jnp.isinf(lows), -10.0, lows) # Arbitrary safe
+        safe_highs = jnp.where(jnp.isinf(highs), 10.0, highs)
+        
+        # Replace 0-inf range (diffusivity) with 0-3e-9 approx if not specified? 
+        # Actually user ranges should be good.
+        
+        n_candidates = 2000 
+        key = jax.random.PRNGKey(42)
+        
+        # random uniform (N_cand, N_params)
+        rand_uni = jax.random.uniform(key, (n_candidates, len(lows)))
+        
+        # Scale to bounds: low + rand * (high - low)
+        candidates = safe_lows + rand_uni * (safe_highs - safe_lows)
+        
+        if data.ndim == 1:
+            init_params = initializer.compute_initial_guess(data, acquisition, candidates)
+        else:
+            # Multi-voxel
+            # vmap compute_initial_guess over data
+            # candidates are shared (None)
+            selector = jax.vmap(initializer.compute_initial_guess, in_axes=(0, None, None))
+            init_params = selector(data, acquisition, candidates)
+            # init_params shape (N_vox, N_params)
+
         
         # 4. Run Fit
         from dmipy_jax.core.uncertainty_utils import compute_crlb_std

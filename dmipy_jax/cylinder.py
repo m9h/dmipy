@@ -9,6 +9,11 @@ class C1Stick:
 
     parameter_names = ['mu', 'lambda_par']
     parameter_cardinality = {'mu': 2, 'lambda_par': 1}
+    parameter_ranges = {
+        'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),
+        'lambda_par': (0.1e-9, 3e-9)
+    }
+
 
     def __init__(self, mu=None, lambda_par=None):
         self.mu = mu
@@ -39,6 +44,12 @@ class C2Cylinder:
 
     parameter_names = ['mu', 'lambda_par', 'diameter']
     parameter_cardinality = {'mu': 2, 'lambda_par': 1, 'diameter': 1}
+    parameter_ranges = {
+        'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),
+        'lambda_par': (0.1e-9, 3e-9),
+        'diameter': (1e-7, 20e-6)
+    }
+
 
     def __init__(self, mu=None, lambda_par=None, diameter=None):
         self.mu = mu

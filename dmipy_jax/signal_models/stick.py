@@ -9,6 +9,11 @@ class Stick:
 
     parameter_names = ['mu', 'lambda_par']
     parameter_cardinality = {'mu': 2, 'lambda_par': 1}
+    parameter_ranges = {
+        'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),
+        'lambda_par': (0.1e-9, 3e-9)
+    }
+
 
     def __init__(self, mu=None, lambda_par=None):
         self.mu = mu

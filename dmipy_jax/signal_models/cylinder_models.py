@@ -63,7 +63,8 @@ def c2_cylinder(bvals, bvecs, mu, lambda_par, diameter, big_delta, small_delta):
     valid_mask = argument > 1e-6
     safe_arg = jnp.where(valid_mask, argument, 1.0)
     
-    j1_term = 2 * jsp.jn(1, safe_arg) / safe_arg
+    # bessel_jn returns values for orders 0 to v. We need v=1 (index 1).
+    j1_term = 2 * jsp.bessel_jn(v=1, z=safe_arg)[1] / safe_arg
     signal_perp = j1_term ** 2
     
     # If argument is small, signal is 1.0
@@ -152,8 +153,6 @@ class RestrictedCylinder(eqx.Module):
              theta = mu
              phi = 0.0 # Should not happen for RestrictedCylinder
              
-        # jax.debug.print("mu shape: {}", mu.shape)
-        
         st = jnp.sin(theta)
         ct = jnp.cos(theta)
         sp = jnp.sin(phi)
@@ -163,8 +162,6 @@ class RestrictedCylinder(eqx.Module):
         mu_cart = jnp.array([st * cp, st * sp, ct])
         if mu_cart.ndim > 1:
             mu_cart = jnp.squeeze(mu_cart)
-            
-        jax.debug.print("RestrictedCylinder call: bvals {}, mu {}, mu_cart {}", bvals.shape, mu.shape, mu_cart.shape)
 
         return c2_cylinder(bvals, gradient_directions, mu_cart, lambda_par, diameter, big_delta, small_delta)
 

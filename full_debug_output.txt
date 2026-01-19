@@ -1,4 +1,0 @@
-warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
-RestrictedCylinder call: bvals (Array(5, dtype=int32),), mu (Array(2, dtype=int32),), mu_cart (Array(3, dtype=int32),)
-RestrictedCylinder call: bvals (Array(2, dtype=int32, weak_type=True),), mu (Array(2, dtype=int32, weak_type=True),), mu_cart (Array(3, dtype=int32, weak_type=True),)
-Standalone result shape for N=2: (2, 2)

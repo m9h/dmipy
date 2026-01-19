@@ -128,7 +128,7 @@ def _make_continuous_func(discrete_data, dt, duration):
     return vector_func
 
 @eqx.filter_jit
-def simulate_acquisition(phantom, sequence, duration):
+def simulate_acquisition(phantom, sequence, duration, max_steps=10**7):
     """
     Simulates MRI acquisition.
     
@@ -137,6 +137,7 @@ def simulate_acquisition(phantom, sequence, duration):
         sequence: Object with .gradients (steps, 3), .rf (steps,), .dt (float)
                   (Assuming discrete waveforms for now, will interp)
         duration: Total duration (s)
+        max_steps: Maximum number of solver steps (default: 10^7)
         
     Returns:
         Complex sum sum(Mx + iMy)
@@ -269,7 +270,7 @@ def simulate_acquisition(phantom, sequence, duration):
         y0=m_init,
         args=solver_args,
         stepsize_controller=stepsize_controller,
-        max_steps=1000000 # Increased safety limit
+        max_steps=max_steps # Use argument
     )
     
     # Final state

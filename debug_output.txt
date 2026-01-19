@@ -1,4 +1,0 @@
-warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
-Starting debug...
-Standalone result shape for N=5: (2, 5)
-Standalone result shape for N=2: (2, 2)

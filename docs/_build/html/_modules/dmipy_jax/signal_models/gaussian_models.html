@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>dmipy_jax.signal_models.gaussian_models - Bmipy-JAX Documentation</title>
+        <title>dmipy_jax.signal_models.gaussian_models - Dmipy-JAX Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
@@ -161,7 +161,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">Bmipy-JAX Documentation</div></a>
+      <a href="../../../index.html"><div class="brand">Dmipy-JAX Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -182,7 +182,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
-  <span class="sidebar-brand-text">Bmipy-JAX Documentation</span>
+  <span class="sidebar-brand-text">Dmipy-JAX Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -226,7 +226,8 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for dmipy_jax.signal_models.gaussian_models</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span>
 
 <div class="viewcode-block" id="g1_ball">
@@ -241,7 +242,8 @@
 <span class="sd">        bvecs: (N, 3) array (ignored, but kept for API consistency).</span>
 <span class="sd">        lambda_iso: Scalar isotropic diffusivity.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Simple mono-exponential decay</span>
+    <span class="c1"># Debug</span>
+    <span class="n">jax</span><span class="o">.</span><span class="n">debug</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;g1_ball: bvals shape </span><span class="si">{x}</span><span class="s2">, lambda_iso shape </span><span class="si">{y}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">bvals</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">lambda_iso</span><span class="p">))</span>
     <span class="c1"># S = exp(-b * d_iso)</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">bvals</span> <span class="o">*</span> <span class="n">lambda_iso</span><span class="p">)</span></div>
 
@@ -308,6 +310,25 @@
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">exponent</span><span class="p">)</span></div>
 
+
+
+<div class="viewcode-block" id="Ball">
+<a class="viewcode-back" href="../../../reference/signal_models.html#dmipy_jax.signal_models.gaussian_models.Ball">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Ball</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Isotropic Ball model class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lambda_iso&#39;</span><span class="p">]</span>
+    <span class="n">parameter_cardinality</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lambda_iso&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">parameter_ranges</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lambda_iso&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3e-9</span><span class="p">)}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lambda_iso</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambda_iso</span> <span class="o">=</span> <span class="n">lambda_iso</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">lambda_iso</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lambda_iso&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambda_iso</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">g1_ball</span><span class="p">(</span><span class="n">bvals</span><span class="p">,</span> <span class="n">gradient_directions</span><span class="p">,</span> <span class="n">lambda_iso</span><span class="p">)</span></div>
+
 </pre></div>
         </article>
       </div>
@@ -320,7 +341,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2025, Rutger Fick, Demian Wassermann, and Contributors
+                Copyright &#169; 2026, Rutger Fick, Demian Wassermann, and Contributors
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             

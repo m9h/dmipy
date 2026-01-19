@@ -69,7 +69,12 @@ class DD1Gamma:
         # So for non-standard scale beta:
         # pdf(x, alpha, beta) = (1/beta) * standard_pdf(x/beta, alpha)
         
-        pdf_vals = stats.gamma.pdf(radii / beta, alpha) / beta
+        # Use logpdf for numerical stability
+        # pdf(x, alpha, beta) = (1/beta) * standard_pdf(x/beta, alpha)
+        # logpdf = -log(beta) + standard_logpdf(x/beta, alpha)
+        
+        log_pdf_vals = stats.gamma.logpdf(radii / beta, alpha) - jnp.log(beta)
+        pdf_vals = jnp.exp(log_pdf_vals)
         
         # Normalize
         # Area = (end - start) / (Nsteps - 1) * sum(pdf) approx

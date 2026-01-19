@@ -12,6 +12,10 @@ class G1Ball:
 
     parameter_names = ['lambda_iso']
     parameter_cardinality = {'lambda_iso': 1}
+    parameter_ranges = {
+        'lambda_iso': (0.1e-9, 3e-9)
+    }
+
 
     def __init__(self, lambda_iso=None):
         self.lambda_iso = lambda_iso
@@ -28,6 +32,12 @@ class G2Zeppelin:
 
     parameter_names = ['mu', 'lambda_par', 'lambda_perp']
     parameter_cardinality = {'mu': 2, 'lambda_par': 1, 'lambda_perp': 1}
+    parameter_ranges = {
+        'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),
+        'lambda_par': (0.1e-9, 3e-9),
+        'lambda_perp': (0.1e-9, 3e-9)
+    }
+
 
     def __init__(self, mu=None, lambda_par=None, lambda_perp=None):
         self.mu = mu

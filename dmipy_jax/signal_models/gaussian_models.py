@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 from jax import jit
 
@@ -11,7 +12,8 @@ def g1_ball(bvals, bvecs, lambda_iso):
         bvecs: (N, 3) array (ignored, but kept for API consistency).
         lambda_iso: Scalar isotropic diffusivity.
     """
-    # Simple mono-exponential decay
+    # Debug
+    jax.debug.print("g1_ball: bvals shape {x}, lambda_iso shape {y}", x=bvals.shape, y=jnp.shape(lambda_iso))
     # S = exp(-b * d_iso)
     return jnp.exp(-bvals * lambda_iso)
 
@@ -71,3 +73,19 @@ def g2_tensor(bvals, bvecs, lambda_1, lambda_2, lambda_3, e1, e2):
         lambda_3 * g_dot_e3**2
     )
     return jnp.exp(exponent)
+
+
+class Ball:
+    """
+    Isotropic Ball model class.
+    """
+    parameter_names = ['lambda_iso']
+    parameter_cardinality = {'lambda_iso': 1}
+    parameter_ranges = {'lambda_iso': (0.0, 3e-9)}
+
+    def __init__(self, lambda_iso=None):
+        self.lambda_iso = lambda_iso
+
+    def __call__(self, bvals, gradient_directions, **kwargs):
+        lambda_iso = kwargs.get('lambda_iso', self.lambda_iso)
+        return g1_ball(bvals, gradient_directions, lambda_iso)

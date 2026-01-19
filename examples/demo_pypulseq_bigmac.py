@@ -7,7 +7,7 @@ import pypulseq as pp
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
-from dmipy_jax.simulation.scanner.phantoms import BigMacPhantom
+from dmipy_jax.simulation.scanner.phantoms import SyntheticBigMacPhantom
 from dmipy_jax.external.pulseq import pulseq_to_general
 from dmipy_jax.simulation.scanner.bloch import simulate_acquisition
 
@@ -68,7 +68,7 @@ def main():
     # 3. Instantiate BigMac Phantom
     print("Creating BigMac Phantom...")
     # Low spin count for rapid testing
-    phantom = BigMacPhantom(n_spins=1000, radius=0.05, seed=1337)
+    phantom = SyntheticBigMacPhantom(n_spins=1000, radius=0.05, seed=1337)
     print(f"Phantom created with {phantom.positions.shape[0]} spins.")
     
     # 4. Simulate

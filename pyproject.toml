@@ -19,7 +19,7 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "jax",
+  "jax[cuda12]",
   "dmipy",
   "numpy",
   "jaxlib",

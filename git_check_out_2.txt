@@ -1,0 +1,2 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+/home/mhough/src/dmipy/.venv/bin/python3: can't open file '/home/mhough/src/dmipy/git_check.py': [Errno 2] No such file or directory

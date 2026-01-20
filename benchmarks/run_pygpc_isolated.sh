@@ -12,16 +12,20 @@ uv venv $VENV_DIR --seed
 # Activate
 source $VENV_DIR/bin/activate
 
+
+
 echo "Installing PyGPC and dependencies..."
-# Install numpy and scipy first, then pygpc
-# PyGPC might not be on PyPI or might have specific requirements. 
-# Assuming `pip install pygpc` works, or we might need git.
-# Checking PyGPC installation instructions: usually `pip install pygpc`
 uv pip install numpy scipy matplotlib h5py
-# PyGPC requires specific installation, let's try standard pip first.
-uv pip install pygpc
+
+# Try installing from PyPI
+echo "Attempting install from PyPI..."
+uv pip install pygpc || {
+    echo "PyPI install failed. Attempting install from GitHub..."
+    uv pip install git+https://github.com/dmueller43/pygpc.git
+}
 
 echo "Running Benchmark Script..."
 python benchmarks/benchmark_pygpc_script.py
+
 
 echo "Comparison Benchmark Complete."

@@ -57,6 +57,10 @@ def run_validation():
         'lambda_perp': lambda_perp_true,
         'lambda_iso': jnp.full((N_samples,), lambda_iso_true)
     }
+
+    print("DEBUG: params_true shapes:")
+    for k, v in params_true.items():
+        print(f"  {k}: {v.shape}")
     
     # Acquisition
     print("Generating Acquisition...")

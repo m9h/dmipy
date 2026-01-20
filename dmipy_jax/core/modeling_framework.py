@@ -139,6 +139,65 @@ class JaxMultiCompartmentModel:
                     
         return jnp.concatenate([jnp.atleast_1d(p) for p in params_list])
 
+    def __call__(self, parameter_dictionary, acquisition):
+        """
+        Simulates signal for the given parameters and acquisition scheme.
+        Supports both single-voxel (scalars) and multi-voxel (arrays) parameter inputs.
+        
+        Args:
+            parameter_dictionary (dict): Dictionary of parameters.
+            acquisition (JaxAcquisition): Acquisition scheme.
+            
+        Returns:
+            jnp.ndarray: Simulated signal (N_meas,) or (N_vox, N_meas).
+        """
+        # 1. Determine if inputs are batched
+        # Check first parameter in dictionary
+        first_key = self.parameter_names[0]
+        if first_key not in parameter_dictionary:
+             # Try finding any valid key
+             found = False
+             for k in self.parameter_names:
+                 if k in parameter_dictionary:
+                     first_key = k
+                     found = True
+                     break
+             if not found:
+                 raise ValueError(f"No valid parameters found in dictionary. Expected {self.parameter_names}")
+
+        val = parameter_dictionary[first_key]
+        card = self.parameter_cardinality[first_key]
+        
+        # Check dimensionality relative to cardinality
+        # If card=1, scalar is ndim=0. Batch is ndim=1.
+        # If card>1, vector is ndim=1 (or flattened). Batch is ndim=2.
+        # We assume vectors are never flattened to scalars in the input dict, they should be arrays.
+        
+        if card == 1:
+            is_batched = jnp.ndim(val) > 0
+        else:
+            is_batched = jnp.ndim(val) > 1
+        
+        # 2. Convert to Array
+        if is_batched:
+            # Setup vmapped conversion
+            # parameter_dictionary_to_array expects scalars. 
+            # We vmap it.
+            # But parameter_dictionary is a dict of arrays. 
+            # jax.vmap(func)(dict_of_arrays) works if structure matches.
+            
+            converter = jax.vmap(self.parameter_dictionary_to_array)
+            params_flat = converter(parameter_dictionary) # (N, n_params)
+            
+            # 3. Simulate (Vmapped)
+            simulator = jax.vmap(self.model_func, in_axes=(0, None))
+            return simulator(params_flat, acquisition)
+            
+        else:
+            # Single voxel
+            params_flat = self.parameter_dictionary_to_array(parameter_dictionary)
+            return self.model_func(params_flat, acquisition)
+
 
     def parameter_array_to_dictionary(self, parameter_array):
         """
@@ -157,7 +216,7 @@ class JaxMultiCompartmentModel:
         return ret
 
 
-    def fit(self, acquisition, data, method="Levenberg-Marquardt", compute_uncertainty=True):
+    def fit(self, acquisition, data, method="Levenberg-Marquardt", compute_uncertainty=True, batch_size=None):
         """
         Fits the model to data.
         
@@ -284,10 +343,58 @@ class JaxMultiCompartmentModel:
             return ret
 
         else:
-            # VMAP over voxels
-            fit_vmapped = jax.vmap(fitter.fit, in_axes=(0, None, None))
-            fitted_batch, _ = fit_vmapped(data, acquisition, init_params)
+            # Multi-voxel logic
+            N_vox = data.shape[0]
+
+            # Helper for fitting a batch
+            fit_vmapped = jax.vmap(fitter.fit, in_axes=(0, None, 0))
             
+            # Helper for uncertainty
+            from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
+            def single_pixel_uncertainty(params, data_voxel):
+                sigma_est = estimate_sigma(params, data_voxel, acquisition)
+                J = compute_jacobian(self.model_func, params, acquisition)
+                return compute_crlb_std(J, sigma=sigma_est)
+            
+            calc_uncertainty_vmapped = jax.vmap(single_pixel_uncertainty)
+
+            # Determine if batching is needed
+            if batch_size is None or N_vox <= batch_size:
+                # Full VMAP
+                fitted_batch, _ = fit_vmapped(data, acquisition, init_params)
+                if compute_uncertainty:
+                    stds_batch = calc_uncertainty_vmapped(fitted_batch, data)
+                else:
+                    stds_batch = None
+            else:
+                # Chunked Processing
+                import math
+                n_chunks = math.ceil(N_vox / batch_size)
+                fitted_chunks = []
+                stds_chunks = []
+                
+                for i in range(n_chunks):
+                    start_idx = i * batch_size
+                    end_idx = min((i + 1) * batch_size, N_vox)
+                    
+                    data_chunk = data[start_idx:end_idx]
+                    init_chunk = init_params[start_idx:end_idx]
+                    
+                    # Run Fit
+                    res_chunk, _ = fit_vmapped(data_chunk, acquisition, init_chunk)
+                    fitted_chunks.append(res_chunk)
+                    
+                    if compute_uncertainty:
+                        std_chunk = calc_uncertainty_vmapped(res_chunk, data_chunk)
+                        stds_chunks.append(std_chunk)
+                
+                fitted_batch = jnp.concatenate(fitted_chunks, axis=0)
+                if compute_uncertainty:
+                    stds_batch = jnp.concatenate(stds_chunks, axis=0)
+                else:
+                    stds_batch = None
+
+            # 5. Pack results
             ret = {}
             idx = 0
             for name in self.parameter_names:
@@ -299,17 +406,7 @@ class JaxMultiCompartmentModel:
                     ret[name] = fitted_batch[:, idx:idx+card]
                     idx += card
             
-            if compute_uncertainty:
-                # Vmap uncertainty calculation
-                from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
-                
-                def single_pixel_uncertainty(params, data_voxel):
-                    sigma_est = estimate_sigma(params, data_voxel, acquisition)
-                    J = compute_jacobian(self.model_func, params, acquisition)
-                    return compute_crlb_std(J, sigma=sigma_est)
-                
-                stds_batch = jax.vmap(single_pixel_uncertainty)(fitted_batch, data)
-                
+            if compute_uncertainty and stds_batch is not None:
                 idx = 0
                 for name in self.parameter_names:
                     card = self.parameter_cardinality[name]

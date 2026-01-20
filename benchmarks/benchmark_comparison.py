@@ -8,7 +8,7 @@ print("DEBUG: JAX imported.")
 
 try:
     from dmipy_jax.signal_models.cylinder_models import RestrictedCylinder
-    from dmipy_jax.core.acquisition import JaxAcquisition
+    from dmipy_jax.acquisition import JaxAcquisition
     print("DEBUG: Dmipy-JAX imported.")
 except ImportError as e:
     print(f"DEBUG: Dmipy-JAX import failed: {e}")

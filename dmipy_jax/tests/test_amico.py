@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from dmipy_jax.inverse.amico import AMICOSolver, calculate_mean_parameter_map
-from shapely.geometry import Point # Dummy import if needed, but likely not
+# from shapely.geometry import Point # Dummy import removed
 # Using simple callable for model to avoid dependencies on specific signal models being perfect
 # But let's try to mimic a Stick model structure
 

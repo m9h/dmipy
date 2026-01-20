@@ -27,7 +27,7 @@
 | Zeppelins | ✅ | ✅ | `G2Zeppelin`, `TortuosityModel` |
 | **Gaussian Models** | | | |
 | Ball (G1) | ✅ | ✅ | `G1Ball` |
-| Tensor (G2) | ✅ | ❌ | Kernel `g2_tensor` available |
+| Tensor (G2) | ✅ | ✅ | `Tensor` (Full Ellipsoid) |
 | **Sphere Models** | | | |
 | Sphere (S2) | ✅ | ✅ | `SphereStejskalTanner`, `SphereGPD` (SANDI), `SphereCallaghan` |
 | **Plane Models** | | | |

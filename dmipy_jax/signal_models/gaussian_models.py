@@ -1,6 +1,8 @@
 import jax
 import jax.numpy as jnp
 from jax import jit
+import equinox as eqx
+from typing import Any
 
 @jit
 def g1_ball(bvals, bvecs, lambda_iso):
@@ -89,3 +91,108 @@ class Ball:
     def __call__(self, bvals, gradient_directions, **kwargs):
         lambda_iso = kwargs.get('lambda_iso', self.lambda_iso)
         return g1_ball(bvals, gradient_directions, lambda_iso)
+
+
+class Tensor(eqx.Module):
+    r"""
+    The full Gaussian Tensor model (Ellipsoid) [1]_.
+    
+    Parameters
+    ----------
+    lambda_1 : float
+        First eigenvalue (diffusivity) in m^2/s.
+    lambda_2 : float
+        Second eigenvalue in m^2/s.
+    lambda_3 : float
+        Third eigenvalue in m^2/s.
+    alpha : float
+        First Euler angle (Z-Y-Z convention) in radians.
+    beta : float
+        Second Euler angle (Z-Y-Z convention) in radians.
+    gamma : float
+        Third Euler angle (Z-Y-Z convention) in radians.
+        
+    References
+    ----------
+    .. [1] Basser, Peter J., James Mattiello, and Denis LeBihan.
+           "MR diffusion tensor spectroscopy and imaging."
+           Biophysical journal 66.1 (1994): 259-267.
+    """
+    
+    lambda_1: Any = None
+    lambda_2: Any = None
+    lambda_3: Any = None
+    alpha: Any = None
+    beta: Any = None
+    gamma: Any = None
+
+    parameter_names = ('lambda_1', 'lambda_2', 'lambda_3', 'alpha', 'beta', 'gamma')
+    parameter_cardinality = {
+        'lambda_1': 1, 'lambda_2': 1, 'lambda_3': 1,
+        'alpha': 1, 'beta': 1, 'gamma': 1
+    }
+    parameter_ranges = {
+        'lambda_1': (0.1e-9, 3e-9),
+        'lambda_2': (0.1e-9, 3e-9),
+        'lambda_3': (0.1e-9, 3e-9),
+        'alpha': (-jnp.pi, jnp.pi),
+        'beta': (0, jnp.pi),
+        'gamma': (-jnp.pi, jnp.pi)
+    }
+
+    def __init__(self, lambda_1=None, lambda_2=None, lambda_3=None, 
+                 alpha=None, beta=None, gamma=None):
+        self.lambda_1 = lambda_1
+        self.lambda_2 = lambda_2
+        self.lambda_3 = lambda_3
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
+
+    def __call__(self, bvals, gradient_directions, **kwargs):
+        l1 = kwargs.get('lambda_1', self.lambda_1)
+        l2 = kwargs.get('lambda_2', self.lambda_2)
+        l3 = kwargs.get('lambda_3', self.lambda_3)
+        alpha = kwargs.get('alpha', self.alpha)
+        beta = kwargs.get('beta', self.beta)
+        gamma = kwargs.get('gamma', self.gamma)
+        
+        # Convert Euler angles (Z-Y-Z) to Rotation Matrix
+        # R = Rz(alpha) * Ry(beta) * Rz(gamma)
+        # Note: Dmipy and standard DWI often use Z-Y-Z
+        
+        ca = jnp.cos(alpha)
+        sa = jnp.sin(alpha)
+        cb = jnp.cos(beta)
+        sb = jnp.sin(beta)
+        cg = jnp.cos(gamma)
+        sg = jnp.sin(gamma)
+        
+        # R11 = ca cb cg - sa sg
+        # R12 = -ca cb sg - sa cg
+        # R13 = ca sb
+        # R21 = sa cb cg + ca sg
+        # R22 = -sa cb sg + ca cg
+        # R23 = sa sb
+        # R31 = -sb cg
+        # R32 = sb sg
+        # R33 = cb
+        
+        # Eigenvectors are columns of R
+        e1 = jnp.array([ca*cb*cg - sa*sg, sa*cb*cg + ca*sg, -sb*cg])
+        e2 = jnp.array([-ca*cb*sg - sa*cg, -sa*cb*sg + ca*cg, sb*sg])
+        # e3 = jnp.array([ca*sb, sa*sb, cb]) # Not needed for kernel but check g2_tensor
+        
+        # Ensure eigenvectors are correct shape (3,) or broadcastable if inputs are arrays
+        # If inputs are arrays (N,), e1 will be (3, N) if we stack like this?
+        # Actually if alpha is (N,), then ca is (N,).
+        # jnp.array([...]) results in (3, N).
+        # g2_tensor expects bvecs (N, 3). e1 should be (N, 3) or (3,)
+        # If we return (3, N), we need to transpose to (N, 3) for dot product with bvecs.
+        
+        if jnp.ndim(ca) > 0:
+            e1 = jnp.moveaxis(e1, 0, -1) # (..., 3)
+            e2 = jnp.moveaxis(e2, 0, -1)
+        
+        # Kernel g2_tensor calculates e3 internally via cross product
+        return g2_tensor(bvals, gradient_directions, l1, l2, l3, e1, e2)

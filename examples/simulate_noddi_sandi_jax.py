@@ -2,9 +2,10 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-from dmipy_jax.signal_models.cylinder_models import C1Stick
-from dmipy_jax.signal_models.gaussian_models import G1Ball, G2Zeppelin
-from dmipy_jax.signal_models.sphere_models import S1Sphere
+from dmipy_jax.signal_models.stick import Stick
+from dmipy_jax.signal_models.zeppelin import Zeppelin
+from dmipy_jax.signal_models.gaussian_models import Ball
+from dmipy_jax.signal_models.sphere_models import SphereStejskalTanner
 from dmipy_jax.core.modeling_framework import JaxMultiCompartmentModel
 from dmipy_jax.acquisition import JaxAcquisition
 
@@ -31,14 +32,15 @@ def simulate_noddi_like_dataset_jax(dimensions=(10, 10, 10)):
     """
     print("Constructing JAX NODDI model...")
     # 1. Define Components
-    stick = C1Stick()
-    zeppelin = G2Zeppelin()
-    ball = G1Ball()
+    stick = Stick()
+    zeppelin = Zeppelin()
+    ball = Ball()
     
     # 2. Combine into Multi-Compartment Model
     noddi = JaxMultiCompartmentModel(models=[stick, zeppelin, ball])
     
     # 3. Generate Parameter Maps
+    print(f"NODDI Parameter Names: {noddi.parameter_names}")
     print(f"Generating parameter maps for {dimensions} volume...")
     
     # Grid
@@ -78,8 +80,8 @@ def simulate_noddi_like_dataset_jax(dimensions=(10, 10, 10)):
     mu = jnp.stack([mu_x, mu_y, mu_z], axis=-1) # (dim, dim, dim, 3)
     
     # Shared Orientation (Linking)
-    parameters['C1Stick_1_mu'] = mu
-    parameters['G2Zeppelin_1_mu'] = mu 
+    parameters['mu'] = mu
+    parameters['mu_2'] = mu 
     
     # Diffusivities
     # Tortuosity constraint for Zeppelin:
@@ -89,14 +91,14 @@ def simulate_noddi_like_dataset_jax(dimensions=(10, 10, 10)):
     # Broadcast scalar to volume shape if needed, or JAX handles scalar broadcasting naturally.
     # But for tortuosity calculation we might want explicit arrays effectively.
     
-    parameters['C1Stick_1_lambda_par'] = jnp.full(dimensions, lambda_par)
-    parameters['G2Zeppelin_1_lambda_par'] = jnp.full(dimensions, lambda_par)
+    parameters['lambda_par'] = jnp.full(dimensions, lambda_par)
+    parameters['lambda_par_2'] = jnp.full(dimensions, lambda_par)
     
     # Calculate Tortuosity
     lambda_perp = lambda_par * (1.0 - f_stick)
-    parameters['G2Zeppelin_1_lambda_perp'] = lambda_perp
+    parameters['lambda_perp'] = lambda_perp
     
-    parameters['G1Ball_1_lambda_iso'] = jnp.full(dimensions, 3.0e-9)
+    parameters['lambda_iso'] = jnp.full(dimensions, 3.0e-9)
     
     # 4. Simulate
     print("Simulating signal with JAX...")
@@ -108,7 +110,7 @@ def simulate_noddi_like_dataset_jax(dimensions=(10, 10, 10)):
     # It has `model_func` which is the composted function taking (params_flat, acq).
     # And helper `parameter_dictionary_to_array`.
     
-    params_flat = noddi.parameter_dictionary_to_array(parameters)
+    # params_flat = noddi.parameter_dictionary_to_array(parameters)
     
     # The `model_func` expects flat parameters.
     # And since we have spatial dimensions, we probably need to vmap if the model_func is for a single voxel?

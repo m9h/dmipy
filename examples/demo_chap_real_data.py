@@ -22,7 +22,7 @@ from dmipy_jax.data.public_datasets import (
 )
 from dmipy_jax.core.modeling_framework import JaxMultiCompartmentModel
 from dmipy_jax.signal_models import cylinder_models, gaussian_models
-from dmipy_jax.fitting.optimistix_fitter import OptimistixFitter
+from dmipy_jax.fitting.optimization import OptimistixFitter
 from dipy.io.gradients import read_bvals_bvecs
 from dmipy_jax.acquisition import JaxAcquisition
 

@@ -67,15 +67,23 @@ class StochasticTrainer:
         # 2. Scaling
         if scales is not None:
              # Ensure scales match params structure effectively
+<<<<<<< HEAD
              # If params is flat array, scales should be flat array.
              params_internal = params / scales
         else:
              params_internal = params
              scales = 1.0 # Broadcastable
+=======
+             params_internal = params / scales
+        else:
+             params_internal = params
+             scales = 1.0 
+>>>>>>> recovery_work_v2
         
         # 3. Define Loss Function
         model_call = self.model.model_func
         
+<<<<<<< HEAD
         # Wrapper to unscale if needed
         # If unwrap_fn is present, it acts on internal params? Usually unwrap_fn implies NN.
         # If NN, scales might not apply to weights directly in this simple way, or weights are O(1).
@@ -106,12 +114,19 @@ class StochasticTrainer:
                 else:
                     pred = model_call(p_real, acquisition)
                 return jnp.mean((batch_data - pred) ** 2)
+=======
+        if loss_type == 'mse':
+            def loss_fn(p_internal, batch_data):
+                p_real = p_internal * scales
+                return mse_loss(p_real, acquisition, batch_data, model_call, unwrap_fn)
+>>>>>>> recovery_work_v2
                 
         elif loss_type == 'rician':
             if sigma is None:
                 raise ValueError("sigma must be provided for Rician loss.")
             def loss_fn(p_internal, batch_data):
                 p_real = p_internal * scales
+<<<<<<< HEAD
                 if unwrap_fn:
                     args = unwrap_fn(p_real)
                     pred = model_call(acquisition, *args)
@@ -134,6 +149,13 @@ class StochasticTrainer:
                          return model_call(p_r, acq)
                          
                 return rician_nll_loss(p_internal, acquisition, batch_data, sigma, scaled_model_func)
+=======
+                # We pass p_real to rician_nll_loss
+                # rician_nll_loss calls unwrap_fn(p_real) if present
+                # But losses.py expects unwrap_fn to take params and return args.
+                # Here unwrap_fn is already in that format.
+                return rician_nll_loss(p_real, acquisition, batch_data, sigma, model_call, unwrap_fn)
+>>>>>>> recovery_work_v2
         else:
              raise ValueError(f"Unknown loss_type: {loss_type}")
 
@@ -168,10 +190,13 @@ class StochasticTrainer:
                 
                 params, opt_state, loss_val = update_step(params, opt_state, batch_data)
                 
+<<<<<<< HEAD
                 # Check for NaNs
                 # if jnp.isnan(loss_val):
                 #     break 
                 
+=======
+>>>>>>> recovery_work_v2
                 epoch_loss += loss_val
                 steps += 1
                 

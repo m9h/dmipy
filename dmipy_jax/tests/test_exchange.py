@@ -91,4 +91,7 @@ class TestKargerExchange:
         
         # Should be very close
         assert jnp.allclose(signal_karger, signal_indep, atol=1e-5)
+<<<<<<< HEAD
 
+=======
+>>>>>>> recovery_work_v2

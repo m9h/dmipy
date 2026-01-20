@@ -28,6 +28,7 @@ class JaxAcquisition:
     Delta: Optional[Union[jnp.ndarray, float]] = None
     echo_time: Optional[Union[jnp.ndarray, float]] = None
     total_readout_time: Optional[Union[jnp.ndarray, float]] = None
+    btensors: Optional[jnp.ndarray] = None
 
     def __post_init__(self):
         """
@@ -45,6 +46,17 @@ class JaxAcquisition:
             self.echo_time = jnp.array(self.echo_time)
         if self.total_readout_time is not None:
             self.total_readout_time = jnp.array(self.total_readout_time)
+
+        # Initialize B-Tensors
+        if self.btensors is None:
+            # Construct LTE B-tensors from bvals and bvecs
+            # B = bval * outer(g, g)
+            # Shapes: bvals (N,), g (N, 3) -> B (N, 3, 3)
+            
+            # einsum 'n, ni, nj -> nij'
+            self.btensors = jnp.einsum('n, ni, nj -> nij', self.bvalues, self.gradient_directions, self.gradient_directions)
+        else:
+            self.btensors = jnp.array(self.btensors)
 
     @property
     def qvalues(self):
@@ -91,6 +103,7 @@ class JaxAcquisition:
         """
         self.bvalues = jax.device_put(self.bvalues, device)
         self.gradient_directions = jax.device_put(self.gradient_directions, device)
+        self.btensors = jax.device_put(self.btensors, device)
         
         if self.delta is not None:
             self.delta = jax.device_put(self.delta, device)
@@ -163,7 +176,8 @@ def _acquisition_flatten(acq):
         acq.delta,
         acq.Delta,
         acq.echo_time,
-        acq.total_readout_time
+        acq.total_readout_time,
+        acq.btensors
     )
     # Aux data is empty/None as we don't have static metadata that affects the structure
     aux_data = None
@@ -177,7 +191,8 @@ def _acquisition_unflatten(aux_data, children):
         delta=children[2],
         Delta=children[3],
         echo_time=children[4],
-        total_readout_time=children[5]
+        total_readout_time=children[5],
+        btensors=children[6]
     )
 
 jax.tree_util.register_pytree_node(

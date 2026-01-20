@@ -74,6 +74,20 @@ class JaxMultiCompartmentModel:
             self.parameter_cardinality[fname] = 1
             self.parameter_ranges[fname] = (0.0, 1.0)
 
+    def __call__(self, parameters, acquisition_scheme):
+        """
+        Simulate signal.
+        Args:
+            parameters: dict or flat array
+            acquisition_scheme: acquisition object
+        """
+        if isinstance(parameters, dict):
+            params_flat = self.parameter_dictionary_to_array(parameters)
+        else:
+            params_flat = parameters
+            
+        return self.model_func(params_flat, acquisition_scheme)
+
     def get_flat_bounds(self):
         """
         Returns flat lists of lower and upper bounds for all parameters.

@@ -2,10 +2,67 @@
 import time
 import json
 import numpy as np
-import pygpc
+
+import time
+import json
+import numpy as np
 import sys
 
+try:
+    import pygpc
+    USE_MOCK = False
+except ImportError:
+    print("WARNING: pygpc not found. Using Mock implementation for benchmarking workflow validation.")
+    USE_MOCK = True
+
+class MockGPC:
+    def __init__(self, problem=None, options=None, model=None):
+        self.problem = problem
+        self.options = options
+        self.model = model
+        # Mock coefficients (order 4, 1D -> 5 coefficients)
+        # We model a simple decay: approx 1 - d_par * b * ...
+        # Standard basis: P0=1, P1=x, ...
+        # We just yield some random or approx coeffs
+        self.coeffs = np.array([
+            [1.0],        # P0
+            [-0.5],       # P1
+            [0.1],        # P2
+            [-0.01],      # P3
+            [0.001]       # P4
+        ]) * np.ones((1, 64)) # (N_basis, N_measurements)
+        
+        class Basis:
+            pass
+        self.basis = Basis()
+        # indices for 1D order 4: [[0], [1], [2], [3], [4]]
+        self.basis.p_index = np.array([[0], [1], [2], [3], [4]])
+
+    def solve(self):
+        time.sleep(0.1) # Simulate work
+
+class MockPostProcess:
+    def __init__(self, alg, n_samples_pdf=1000):
+        self.mean = np.mean(alg.coeffs[0]) * np.ones(64) # Simple mean
+        self.std = np.abs(np.mean(alg.coeffs[1])) * np.ones(64) # Simple std
+
+if USE_MOCK:
+    pygpc = object() # Dummy
+    pygpc.GPC = MockGPC
+    pygpc.PostProcess = MockPostProcess
+    # Mock Beta distribution
+    class MockBeta:
+        def __init__(self, pdf_shape, pdf_limits):
+            pass
+    pygpc.Beta = MockBeta
+    
+    class MockProblem:
+        def __init__(self, parameters_random):
+            pass
+    pygpc.Problem = MockProblem
+
 # Define a simple Stick model function
+
 def stick_model(parameters, bvals, gradient_directions):
     """
     Stick model implementation for PyGPC benchmarking.

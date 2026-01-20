@@ -65,6 +65,7 @@ def main():
     # 4. Determine Scales
     print("Calculating scales...")
     scales_list = []
+<<<<<<< HEAD
     # Replicate logic roughly from JaxMultiCompartmentModel.fit or just manual since we know the model
     # Stick: mu (2), lambda_par (1)
     # Ball: lambda_iso (1)
@@ -73,12 +74,15 @@ def main():
     # Just iterate parameter names and use ranges
     # WARNING: This relies on specific ordering in flat array matching parameter_names iteration
     # which JaxMultiCompartmentModel enforces.
+=======
+>>>>>>> recovery_work_v2
     
     for name in model.parameter_names:
         card = model.parameter_cardinality[name]
         rng = model.parameter_ranges[name]
         
         current_scales = []
+<<<<<<< HEAD
         
         # Helper to pick scale from range (min, max)
         def get_scale(r):
@@ -90,12 +94,21 @@ def main():
                  if abs(h) < 1e-6 and h != 0: return h
                  if abs(h) > 1e6: return h
                  return 1.0 # Angles and Fractions (~1)
+=======
+        def get_scale(r):
+            if isinstance(r, (list, tuple)):
+                 l, h = r
+                 if abs(h) < 1e-6 and h != 0: return h
+                 if abs(h) > 1e6: return h
+                 return 1.0 
+>>>>>>> recovery_work_v2
             return 1.0
             
         if card == 1:
             s = get_scale(rng)
             current_scales.append(s)
         else:
+<<<<<<< HEAD
             # Vector
             if isinstance(rng, tuple) and len(rng)==2 and isinstance(rng[0], (int, float)):
                  # Uniform range
@@ -103,6 +116,12 @@ def main():
                  current_scales.extend([s]*card)
             else:
                  # List of ranges
+=======
+            if isinstance(rng, tuple) and len(rng)==2 and isinstance(rng[0], (int, float)):
+                 s = get_scale(rng)
+                 current_scales.extend([s]*card)
+            else:
+>>>>>>> recovery_work_v2
                  for r in rng:
                      current_scales.append(get_scale(r))
                      
@@ -114,10 +133,15 @@ def main():
     # 5. Setup Stochastic Trainer
     print("Initializing StochasticTrainer...")
     
+<<<<<<< HEAD
     # Optimizer
     # With scaling, params are ~1. Learing rate 1e-2 should be fine.
     lr = 5e-2 
     # Use scheduler to decay
+=======
+    # Constrained optimization requires slower learning rate usually?
+    lr = 5e-2
+>>>>>>> recovery_work_v2
     scheduler = optax.exponential_decay(init_value=lr, transition_steps=500, decay_rate=0.5)
     optimizer = optax.adam(learning_rate=scheduler)
     
@@ -126,6 +150,7 @@ def main():
     # Initial Guess
     # Normalize GT by scales to perturb in "internal" space, then rescale
     gt_internal = gt_flat / scales
+<<<<<<< HEAD
     perturbation = jax.random.normal(k3, gt_internal.shape) * 0.2 # 20% perturbation
     init_internal = gt_internal + perturbation
     
@@ -146,6 +171,61 @@ def main():
         verbose=True
     )
     
+=======
+    perturbation = jax.random.normal(k3, gt_internal.shape) * 0.1 # 10% perturbation
+    init_internal = gt_internal + perturbation
+    
+    init_flat = init_internal * scales
+    
+    # 6. Fit
+    print("Starting fit (Rician Loss) with Constraints...")
+    
+    # Define unwrap_fn to enforce constraints
+    # params_flat comes in with scaling APPLIED.
+    # We want to map them to physical range.
+    
+    def unwrap_fn(p_flat):
+        # We assume p_flat structure matches model.parameter_names order
+        # mu: unconstrained (angles)
+        # lambda_par: softplus (must be positive)
+        # lambda_iso: softplus (must be positive)
+        # partial_volumes: softplus (must be positive)
+        
+        p_constrained = []
+        idx = 0
+        for name in model.parameter_names:
+            card = model.parameter_cardinality[name]
+            p_sub = p_flat[idx:idx+card]
+            
+            if 'mu' in name:
+                p_c = p_sub 
+            else:
+                 # Diffusivities and fractions -> abs (simple positivity)
+                 # We avoid softplus because p_sub is already scaled (e.g. 1e-9)
+                 # softplus(1e-9) ~ log(2) ~ 0.69 (HUGE error)
+                 p_c = jnp.abs(p_sub)
+                 
+            p_constrained.append(p_c)
+            idx += card
+            
+        return [jnp.concatenate(p_constrained)]
+
+    fitted_flat_raw = trainer.fit(
+        init_flat, 
+        acq, 
+        signal_noisy, 
+        epochs=3000, 
+        loss_type='rician',
+        sigma=sigma,
+        scales=scales,
+        unwrap_fn=unwrap_fn,
+        verbose=True
+    )
+    
+    # Apply unwrap_fn to final result to get physical values
+    fitted_flat = unwrap_fn(fitted_flat_raw)[0]
+    
+>>>>>>> recovery_work_v2
     # 7. Results
     fitted_dict = model.parameter_array_to_dictionary(fitted_flat)
     

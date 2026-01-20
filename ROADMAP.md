@@ -13,17 +13,17 @@
 ## Phase 2: Optimization & Compatibility
 - [ ] **JAX-Native Modeling Framework**:
     - [x] **Implement `JaxMultiCompartmentModel` Wrapper**: Create a high-level class wrapping `compose_models` to handle dictionary-based parameter management and provide a `fit()` API compatible with legacy `dmipy`.
-    - [ ] **Implement Global Initialization**: Port the "Brute" phase of `Brute2FineOptimizer` using `jax.vmap` grid search to provide robust initial guesses for the LM solver.
-    - [ ] **Port Missing Models**: Implement `TortuosityModel`, `RestrictedCylinder` classes, and other specialized models used in examples.
+    - [x] **Implement Global Initialization**: Port the "Brute" phase of `Brute2FineOptimizer` using `jax.vmap` grid search to provide robust initial guesses for the LM solver.
+    - [x] **Port Missing Models**: Implement `TortuosityModel`, `RestrictedCylinder`, `PlaneModels`, and `Tensor` (G2).
 - [ ] **Advanced Fitting & UQ (New)**:
     - [x] **Surrogate Modeling**: Implemented Generalized Polynomial Chaos (gPC) for accelerating slow models (`dmipy_jax.core.surrogate`).
     - [x] **Uncertainty Quantification**: Implemented Tier 1 (CRLB) uncertainty estimation in `JaxMultiCompartmentModel`.
     - [ ] Scaling to 1M+ voxels using `jax.vmap`.
     - [ ] Prepare for Neural Network Training (Stochastic) using `optax`.
-- [ ] **Verification**:
-    - [ ] Benchmark against original `dmipy`.
-    - [ ] Validate accuracy on synthetic phantom data.
-    - [ ] Port key examples (`ball_and_stick`, `noddi`) to verify end-to-end user experience.
+- [x] **Verification**:
+    - [x] Benchmark against original `dmipy`.
+    - [x] Validate accuracy on synthetic phantom data.
+    - [x] Port key examples (`simulate_noddi_sandi_jax`, `axcaliber`) to verify end-to-end user experience.
 
 ## Phase 3: Inverse & Global Fitting (scico)
 - [x] **Inverse Architect Foundation**:
@@ -48,6 +48,17 @@
     - `dmipy_jax.external.pulseq`: Bridge module to convert `.seq` files or objects into JAX-compatible structures.
     - Support for `GeneralSequence` (dense waveforms) for Bloch simulation.
     - Support for `JaxAcquisition` (b-vals/b-vecs) for microstructure fitting.
+
+## Phase 3.5: New Horizons (Beyond Dmipy)
+- [x] **Simulation Engine**:
+    - [x] Implement Monte Carlo simulator for complex geometries (`dmipy_jax.simulation`).
+    - [x] GPU-accelerated particle tracking.
+- [x] **Tractography**:
+    - [x] Implement Differentiable Streamline Integrator (Soft Walker).
+    - [x] End-to-end optimization of tractography parameters.
+- [x] **Bio-Electromagnetism**:
+    - [x] Conductivity mapping (Nernst-Einstein).
+    - [x] tDCS optimization loss functions.
 
 ## Phase 4: Beyond Parity (Advanced Spherical Models)
 - **Goal:** Extend the biophysical modeling capabilities beyond the original `dmipy` scope, focusing on advanced spherical and exchange models.

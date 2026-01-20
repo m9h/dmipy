@@ -1,6 +1,0 @@
-warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
-Verifying J1 Taylor Approximation (Corrected)
-Max Error (z <= 4.0): 8.94e-08
-J1(0): 0.0
-J1(4.0): -0.058242861181497574
-SUCCESS: Approximation is accurate.

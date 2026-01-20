@@ -1,0 +1,14 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/benchmarks/benchmark_complex_models.py", line 6, in <module>
+    from dmipy_jax.signal_models.plane_models import PlaneStejskalTanner, PlaneCallaghan
+  File "/home/mhough/src/dmipy/dmipy_jax/__init__.py", line 20, in <module>
+    from dmipy_jax import cylinder
+  File "/home/mhough/src/dmipy/dmipy_jax/cylinder.py", line 1, in <module>
+    from dmipy_jax.signal_models import c1_stick, c2_cylinder
+  File "/home/mhough/src/dmipy/dmipy_jax/signal_models/__init__.py", line 3, in <module>
+    from .sphere_models import g3_sphere
+  File "/home/mhough/src/dmipy/dmipy_jax/signal_models/sphere_models.py", line 422, in <module>
+    class SphereGPD(eqx.Module):
+                    ^^^
+NameError: name 'eqx' is not defined

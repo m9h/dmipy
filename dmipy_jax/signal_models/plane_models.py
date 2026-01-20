@@ -25,6 +25,10 @@ def g2_plane_stejskal_tanner(q, diameter):
 class PlaneStejskalTanner:
     r"""
     Stejskal-Tanner approximation of diffusion between two infinitely large parallel planes.
+
+    References
+    ----------
+    .. [1] Stejskal, Edward O., and John E. Tanner. "Spin diffusion measurements: spin echoes in the presence of a time-dependent field gradient." The Journal of Chemical Physics 42.1 (1965): 288-292.
     """
     
     parameter_names = ['diameter']
@@ -151,6 +155,10 @@ def g3_plane_callaghan(q, tau, diameter, diffusion_constant, xi, zeta):
 class PlaneCallaghan:
     r"""
     The Callaghan model [1]_ of diffusion between two parallel infinite plates.
+
+    References
+    ----------
+    .. [1] Callaghan, Paul T. "Pulsed-gradient spin-echo NMR for planar, cylindrical, and spherical pores under conditions of near narrowing." Journal of magnetic resonance, Series A 113.1 (1995): 53-59.
     """
     
     parameter_names = ['diameter', 'diffusion_constant']

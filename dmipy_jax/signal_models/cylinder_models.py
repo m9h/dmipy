@@ -13,6 +13,45 @@ from typing import Any, Tuple
 
 
 @jit
+def safe_bessel_j1(z):
+    """
+    Computes J1(z) safely.
+    For z < 4.0, uses Taylor series (via Horner-like scan) to avoid instability
+    in jax.scipy.special.bessel_jn recurrence.
+    For z >= 4.0, uses jax.scipy.special.bessel_jn.
+    """
+    threshold = 4.0
+    
+    def taylor_j1(z_val):
+        n_terms = 20
+        z2_4 = z_val**2 / 4.0
+        
+        def body(carry, k):
+            current_sum, current_term = carry
+            mult = -z2_4 / (k * (k+1))
+            next_term = current_term * mult
+            new_sum = current_sum + next_term
+            return (new_sum, next_term), None
+            
+        term_0 = z_val / 2.0
+        init = (term_0, term_0)
+        ks = jnp.arange(1, n_terms, dtype=jnp.float32)
+        (final_sum, _), _ = jax.lax.scan(body, init, ks)
+        return final_sum
+
+    taylor_out = jax.vmap(taylor_j1)(jnp.atleast_1d(z))
+    
+    safe_z_for_std = jnp.where(z < threshold, 10.0, z)
+    std_out_safe = jsp.bessel_jn(v=1, z=safe_z_for_std)[1]
+    
+    # Ensure shapes match
+    if taylor_out.ndim != std_out_safe.ndim:
+        taylor_out = taylor_out.reshape(std_out_safe.shape)
+        
+    return jnp.where(z < threshold, taylor_out, std_out_safe)
+
+
+@jit
 def c2_cylinder(bvals, bvecs, mu, lambda_par, diameter, big_delta, small_delta):
     """
     Computes signal for a Cylinder with finite radius (Soderman approximation).
@@ -63,8 +102,11 @@ def c2_cylinder(bvals, bvecs, mu, lambda_par, diameter, big_delta, small_delta):
     valid_mask = argument > 1e-6
     safe_arg = jnp.where(valid_mask, argument, 1.0)
     
-    # bessel_jn returns values for orders 0 to v. We need v=1 (index 1).
-    j1_term = 2 * jsp.bessel_jn(v=1, z=safe_arg)[1] / safe_arg
+    # bessel_jn returns values for orders 0 to v (scipy behavior) or just v (jax behavior).
+    # JAX scipy.special.bessel_jn(z, v=v) returns J_v(z) directly.
+    # It does NOT return a list of orders.
+    # Use safe_bessel_j1 implemented above
+    j1_term = 2 * safe_bessel_j1(safe_arg) / safe_arg
     signal_perp = j1_term ** 2
     
     # If argument is small, signal is 1.0

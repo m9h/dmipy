@@ -14,6 +14,7 @@
 :caption: User Guide
 
 tutorials/first_steps
+tutorials/complex_synthetic_data
 ```
 
 ```{toctree}

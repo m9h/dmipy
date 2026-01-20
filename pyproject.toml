@@ -50,6 +50,9 @@ Homepage = "https://github.com/AthenaEPI/dmipy"
 [tool.hatch.build.targets.wheel]
 packages = ["dmipy_jax"]
 
+[project.scripts]
+dmipy-report = "dmipy_jax.cli.bids_report:main"
+
 [project.optional-dependencies]
 test = [
     "pytest",

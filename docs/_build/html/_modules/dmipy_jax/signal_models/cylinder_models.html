@@ -293,8 +293,10 @@
     <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">argument</span> <span class="o">&gt;</span> <span class="mf">1e-6</span>
     <span class="n">safe_arg</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">valid_mask</span><span class="p">,</span> <span class="n">argument</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     
-    <span class="c1"># bessel_jn returns values for orders 0 to v. We need v=1 (index 1).</span>
-    <span class="n">j1_term</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">safe_arg</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">safe_arg</span>
+    <span class="c1"># bessel_jn returns values for orders 0 to v (scipy behavior) or just v (jax behavior).</span>
+    <span class="c1"># JAX scipy.special.bessel_jn(z, v=v) returns J_v(z) directly.</span>
+    <span class="c1"># It does NOT return a list of orders.</span>
+    <span class="n">j1_term</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">jsp</span><span class="o">.</span><span class="n">bessel_jn</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">safe_arg</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_arg</span>
     <span class="n">signal_perp</span> <span class="o">=</span> <span class="n">j1_term</span> <span class="o">**</span> <span class="mi">2</span>
     
     <span class="c1"># If argument is small, signal is 1.0</span>

@@ -48,3 +48,17 @@
     - `dmipy_jax.external.pulseq`: Bridge module to convert `.seq` files or objects into JAX-compatible structures.
     - Support for `GeneralSequence` (dense waveforms) for Bloch simulation.
     - Support for `JaxAcquisition` (b-vals/b-vecs) for microstructure fitting.
+
+## Phase 4: Beyond Parity (Advanced Spherical Models)
+- **Goal:** Extend the biophysical modeling capabilities beyond the original `dmipy` scope, focusing on advanced spherical and exchange models.
+- **Key Models:**
+    - [ ] **Permeable Spheres (Exchange)**: Implement models with finite membrane permeability to account for intra/extra-cellular exchange (e.g., Kärger, NEXI).
+        - *Rationale*: Crucial for long diffusion times and cell membrane characterization.
+    - [ ] **Concentric Spheres**: Model soma with nucleus (two compartments).
+        - *Rationale*: Explains relaxation-diffusion correlations (T1/T2 vs D) in soma imaging.
+    - [ ] **Restricted Ellipsoids**: Analytical or numerical approximations for non-spherical somas.
+        - *Rationale*: Captures microscopic anisotropy of gray matter cell bodies.
+    - [ ] **Gamma-Distributed Spheres**: Native optimization of diameter distributions (polydispersity).
+        - *Rationale*: More realistic than single-diameter models; leverages JAX for distribution parameter optimization.
+    - [ ] **T2-Dot**: Stationary compartment with T2 relaxation.
+        - *Rationale*: Modeling myelin water or other trapped, non-diffusing pools with distinct relaxation times.

@@ -22,15 +22,19 @@
 | Model Composition | ✅ | ✅ | `compose_models` |
 | Fitting (Voxelwise) | ✅ | ✅ | `fit_voxel` (optimistix) |
 | MCMC Inference | ❌ | ✅ | NUTS Sampler (Blackjax) |
+| Simulation (Monte Carlo) | ❌ | ✅ | `dmipy_jax.simulation` (GPU) |
+| Tractography | ❌ | ✅ | Differentiable Streamline Integrator |
 | **Cylinder Models** | | | |
 | Stick (C1) | ✅ | ✅ | `C1Stick` |
-| Cylinder (C2) | ✅ | ❌ | Coming Soon |
-| Zeppelins | ✅ | ❌ | Coming Soon |
+| Cylinder (C2) | ✅ | ✅ | `RestrictedCylinder` (Soderman), `CallaghanRestrictedCylinder` |
+| Zeppelins | ✅ | ✅ | `G2Zeppelin`, `TortuosityModel` |
 | **Gaussian Models** | | | |
 | Ball (G1) | ✅ | ✅ | `G1Ball` |
-| Tensor (G2) | ✅ | ❌ | Coming Soon |
+| Tensor (G2) | ✅ | ❌ | Kernel `g2_tensor` available |
 | **Sphere Models** | | | |
-| Sphere (S2) | ✅ | ✅ | `S2SphereStejskalTanner` |
+| Sphere (S2) | ✅ | ✅ | `SphereStejskalTanner`, `SphereGPD` (SANDI), `SphereCallaghan` |
+| **Plane Models** | | | |
+| Planes | ✅ | ✅ | `PlaneStejskalTanner`, `PlaneCallaghan` |
 
 ## Installation
 

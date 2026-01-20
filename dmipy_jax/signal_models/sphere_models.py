@@ -3,6 +3,8 @@ from jax import jit
 import scipy.special as ssp
 from jax.scipy import special as jsp
 from dmipy_jax.constants import SPHERE_ROOTS, GYRO_MAGNETIC_RATIO
+import equinox as eqx
+from typing import Any
 
 class S1Dot:
     r"""
@@ -417,6 +419,53 @@ def g3_sphere(bvals, bvecs, diameter, diffusion_constant, big_delta, small_delta
     log_E = -prefactor * sum_term
     
     return jnp.exp(log_E)
+
+
+class SphereGPD(eqx.Module):
+    r"""
+    The Gaussian Phase Distribution (GPD) approximation of the Sphere model [1]_.
+    Also known as the Murday-Cotts model.
+
+    Parameters
+    ----------
+    diameter : float
+        sphere diameter in meters.
+    diffusion_constant : float
+        diffusion constant in m^2/s.
+
+    References
+    ----------
+    .. [1] Murday, J. S., and R. M. Cotts. "Self-diffusion coefficient of
+            liquid lithium." The Journal of Chemical Physics 48.11 (1968):
+            4938-4945.
+    """
+    
+    diameter: Any = None
+    diffusion_constant: Any = None
+
+    parameter_names = ('diameter', 'diffusion_constant')
+    parameter_cardinality = {'diameter': 1, 'diffusion_constant': 1}
+    parameter_ranges = {
+        'diameter': (1e-6, 20e-6),
+        'diffusion_constant': (0.1e-9, 3e-9)
+    }
+
+    def __init__(self, diameter=None, diffusion_constant=None):
+        self.diameter = diameter
+        self.diffusion_constant = diffusion_constant
+
+    def __call__(self, bvals, gradient_directions, **kwargs):
+        diameter = kwargs.get('diameter', self.diameter)
+        diffusion_constant = kwargs.get('diffusion_constant', self.diffusion_constant)
+        
+        big_delta = kwargs.get('big_delta')
+        small_delta = kwargs.get('small_delta')
+        
+        if big_delta is None or small_delta is None:
+             raise ValueError("SphereGPD requires 'big_delta' and 'small_delta' in kwargs.")
+
+        return g3_sphere(bvals, gradient_directions, diameter, diffusion_constant, big_delta, small_delta)
+
 
 
 class SphereCallaghan:

@@ -232,30 +232,13 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-dmipy_jax.signal_models.bingham">
-<span id="signal-models"></span><h1>Signal Models<a class="headerlink" href="#module-dmipy_jax.signal_models.bingham" title="Link to this heading">¶</a></h1>
+          <section id="module-dmipy_jax.signal_models.cylinder_models">
+<span id="signal-models"></span><h1>Signal Models<a class="headerlink" href="#module-dmipy_jax.signal_models.cylinder_models" title="Link to this heading">¶</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.bingham.BinghamNODDI">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.bingham.</span></span><span class="sig-name descname"><span class="pre">BinghamNODDI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/bingham.html#BinghamNODDI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.bingham.BinghamNODDI" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Bingham-NODDI model using numerical integration.</p>
-<p>The signal is defined as:
-S = int_{S^2} P(mathbf{n} | mu, kappa_1, kappa_2) S_{stick}(mathbf{n}, b, g) dmathbf{n}</p>
-<p>The Bingham PDF is modeled as:
-P(mathbf{n}) propto exp( - kappa_1 n_x^2 - kappa_2 n_y^2 )
-defined in a frame where the peak is along Z, then rotated to mu.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>grid_points</strong> (<em>int</em>) – Number of points for numerical integration.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class" id="module-dmipy_jax.signal_models.cylinder_models">
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.cylinder_models.</span></span><span class="sig-name descname"><span class="pre">CallaghanRestrictedCylinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_perpendicular</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.7e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_roots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_functions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/cylinder_models.html#CallaghanRestrictedCylinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
-<p>The Callaghan model <a href="#id12"><span class="problematic" id="id1">[1]_</span></a> - a cylinder with finite radius - typically
+<p>The Callaghan model <a href="#id5"><span class="problematic" id="id1">[1]_</span></a> - a cylinder with finite radius - typically
 used for intra-axonal diffusion. The perpendicular diffusion is modelled
 after Callaghan’s solution for the disk. Is dependent on both q-value
 and diffusion time.</p>
@@ -337,7 +320,7 @@ relaxation.” Journal of magnetic resonance, Series A 113.1 (1995):
 <dt class="sig sig-object py" id="dmipy_jax.signal_models.cylinder_models.RestrictedCylinder">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.cylinder_models.</span></span><span class="sig-name descname"><span class="pre">RestrictedCylinder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/cylinder_models.html#RestrictedCylinder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.cylinder_models.RestrictedCylinder" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
-<p>The Stejskal-Tanner approximation of the cylinder model with finite radius <a href="#id13"><span class="problematic" id="id3">[1]_</span></a>.</p>
+<p>The Stejskal-Tanner approximation of the cylinder model with finite radius <a href="#id6"><span class="problematic" id="id3">[1]_</span></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -530,310 +513,6 @@ Vectors typically defined on S2 (unit vectors).</p></li>
 </dl>
 </dd></dl>
 
-<dl class="py class" id="module-dmipy_jax.signal_models.mte_noddi">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.mte_noddi.MTE_NODDI">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.mte_noddi.</span></span><span class="sig-name descname"><span class="pre">MTE_NODDI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_iso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_ic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2_iso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2_ic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2_ec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.7e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_iso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3e-09</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/mte_noddi.html#MTE_NODDI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.mte_noddi.MTE_NODDI" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Multi-Echo NODDI (MTE-NODDI) model implementation in JAX.</p>
-<p>This model extends the standard NODDI model by accounting for compartment-specific
-T2 relaxation times, which is enabled by multi-TE acquisitions.</p>
-<p>The signal model is defined as:
-S = f_iso * exp(-TE/T2_iso) * S_iso</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>f_ic * exp(-TE/T2_ic) * S_ic</p></li>
-<li><p>f_ec * exp(-TE/T2_ec) * S_ec</p></li>
-</ul>
-</div></blockquote>
-<p>Where:
-- S_iso is isotropic diffusion (G1Ball)
-- S_ic is intra-cellular diffusion (C1Stick)
-- S_ec is extra-cellular diffusion (G2Zeppelin with tortuosity constraint)</p>
-<p>The volume fractions are parameterized as:
-- f_iso: Global isotropic volume fraction
-- f_ic (global) = (1 - f_iso) * v_ic
-- f_ec (global) = (1 - f_iso) * (1 - v_ic)</p>
-<p>Where v_ic is the intra-cellular volume fraction of the non-isotropic tissue compartment.
-The tortuosity constraint is applied to S_ec: d_perp = d_par * (1 - v_ic).</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.mte_noddi.MTE_NODDI.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'d_iso':</span> <span class="pre">1,</span> <span class="pre">'d_par':</span> <span class="pre">1,</span> <span class="pre">'f_iso':</span> <span class="pre">1,</span> <span class="pre">'mu':</span> <span class="pre">2,</span> <span class="pre">'t2_ec':</span> <span class="pre">1,</span> <span class="pre">'t2_ic':</span> <span class="pre">1,</span> <span class="pre">'t2_iso':</span> <span class="pre">1,</span> <span class="pre">'v_ic':</span> <span class="pre">1}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.mte_noddi.MTE_NODDI.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.mte_noddi.MTE_NODDI.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['f_iso',</span> <span class="pre">'v_ic',</span> <span class="pre">'t2_iso',</span> <span class="pre">'t2_ic',</span> <span class="pre">'t2_ec',</span> <span class="pre">'mu',</span> <span class="pre">'d_par',</span> <span class="pre">'d_iso']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.mte_noddi.MTE_NODDI.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.mte_noddi.add_t2_decay">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.mte_noddi.</span></span><span class="sig-name descname"><span class="pre">add_t2_decay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">te</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/mte_noddi.html#add_t2_decay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.mte_noddi.add_t2_decay" title="Link to this definition">¶</a></dt>
-<dd><p>Modulates the signal with T2 decay: S_new = S_old * exp(-TE / T2).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>signal</strong> (<em>jnp.ndarray</em>) – The diffusion-weighted signal (without T2 decay).</p></li>
-<li><p><strong>te</strong> (<em>jnp.ndarray</em>) – Echo times in seconds. Same shape as signal or broadcastable.</p></li>
-<li><p><strong>t2</strong> (<em>float</em><em> or </em><em>jnp.ndarray</em>) – T2 relaxation time in seconds.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Signal with T2 decay appled.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>jnp.ndarray</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class" id="module-dmipy_jax.signal_models.sandi">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sandi.SphereGPD">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sandi.</span></span><span class="sig-name descname"><span class="pre">SphereGPD</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_constant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3e-09</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sandi.html#SphereGPD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sandi.SphereGPD" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The Gaussian Phase Distribution (GPD) approximation for diffusion inside a sphere.
-Used in the SANDI model for representing Soma.</p>
-<p class="rubric">References</p>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id5" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>Palombo et al., NeuroImage 2020.</p>
-</aside>
-<aside class="footnote brackets" id="id6" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
-<p>Balinov et al., JMR 1993 (GPD approx).</p>
-</aside>
-</aside>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sandi.SphereGPD.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">1,</span> <span class="pre">'diffusion_constant':</span> <span class="pre">1}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sandi.SphereGPD.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sandi.SphereGPD.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['diameter',</span> <span class="pre">'diffusion_constant']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sandi.SphereGPD.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sandi.estimate_soma_density">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sandi.</span></span><span class="sig-name descname"><span class="pre">estimate_soma_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bvalues</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sandi.html#estimate_soma_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sandi.estimate_soma_density" title="Link to this definition">¶</a></dt>
-<dd><p>Heuristic estimator for soma density (f_sphere) using powder averaging.</p>
-<p>This function computes the ‘powder average’ (mean signal over directions)
-for each b-shell. The high-b signal floor in the powder average is largely
-driven by restricted diffusion (somas) + immobile water (if any),
-while sticks and zeppelins decay faster in the powder average
-(specifically Sticks decay as 1/sqrt(b*D)).</p>
-<p>However, for a quick initial guess, we might look at the signal at high b-values.
-References suggest estimating f_sphere from high-b powder-averaged data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<em>jnp.ndarray</em>) – Signal data, shape (N_voxels, N_measurements) or (N_measurements,).</p></li>
-<li><p><strong>bvalues</strong> (<em>jnp.ndarray</em>) – B-values, shape (N_measurements,).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Initial guess for soma density.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>f_sphere_guess (jnp.ndarray)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sandi.get_sandi_model">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sandi.</span></span><span class="sig-name descname"><span class="pre">get_sandi_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diffusivity_long</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusivity_trans_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_diameter_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(6e-06,</span> <span class="pre">1.2e-05)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sandi.html#get_sandi_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sandi.get_sandi_model" title="Link to this definition">¶</a></dt>
-<dd><p>Factory function to create the SANDI composite model function.</p>
-<p>Composition:
-Signal = (1 - f_iso - f_stick - f_sphere) * Zeppelin + f_stick * Stick + f_sphere * Sphere + f_iso * Ball</p>
-<p>Parameters:
-- diffusivity_long: Fixed parallel diffusivity for Stick and Zeppelin (default 3.0 um^2/ms).
-- diffusivity_trans_min: Minimum transverse diffusivity for Zeppelin.
-- sphere_diameter_range: Bounds for sphere diameter.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The model function <cite>sandi_model(params, acquisition)</cite>.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>sandi_func (callable)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class" id="module-dmipy_jax.signal_models.sphere_models">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.S1Dot">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">S1Dot</span></span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#S1Dot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.S1Dot" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The Dot model <a href="#id14"><span class="problematic" id="id7">[1]_</span></a> - an non-diffusing compartment.
-It has no parameters and returns 1 no matter the input.</p>
-<p class="rubric">References</p>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id8" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>Panagiotaki et al.
-“Compartment models of the diffusion MR signal in brain white</p>
-<blockquote>
-<div><p>matter: a taxonomy and comparison”. NeuroImage (2012)</p>
-</div></blockquote>
-</aside>
-</aside>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.S1Dot.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.S1Dot.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.S1Dot.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.S1Dot.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.S1Dot.parameter_ranges">
-<span class="sig-name descname"><span class="pre">parameter_ranges</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.S1Dot.parameter_ranges" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereCallaghan">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">SphereCallaghan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_constant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_roots</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_functions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#SphereCallaghan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The Callaghan model <a href="#id15"><span class="problematic" id="id9">[1]_</span></a> of diffusion inside a sphere.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">1,</span> <span class="pre">'diffusion_constant':</span> <span class="pre">1}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['diameter',</span> <span class="pre">'diffusion_constant']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_ranges">
-<span class="sig-name descname"><span class="pre">parameter_ranges</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">(1e-06,</span> <span class="pre">2e-05),</span> <span class="pre">'diffusion_constant':</span> <span class="pre">(1e-10,</span> <span class="pre">3e-09)}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_ranges" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereStejskalTanner">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">SphereStejskalTanner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#SphereStejskalTanner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The Stejskal Tanner signal approximation of a sphere model.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>diameter</strong> (<em>float</em>) – sphere diameter in meters.</p>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">1}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['diameter']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_ranges">
-<span class="sig-name descname"><span class="pre">parameter_ranges</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'diameter':</span> <span class="pre">(1e-06,</span> <span class="pre">2e-05)}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_ranges" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.g2_sphere_stejskal_tanner">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">g2_sphere_stejskal_tanner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#g2_sphere_stejskal_tanner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.g2_sphere_stejskal_tanner" title="Link to this definition">¶</a></dt>
-<dd><p>The Stejskal Tanner signal approximation of a sphere model.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.g3_sphere">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">g3_sphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bvals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bvecs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_constant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">big_delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">small_delta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#g3_sphere"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.g3_sphere" title="Link to this definition">¶</a></dt>
-<dd><p>Computes signal for restricted diffusion in a Sphere (Soma) using
-the Gaussian Phase Distribution (GPD) approximation (Murday &amp; Cotts, 1968).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.g3_sphere_callaghan">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">g3_sphere_callaghan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diameter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diffusion_constant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#g3_sphere_callaghan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.g3_sphere_callaghan" title="Link to this definition">¶</a></dt>
-<dd><p>Callaghan sphere model kernel.
-alpha: roots (n_roots, n_functions)</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.jsph_derivative">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">jsph_derivative</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#jsph_derivative"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.jsph_derivative" title="Link to this definition">¶</a></dt>
-<dd><p>Derivative of spherical Bessel function j_n(z).
-Formula: j_n’(z) = j_{n-1}(z) - (n+1)/z * j_n(z)
-Or: j_n’(z) = n/z * j_n(z) - j_{n+1}(z)</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.spherical_jn_derivative_jax">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">spherical_jn_derivative_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#spherical_jn_derivative_jax"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.spherical_jn_derivative_jax" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.sphere_models.spherical_jn_jax">
-<span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.sphere_models.</span></span><span class="sig-name descname"><span class="pre">spherical_jn_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/sphere_models.html#spherical_jn_jax"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.sphere_models.spherical_jn_jax" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py class" id="module-dmipy_jax.signal_models.stick">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.stick.Stick">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.stick.</span></span><span class="sig-name descname"><span class="pre">Stick</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/stick.html#Stick"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.stick.Stick" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The Stick model <a href="#id16"><span class="problematic" id="id10">[1]_</span></a> - a cylinder with zero radius.
-JAX implementation using c1_stick kernel.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.stick.Stick.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'lambda_par':</span> <span class="pre">1,</span> <span class="pre">'mu':</span> <span class="pre">2}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.stick.Stick.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.stick.Stick.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['mu',</span> <span class="pre">'lambda_par']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.stick.Stick.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.stick.Stick.parameter_ranges">
-<span class="sig-name descname"><span class="pre">parameter_ranges</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'lambda_par':</span> <span class="pre">(1e-10,</span> <span class="pre">3e-09),</span> <span class="pre">'mu':</span> <span class="pre">([0,</span> <span class="pre">3.141592653589793],</span> <span class="pre">[-3.141592653589793,</span> <span class="pre">3.141592653589793])}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.stick.Stick.parameter_ranges" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class" id="module-dmipy_jax.signal_models.zeppelin">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.zeppelin.Zeppelin">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">dmipy_jax.signal_models.zeppelin.</span></span><span class="sig-name descname"><span class="pre">Zeppelin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambda_perp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/dmipy_jax/signal_models/zeppelin.html#Zeppelin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#dmipy_jax.signal_models.zeppelin.Zeppelin" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The Zeppelin model <a href="#id17"><span class="problematic" id="id11">[1]_</span></a> - an axially symmetric Tensor.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>mu</strong> – (3,) Fiber orientation.</p></li>
-<li><p><strong>lambda_par</strong> – Diffusivity along the axis.</p></li>
-<li><p><strong>lambda_perp</strong> – Diffusivity perpendicular to the axis.</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.zeppelin.Zeppelin.parameter_cardinality">
-<span class="sig-name descname"><span class="pre">parameter_cardinality</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'lambda_par':</span> <span class="pre">1,</span> <span class="pre">'lambda_perp':</span> <span class="pre">1,</span> <span class="pre">'mu':</span> <span class="pre">2}</span></span><a class="headerlink" href="#dmipy_jax.signal_models.zeppelin.Zeppelin.parameter_cardinality" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="dmipy_jax.signal_models.zeppelin.Zeppelin.parameter_names">
-<span class="sig-name descname"><span class="pre">parameter_names</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['mu',</span> <span class="pre">'lambda_par',</span> <span class="pre">'lambda_perp']</span></span><a class="headerlink" href="#dmipy_jax.signal_models.zeppelin.Zeppelin.parameter_names" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
 </section>
 
         </article>
@@ -874,7 +553,6 @@ JAX implementation using c1_stick kernel.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Signal Models</a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.bingham.BinghamNODDI"><code class="docutils literal notranslate"><span class="pre">BinghamNODDI</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder</span></code></a><ul>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.alpha"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.alpha</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.cylinder_models.CallaghanRestrictedCylinder.diameter"><code class="docutils literal notranslate"><span class="pre">CallaghanRestrictedCylinder.diameter</span></code></a></li>
@@ -910,54 +588,6 @@ JAX implementation using c1_stick kernel.</p>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.g1_ball"><code class="docutils literal notranslate"><span class="pre">g1_ball()</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.g2_tensor"><code class="docutils literal notranslate"><span class="pre">g2_tensor()</span></code></a></li>
 <li><a class="reference internal" href="#dmipy_jax.signal_models.gaussian_models.g2_zeppelin"><code class="docutils literal notranslate"><span class="pre">g2_zeppelin()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.mte_noddi.MTE_NODDI"><code class="docutils literal notranslate"><span class="pre">MTE_NODDI</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.mte_noddi.MTE_NODDI.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">MTE_NODDI.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.mte_noddi.MTE_NODDI.parameter_names"><code class="docutils literal notranslate"><span class="pre">MTE_NODDI.parameter_names</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.mte_noddi.add_t2_decay"><code class="docutils literal notranslate"><span class="pre">add_t2_decay()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sandi.SphereGPD"><code class="docutils literal notranslate"><span class="pre">SphereGPD</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sandi.SphereGPD.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">SphereGPD.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sandi.SphereGPD.parameter_names"><code class="docutils literal notranslate"><span class="pre">SphereGPD.parameter_names</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sandi.estimate_soma_density"><code class="docutils literal notranslate"><span class="pre">estimate_soma_density()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sandi.get_sandi_model"><code class="docutils literal notranslate"><span class="pre">get_sandi_model()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.S1Dot"><code class="docutils literal notranslate"><span class="pre">S1Dot</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.S1Dot.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">S1Dot.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.S1Dot.parameter_names"><code class="docutils literal notranslate"><span class="pre">S1Dot.parameter_names</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.S1Dot.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">S1Dot.parameter_ranges</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan"><code class="docutils literal notranslate"><span class="pre">SphereCallaghan</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">SphereCallaghan.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_names"><code class="docutils literal notranslate"><span class="pre">SphereCallaghan.parameter_names</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereCallaghan.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">SphereCallaghan.parameter_ranges</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner"><code class="docutils literal notranslate"><span class="pre">SphereStejskalTanner</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">SphereStejskalTanner.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_names"><code class="docutils literal notranslate"><span class="pre">SphereStejskalTanner.parameter_names</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.SphereStejskalTanner.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">SphereStejskalTanner.parameter_ranges</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.g2_sphere_stejskal_tanner"><code class="docutils literal notranslate"><span class="pre">g2_sphere_stejskal_tanner()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.g3_sphere"><code class="docutils literal notranslate"><span class="pre">g3_sphere()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.g3_sphere_callaghan"><code class="docutils literal notranslate"><span class="pre">g3_sphere_callaghan()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.jsph_derivative"><code class="docutils literal notranslate"><span class="pre">jsph_derivative()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.spherical_jn_derivative_jax"><code class="docutils literal notranslate"><span class="pre">spherical_jn_derivative_jax()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.sphere_models.spherical_jn_jax"><code class="docutils literal notranslate"><span class="pre">spherical_jn_jax()</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick"><code class="docutils literal notranslate"><span class="pre">Stick</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">Stick.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick.parameter_names"><code class="docutils literal notranslate"><span class="pre">Stick.parameter_names</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.stick.Stick.parameter_ranges"><code class="docutils literal notranslate"><span class="pre">Stick.parameter_ranges</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.zeppelin.Zeppelin"><code class="docutils literal notranslate"><span class="pre">Zeppelin</span></code></a><ul>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.zeppelin.Zeppelin.parameter_cardinality"><code class="docutils literal notranslate"><span class="pre">Zeppelin.parameter_cardinality</span></code></a></li>
-<li><a class="reference internal" href="#dmipy_jax.signal_models.zeppelin.Zeppelin.parameter_names"><code class="docutils literal notranslate"><span class="pre">Zeppelin.parameter_names</span></code></a></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>

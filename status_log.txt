@@ -1,0 +1,78 @@
+On branch master
+Your branch is up to date with 'origin/master'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   README.md
+	new file:   benchmarks/benchmark_complex_models.py
+	modified:   dmipy_jax/signal_models/plane_models.py
+	modified:   dmipy_jax/signal_models/sphere_models.py
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   ROADMAP.md
+	modified:   dmipy_jax/signal_models/cylinder_models.py
+	modified:   dmipy_jax/simulation/scanner/bloch.py
+	modified:   docs/_build/html/.doctrees/environment.pickle
+	modified:   docs/_build/html/.doctrees/reference/signal_models.doctree
+	modified:   docs/_build/html/.doctrees/reference/simulation.doctree
+	modified:   docs/_build/html/_modules/dmipy_jax/core/particle_engine.html
+	modified:   docs/_build/html/_modules/dmipy_jax/core/solvers.html
+	modified:   docs/_build/html/_modules/dmipy_jax/fitting/neural.html
+	modified:   docs/_build/html/_modules/dmipy_jax/fitting/optimization.html
+	modified:   docs/_build/html/_modules/dmipy_jax/signal_models/cylinder_models.html
+	modified:   docs/_build/html/_modules/index.html
+	modified:   docs/_build/html/_sources/reference/signal_models.rst.txt
+	modified:   docs/_build/html/genindex.html
+	modified:   docs/_build/html/objects.inv
+	modified:   docs/_build/html/py-modindex.html
+	modified:   docs/_build/html/reference/index.html
+	modified:   docs/_build/html/reference/signal_models.html
+	modified:   docs/_build/html/reference/simulation.html
+	modified:   docs/_build/html/searchindex.js
+	modified:   docs/index.md
+	modified:   pyproject.toml
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	benchmark_error.txt
+	benchmarks/benchmark_real_data.py
+	dmipy_jax/cli/
+	dmipy_jax/core/acquisition.py
+	dmipy_jax/data/
+	dmipy_jax/experiments/
+	dmipy_jax/fitting/initialization.py
+	dmipy_jax/io/connectome2.py
+	dmipy_jax/io/datasets.py
+	dmipy_jax/io/hcp.py
+	dmipy_jax/simulation/scanner/test_bloch_impl.py
+	dmipy_jax/tests/test_cli.py
+	dmipy_jax/tests/test_data.py
+	docs/_build/html/_modules/collections.html
+	docs/_build/html/_modules/dmipy_jax/core/integration_grids.html
+	docs/_build/html/_modules/dmipy_jax/core/invariants.html
+	docs/_build/html/_modules/dmipy_jax/simulation/
+	docs/tutorials/complex_synthetic_data.md
+	example_output_v6.txt
+	examples/demo_bigmac_fury.py
+	examples/demo_chap_real_data.py
+	examples/demo_real_bigmac_analysis.py
+	examples/example_axcaliber_synthetic.py
+	examples/process_connectome2.py
+	examples/process_connectome2_axcaliber.py
+	reproduce_c2_bug.py
+	status_log.txt
+	test_bessel_limits.py
+	test_bessel_output.txt
+	test_bessel_output_v2.txt
+	test_bessel_trans_output.txt
+	test_bessel_v0_output.txt
+	tests/test_jax_full_workflow.py
+	tests/verify_bigmac_loading_logic.py
+	tests/verify_legacy_parity.py
+	verify_j1_output.txt
+	verify_j1_series.py
+	verify_j1_v2_output.txt
+	verify_j1_v3_output.txt
+

@@ -40,3 +40,13 @@ Signal Models
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.plane_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: dmipy_jax.signal_models.tortuosity_models
+   :members:
+   :undoc-members:
+   :show-inheritance:

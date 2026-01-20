@@ -231,25 +231,10 @@ class JaxMultiCompartmentModel:
         
         initializer = GlobalBruteInitializer(self)
         
-        # Generate random candidates
-        lows, highs = self.get_flat_bounds()
-        
-        # Handle infinities for random sampling
-        # Replace inf with practical limits
-        safe_lows = jnp.where(jnp.isinf(lows), -10.0, lows) # Arbitrary safe
-        safe_highs = jnp.where(jnp.isinf(highs), 10.0, highs)
-        
-        # Replace 0-inf range (diffusivity) with 0-3e-9 approx if not specified? 
-        # Actually user ranges should be good.
-        
-        n_candidates = 2000 
+        # Generate random candidates using helper
+        # Use simple fixed key or allow user key? For now fixed for reproducibility
         key = jax.random.PRNGKey(42)
-        
-        # random uniform (N_cand, N_params)
-        rand_uni = jax.random.uniform(key, (n_candidates, len(lows)))
-        
-        # Scale to bounds: low + rand * (high - low)
-        candidates = safe_lows + rand_uni * (safe_highs - safe_lows)
+        candidates = initializer.generate_random_grid(n_samples=2000, key=key)
         
         if data.ndim == 1:
             init_params = initializer.compute_initial_guess(data, acquisition, candidates)

@@ -1,4 +1,0 @@
-warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
-  File "/home/mhough/src/dmipy/verify_j1_series.py", line 12
-    def series_sum(z_val):
-IndentationError: unexpected indent

@@ -1,0 +1,13 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/validation/validate_parameter_recovery_synthetic.py", line 9, in <module>
+    from dmipy_jax.signal_models.stick import Stick
+  File "/home/mhough/src/dmipy/dmipy_jax/__init__.py", line 24, in <module>
+    from dmipy_jax import inverse
+  File "/home/mhough/src/dmipy/dmipy_jax/inverse/__init__.py", line 1, in <module>
+    from .solvers import MicrostructureOperator, GlobalOptimizer
+  File "/home/mhough/src/dmipy/dmipy_jax/inverse/solvers.py", line 9, in <module>
+    from dmipy_jax.core.modeling_framework import JaxMultiCompartmentModel
+  File "/home/mhough/src/dmipy/dmipy_jax/core/__init__.py", line 2, in <module>
+    from .uncertainty_model import UncertaintyModel
+ImportError: cannot import name 'UncertaintyModel' from 'dmipy_jax.core.uncertainty_model' (/home/mhough/src/dmipy/dmipy_jax/core/uncertainty_model.py)

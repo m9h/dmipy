@@ -1,4 +1,4 @@
-from dmipy_jax.signal_models import g2_zeppelin
+from dmipy_jax.signal_models.gaussian_models import g2_zeppelin
 from jax import numpy as jnp
 
 

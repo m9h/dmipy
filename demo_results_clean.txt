@@ -1,0 +1,21 @@
+--- Demo: Stochastic Training with Optax ---
+Setting up acquisition...
+SimpleAcquisitionScheme init: bvalues shape (90,)
+Setting up Stick + Ball model...
+Parameter names: ['mu', 'lambda_par', 'lambda_iso', 'partial_volume_0', 'partial_volume_1']
+GT Dictionary: {'mu': Array([1. , 0.5], dtype=float32), 'lambda_par': Array(1.7e-09, dtype=float32, weak_type=True), 'lambda_iso': Array(8.e-10, dtype=float32, weak_type=True), 'partial_volume_0': Array(0.6, dtype=float32, weak_type=True), 'partial_volume_1': Array(0.4, dtype=float32, weak_type=True)}
+Data simulated. SNR ~ 50.0.
+Calculating scales...
+Scales: [1.e+00 1.e+00 3.e-09 3.e-09 1.e+00 1.e+00]
+Initializing StochasticTrainer...
+Starting fit (Rician Loss)...
+
+--- Results ---
+Parameter                 Ground Truth              Fitted                    Error %   
+mu                        [1.  0.5]                 [0.69600004 1.572     ]   99.70%
+lambda_par                1.700e-09                 5.027e-09                 195.58%
+lambda_iso                8.000e-10                 1.391e-09                 73.81%
+partial_volume_0          6.000e-01                 7.514e-01                 25.24%
+partial_volume_1          4.000e-01                 2.458e-01                 38.54%
+
+Done.

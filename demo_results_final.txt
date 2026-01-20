@@ -1,0 +1,14 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+--- Demo: Stochastic Training with Optax ---
+Setting up acquisition...
+SimpleAcquisitionScheme init: bvalues shape (90,)
+Setting up Stick + Ball model...
+Parameter names: ['mu', 'lambda_par', 'lambda_iso', 'partial_volume_0', 'partial_volume_1']
+GT Dictionary: {'mu': Array([1. , 0.5], dtype=float32), 'lambda_par': Array(1.7e-09, dtype=float32, weak_type=True), 'lambda_iso': Array(8.e-10, dtype=float32, weak_type=True), 'partial_volume_0': Array(0.6, dtype=float32, weak_type=True), 'partial_volume_1': Array(0.4, dtype=float32, weak_type=True)}
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/dmipy_jax/examples/demo_stochastic_fitting.py", line 187, in <module>
+    main()
+  File "/home/mhough/src/dmipy/dmipy_jax/examples/demo_stochastic_fitting.py", line 55, in main
+    signal_clean = model(final_dict, acq)
+                   ^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'JaxMultiCompartmentModel' object is not callable

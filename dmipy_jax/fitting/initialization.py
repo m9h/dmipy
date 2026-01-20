@@ -129,23 +129,34 @@ class GlobalBruteInitializer:
         if key is None:
             key = jax.random.PRNGKey(42)
             
-        params = []
         keys = jax.random.split(key, len(self.model.parameter_names))
         
-        flat_ranges = []
-        # Re-construct flat ranges list similar to modeling_framework
-        # This duplication logic suggests `JaxMultiCompartmentModel` should expose `flat_ranges`.
-        # Assuming we can access `self.model.parameter_ranges` etc.
+        # Get flat bounds from model
+        # Assuming model has get_flat_bounds() from JaxMultiCompartmentModel
+        # Check if method exists, otherwise assume ranges logic from framework
         
-        # Simplified: We assume we can get a list of low/high.
-        # Let's iterate.
+        if hasattr(self.model, 'get_flat_bounds'):
+            lows, highs = self.model.get_flat_bounds()
+        else:
+             # Fallback or error?
+             # For now, let's assume it exists as we saw it in modeling_framework.py
+             raise NotImplementedError("Model must implement get_flat_bounds()")
+
+        # Handle infinities
+        safe_lows = jnp.where(jnp.isinf(lows), -10.0, lows) # Safe default
+        safe_highs = jnp.where(jnp.isinf(highs), 10.0, highs)
         
-        dim_idx = 0
-        grid_cols = []
+        # Specific overrides for diffusivity if 0-inf
+        # If range is (0, inf) or similar, we probably want 0 to 3e-9 approx
+        # This is a heuristic that might be better placed in the model itself using default bounds.
+        # But for now, we rely on what get_flat_bounds returns.
+        # If model.parameter_ranges has (0, inf), we need to clamp.
         
-        # We need to flatten the range structure first
-        # TO BE IMPLEMENTED: Robust range flattening
-        # ideally JaxMultiCompartmentModel should provide `get_flat_bounds()`
+        # Let's trust model bounds, but clamp infs.
         
-        # Placeholder return for now
-        return None 
+        len_params = len(lows)
+        rand_uni = jax.random.uniform(key, (n_samples, len_params))
+        
+        candidates = safe_lows + rand_uni * (safe_highs - safe_lows)
+        
+        return candidates 

@@ -1,0 +1,14 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+Testing T2 Decay...
+Expected: 0.3678794503211975, Actual: 0.36788320541381836
+PASS
+Testing Diffusion Decay (Stejskal-Tanner)...
+b-value: 4770.96 s/mm^2
+Expected: 6.078233809603262e-07, Actual: 1.317512783316488e-06
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/dmipy_jax/simulation/scanner/test_bloch_impl.py", line 65, in <module>
+    test_diffusion_decay()
+  File "/home/mhough/src/dmipy/dmipy_jax/simulation/scanner/test_bloch_impl.py", line 60, in test_diffusion_decay
+    assert jnp.allclose(actual_signal, expected_signal, rtol=1e-3)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

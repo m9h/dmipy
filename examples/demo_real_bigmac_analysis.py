@@ -16,7 +16,7 @@ import numpy as np
 from dmipy_jax.io.datasets import load_bigmac_mri
 from dmipy_jax.core.modeling_framework import JaxMultiCompartmentModel
 from dmipy_jax.signal_models import cylinder_models, sphere_models
-from dmipy_jax.fitting.optimistix_fitter import OptimistixFitter
+from dmipy_jax.fitting.optimization import OptimistixFitter
 
 def main():
     print("Loading BigMac Dataset...")

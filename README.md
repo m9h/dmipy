@@ -41,6 +41,22 @@ These features are new to **dmipy-jax** and were not present in the original lib
 *   **Simulation (Monte Carlo)**: High-performance, GPU-accelerated Monte Carlo simulation of diffusion in complex geometries (`dmipy_jax.simulation`).
 *   **Tractography**: A Differentiable Streamline Integrator that allows gradients to flow through tractography steps for end-to-end optimization.
 
+## Examples & Tutorials
+
+We are actively porting the original Dmipy tutorials to JAX. 
+
+### ✅ Verified JAX Examples
+
+These scripts demonstrate the new differentiable path and GPU acceleration:
+
+*   **[Simulate NODDI/SANDI](examples/simulate_noddi_sandi_jax.py)**: Forward simulation of complex multi-compartment models (Stick + Zeppelin + Ball) on the GPU.
+*   **[AxCaliber Synthetic Fit](examples/example_axcaliber_synthetic.py)**: Fitting Gamma-distributed cylinder radii (`RestrictedCylinder`) to synthetic data.
+*   **[Real Data Analysis](examples/demo_chap_real_data.py)**: Fitting models to real DWI data (requires dataset).
+
+### 🚧 Legacy Notebooks
+
+The `.ipynb` notebooks in `examples/` are from the original Dmipy library. They are currently being ported to use `dmipy_jax` and may not run out-of-the-box.
+
 ## Installation
 
 This project uses **`uv`** for modern Python dependency management.

@@ -15,7 +15,6 @@ def g1_ball(bvals, bvecs, lambda_iso):
         lambda_iso: Scalar isotropic diffusivity.
     """
     # Debug
-    jax.debug.print("g1_ball: bvals shape {x}, lambda_iso shape {y}", x=bvals.shape, y=jnp.shape(lambda_iso))
     # S = exp(-b * d_iso)
     return jnp.exp(-bvals * lambda_iso)
 

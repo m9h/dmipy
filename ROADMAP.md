@@ -11,11 +11,11 @@
     - [x] Implement voxel-wise fitting using `optimistix.least_squares`.
 
 ## Phase 2: Optimization & Compatibility
-- [ ] **JAX-Native Modeling Framework**:
+- [x] **JAX-Native Modeling Framework**:
     - [x] **Implement `JaxMultiCompartmentModel` Wrapper**: Create a high-level class wrapping `compose_models` to handle dictionary-based parameter management and provide a `fit()` API compatible with legacy `dmipy`.
     - [x] **Implement Global Initialization**: Port the "Brute" phase of `Brute2FineOptimizer` using `jax.vmap` grid search to provide robust initial guesses for the LM solver.
     - [x] **Port Missing Models**: Implement `TortuosityModel`, `RestrictedCylinder`, `PlaneModels`, and `Tensor` (G2).
-- [ ] **Advanced Fitting & UQ (New)**:
+- [x] **Advanced Fitting & UQ (New)**:
     - [x] **Surrogate Modeling**: Implemented Generalized Polynomial Chaos (gPC) for accelerating slow models (`dmipy_jax.core.surrogate`).
     - [x] **Uncertainty Quantification**: Implemented Tier 1 (CRLB) uncertainty estimation in `JaxMultiCompartmentModel`.
     - [ ] Scaling to 1M+ voxels using `jax.vmap`.
@@ -23,7 +23,7 @@
 - [x] **Verification**:
     - [x] Benchmark against original `dmipy`.
     - [x] Validate accuracy on synthetic phantom data.
-    - [x] Port key examples (`simulate_noddi_sandi_jax`, `axcaliber`) to verify end-to-end user experience.
+    - [x] Port key examples (`demo_ball_and_stick_jax`, `simulate_noddi_sandi_jax`) to verify end-to-end user experience.
 
 ## Phase 3: Inverse & Global Fitting (scico)
 - [x] **Inverse Architect Foundation**:

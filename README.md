@@ -21,9 +21,6 @@
 | Acquisition Class | ✅ | ✅ | `JaxAcquisition` (Simplified) |
 | Model Composition | ✅ | ✅ | `compose_models` |
 | Fitting (Voxelwise) | ✅ | ✅ | `fit_voxel` (optimistix) |
-| MCMC Inference | ❌ | ✅ | NUTS Sampler (Blackjax) |
-| Simulation (Monte Carlo) | ❌ | ✅ | `dmipy_jax.simulation` (GPU) |
-| Tractography | ❌ | ✅ | Differentiable Streamline Integrator |
 | **Cylinder Models** | | | |
 | Stick (C1) | ✅ | ✅ | `C1Stick` |
 | Cylinder (C2) | ✅ | ✅ | `RestrictedCylinder` (Soderman), `CallaghanRestrictedCylinder` |
@@ -35,6 +32,14 @@
 | Sphere (S2) | ✅ | ✅ | `SphereStejskalTanner`, `SphereGPD` (SANDI), `SphereCallaghan` |
 | **Plane Models** | | | |
 | Planes | ✅ | ✅ | `PlaneStejskalTanner`, `PlaneCallaghan` |
+
+## Additional Features
+
+These features are new to **dmipy-jax** and were not present in the original library:
+
+*   **MCMC Inference**: Full Bayesian inference using the No-U-Turn Sampler (NUTS) via `Blackjax`.
+*   **Simulation (Monte Carlo)**: High-performance, GPU-accelerated Monte Carlo simulation of diffusion in complex geometries (`dmipy_jax.simulation`).
+*   **Tractography**: A Differentiable Streamline Integrator that allows gradients to flow through tractography steps for end-to-end optimization.
 
 ## Installation
 

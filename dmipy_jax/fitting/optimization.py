@@ -4,7 +4,7 @@ import jaxopt
 import optimistix as optx
 from functools import partial
 
-__all__ = ['VoxelFitter', 'OptimistixFitter', 'mse_loss']
+__all__ = ['VoxelFitter', 'OptimistixFitter', 'CustomLMFitter', 'mse_loss']
 
 def mse_loss(params, data, bvals, bvecs, model_func, unwrap_fn):
     args = unwrap_fn(params)
@@ -160,5 +160,58 @@ class OptimistixFitter:
         )
 
         fitted_params_real = sol.value * self.scales
-        # Return params and convergence status (integer)
-        return fitted_params_real, sol.result
+        # Return params and step count
+        # Handle case where stats might be missing (though unlikely with LM)
+        steps = sol.stats.get('num_steps', jnp.array(-1))
+        return fitted_params_real, steps
+
+from dmipy_jax.fitting.custom_solvers import BatchedLevenbergMarquardt
+
+class CustomLMFitter:
+    """
+    A High-Performance Fitter using a custom Batched Levenberg-Marquardt solver.
+    Designed for massive throughput on GPU by using unrolled loops and Cholesky factorization.
+    """
+    def __init__(self, model_func, parameter_ranges, solver_settings=None, scales=None):
+        self.model_func = model_func
+        
+        n_params = len(parameter_ranges)
+        if scales is None:
+            self.scales = jnp.ones(n_params)
+        else:
+            self.scales = jnp.array(scales)
+            
+        self.solver_settings = {
+            'max_steps': 20,
+            'damping': 1e-3
+        }
+        if solver_settings:
+            self.solver_settings.update(solver_settings)
+            
+    @partial(jax.jit, static_argnums=(0,))
+    def fit(self, data, acquisition, init_params):
+        """
+        Fits a single voxel using Custom Batched LM.
+        """
+        scales = self.scales
+        model_func = self.model_func
+
+        init_params_solver = init_params / scales
+
+        # Residual function
+        def residual_fun(params_solver, _):
+            params_real = params_solver * scales
+            prediction = model_func(params_real, acquisition)
+            return prediction - data
+
+        solver = BatchedLevenbergMarquardt(
+            max_steps=self.solver_settings['max_steps'],
+            damping=self.solver_settings['damping']
+        )
+        
+        final_params_solver, stats = solver.solve(residual_fun, init_params_solver)
+        
+        fitted_params_real = final_params_solver * scales
+        steps = stats['steps'] # Fixed steps
+        
+        return fitted_params_real, steps

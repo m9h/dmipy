@@ -350,8 +350,11 @@ def g3_sphere_callaghan(q, tau, diameter, diffusion_constant, alpha):
         num_geom = q_argument * Jder_n # (N,)
         denom_geom = (q_argument_2 - an2_col)**2 # (K, N)
         
+        # Guard against singularity where qR approaches a root (alpha)
+        denom_geom = jnp.maximum(denom_geom, 1e-12)
+        
         # Full term
-        term = E_times * weight * num_geom / jnp.where(denom_geom<1e-12, 1e-12, denom_geom)
+        term = E_times * weight * num_geom / denom_geom
         
         accum += jnp.sum(term, axis=0)
 
@@ -399,13 +402,18 @@ def g3_sphere(bvals, bvecs, diameter, diffusion_constant, big_delta, small_delta
     denom_dimensionless = alpha_sq_broad * (alpha_sq_broad - 2)
     
     # 5. Time Terms
-    exp_1 = jnp.exp(-Dm_alpha2 * small_delta)
-    exp_2 = jnp.exp(-Dm_alpha2 * big_delta)
-    exp_3 = jnp.exp(-Dm_alpha2 * (big_delta - small_delta))
-    exp_4 = jnp.exp(-Dm_alpha2 * (big_delta + small_delta))
+    # Ensure deltas broadcast against roots (axis 1)
+    # small_delta/big_delta: (N,) or scalar -> expand to (N, 1) or (1, 1) if not already
+    sd_expanded = jnp.expand_dims(small_delta, -1) if jnp.ndim(small_delta) > 0 else small_delta
+    bd_expanded = jnp.expand_dims(big_delta, -1) if jnp.ndim(big_delta) > 0 else big_delta
+    
+    exp_1 = jnp.exp(-Dm_alpha2 * sd_expanded)
+    exp_2 = jnp.exp(-Dm_alpha2 * bd_expanded)
+    exp_3 = jnp.exp(-Dm_alpha2 * (bd_expanded - sd_expanded))
+    exp_4 = jnp.exp(-Dm_alpha2 * (bd_expanded + sd_expanded))
     
     time_term = (
-        2 * small_delta 
+        2 * sd_expanded 
         - (2 + exp_3 - 2 * exp_2 - 2 * exp_1 + exp_4) / Dm_alpha2
     )
     

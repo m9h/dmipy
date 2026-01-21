@@ -1,7 +1,9 @@
 import jax
+import jax
 import jax.numpy as jnp
+import numpy as np
 from dmipy_jax.composer import compose_models
-from dmipy_jax.fitting.optimization import OptimistixFitter
+from dmipy_jax.fitting.optimization import OptimistixFitter, VoxelFitter
 
 class JaxMultiCompartmentModel:
     """
@@ -264,9 +266,9 @@ class JaxMultiCompartmentModel:
                 flat_ranges.append(rng)
                 low, high = rng
                 # Pick scale
-                if not jnp.isinf(high) and (high != 0):
+                if not np.isinf(high) and (high != 0):
                     s = high
-                elif not jnp.isinf(low) and (low != 0):
+                elif not np.isinf(low) and (low != 0):
                     s = low
                 else:
                     s = 1.0
@@ -277,13 +279,13 @@ class JaxMultiCompartmentModel:
                      # Replicate
                      flat_ranges.extend([rng] * card)
                      low, high = rng
-                     s = high if not jnp.isinf(high) and high!=0 else 1.0
+                     s = high if not np.isinf(high) and high!=0 else 1.0
                      current_scales.extend([s] * card)
                 else:
                      flat_ranges.extend(rng)
                      for r in rng:
                          l, h = r
-                         s = h if not jnp.isinf(h) and h!=0 else 1.0
+                         s = h if not np.isinf(h) and h!=0 else 1.0
                          current_scales.append(s)
             
             scales_list.extend(current_scales)
@@ -292,7 +294,11 @@ class JaxMultiCompartmentModel:
 
         # 2. Instantiate Fitter
         # Pass scales to OptimistixFitter
-        fitter = OptimistixFitter(self.model_func, flat_ranges, scales=scales)
+        if method in ["LBFGSB", "VoxelFitter"]:
+            fitter = VoxelFitter(self.model_func, flat_ranges, scales=scales)
+        else:
+            # Default to Optimistix (Levenberg-Marquardt)
+            fitter = OptimistixFitter(self.model_func, flat_ranges, scales=scales)
         
         # 3. Initial Guess
         # Use GlobalBruteInitializer (Random Search in this implementation)
@@ -313,68 +319,43 @@ class JaxMultiCompartmentModel:
             init_params = initializer.compute_initial_guess(data, acquisition, candidates)
         else:
             # Multi-voxel
-            # vmap compute_initial_guess over data
-            # candidates are shared (None)
-            selector = jax.vmap(initializer.compute_initial_guess, in_axes=(0, None, None))
-            init_params = selector(data, acquisition, candidates)
-            # init_params shape (N_vox, N_params)
-
-        
-        # 4. Run Fit
-        from dmipy_jax.core.uncertainty_utils import compute_crlb_std
-        
-        # Helper to compute residual sigma for CRLB
-        def estimate_sigma(params, data, acquisition):
-            pred = self.model_func(params, acquisition)
-            mse = jnp.mean((data - pred)**2)
-            return jnp.sqrt(mse)
-
-        if data.ndim == 1:
-            fitted, _ = fitter.fit(data, acquisition, init_params)
-            ret = self.parameter_array_to_dictionary(fitted)
-            
-            if compute_uncertainty:
-                sigma_est = estimate_sigma(fitted, data, acquisition)
-                # Compute CRLB
-                # jacobian needs model_func, params, acq
-                # But compute_crlb_std separates jacobian calc? No, I defined `compute_jacobian` in utils as separate.
-                # Let's reuse compute_jacobian from utils or just do it here if simple.
-                from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
-                
-                J = compute_jacobian(self.model_func, fitted, acquisition)
-                stds = compute_crlb_std(J, sigma=sigma_est)
-                
-                # Unpack stds
-                idx = 0
-                for name in self.parameter_names:
-                    card = self.parameter_cardinality[name]
-                    if card == 1:
-                        ret[f"{name}_std"] = stds[idx]
-                        idx += 1
-                    else:
-                        ret[f"{name}_std"] = stds[idx:idx+card]
-                        idx += card
-            return ret
-
-        else:
-            # Multi-voxel logic
+            data = data.reshape(-1, data.shape[-1])
             N_vox = data.shape[0]
-
+            
+            # Multi-voxel
+            data = data.reshape(-1, data.shape[-1])
+            N_vox = data.shape[0]
+            
+            # Precompute predictions to avoid N_vox x N_cand simulations
+            # vmap over candidates (0), acquisition fixed (None)
+            simulator = jax.vmap(self.model_func, in_axes=(0, None))
+            candidate_predictions = simulator(candidates, acquisition)
+            
+            # Select best
+            # vmap select_best over data (0)
+            # candidate_predictions fixed (None), candidates fixed (None)
+            selector = jax.jit(jax.vmap(initializer.select_best_candidate, in_axes=(0, None, None)))
+            
             # Helper for fitting a batch
-            fit_vmapped = jax.vmap(fitter.fit, in_axes=(0, None, 0))
+            fit_vmapped = jax.jit(jax.vmap(fitter.fit, in_axes=(0, None, 0)))
             
             # Helper for uncertainty
             from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
             def single_pixel_uncertainty(params, data_voxel):
-                sigma_est = estimate_sigma(params, data_voxel, acquisition)
+                # Calculate sigma from residuals (MSE)
+                prediction = self.model_func(params, acquisition)
+                residuals = data_voxel - prediction
+                sigma_est = jnp.sqrt(jnp.mean(residuals**2))
+                # sigma_est = estimate_sigma(params, data_voxel, acquisition)
                 J = compute_jacobian(self.model_func, params, acquisition)
                 return compute_crlb_std(J, sigma=sigma_est)
             
-            calc_uncertainty_vmapped = jax.vmap(single_pixel_uncertainty)
+            calc_uncertainty_vmapped = jax.jit(jax.vmap(single_pixel_uncertainty))
 
             # Determine if batching is needed
             if batch_size is None or N_vox <= batch_size:
                 # Full VMAP
+                init_params = selector(data, candidate_predictions, candidates)
                 fitted_batch, _ = fit_vmapped(data, acquisition, init_params)
                 if compute_uncertainty:
                     stds_batch = calc_uncertainty_vmapped(fitted_batch, data)
@@ -392,7 +373,9 @@ class JaxMultiCompartmentModel:
                     end_idx = min((i + 1) * batch_size, N_vox)
                     
                     data_chunk = data[start_idx:end_idx]
-                    init_chunk = init_params[start_idx:end_idx]
+                    
+                    # Compute Init for Chunk (Memory Safe)
+                    init_chunk = selector(data_chunk, candidate_predictions, candidates)
                     
                     # Run Fit
                     res_chunk, _ = fit_vmapped(data_chunk, acquisition, init_chunk)
@@ -407,7 +390,8 @@ class JaxMultiCompartmentModel:
                     stds_batch = jnp.concatenate(stds_chunks, axis=0)
                 else:
                     stds_batch = None
-
+            
+            
             # 5. Pack results
             ret = {}
             idx = 0

@@ -112,6 +112,14 @@ def compose_models(models):
             # Actually, to be safe and consistent with typical functional JAX patterns, 
             # let's pass bvals and gradient_directions as arguments.
             
+            # Inject timing parameters if available in acquisition
+            if acquisition.delta is not None:
+                kwargs['delta'] = acquisition.delta
+                kwargs['small_delta'] = acquisition.delta
+            if acquisition.Delta is not None:
+                kwargs['Delta'] = acquisition.Delta
+                kwargs['big_delta'] = acquisition.Delta
+
             sub_signal = model(
                 bvals=acquisition.bvalues,
                 gradient_directions=acquisition.gradient_directions,

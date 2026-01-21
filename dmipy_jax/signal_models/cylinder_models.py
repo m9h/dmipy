@@ -180,8 +180,8 @@ class RestrictedCylinder(eqx.Module):
         diameter = kwargs.get('diameter', self.diameter)
         mu = kwargs.get('mu', self.mu)
         
-        big_delta = kwargs.get('big_delta')
-        small_delta = kwargs.get('small_delta')
+        big_delta = kwargs.get('big_delta', kwargs.get('Delta'))
+        small_delta = kwargs.get('small_delta', kwargs.get('delta'))
         
         if big_delta is None or small_delta is None:
              raise ValueError("RestrictedCylinder requires 'big_delta' and 'small_delta' in kwargs/acquisition.")
@@ -461,3 +461,52 @@ class CallaghanRestrictedCylinder(eqx.Module):
             bvals, gradient_directions, mu_cart, lambda_par, diameter, diffusion_perp, tau, self.alpha
         )
 
+
+class C1Stick(eqx.Module):
+    r"""
+    The Stick model - a cylinder with zero radius.
+    
+    Parameters
+    ----------
+    mu : array, shape(2)
+        angles [theta, phi] representing main orientation on the sphere.
+    lambda_par : float
+        parallel diffusivity in mm^2/s.
+    """
+    
+    mu: Any = None
+    lambda_par: Any = None
+
+    parameter_names = ('mu', 'lambda_par')
+    parameter_cardinality = {'mu': 2, 'lambda_par': 1}
+    parameter_ranges = {
+        'mu': ([0, jnp.pi], [-jnp.pi, jnp.pi]),
+        'lambda_par': (0.1e-9, 3e-9)
+    }
+
+    def __init__(self, mu=None, lambda_par=None):
+        self.mu = mu
+        self.lambda_par = lambda_par
+
+    def __call__(self, bvals, gradient_directions, **kwargs):
+        lambda_par = kwargs.get('lambda_par', self.lambda_par)
+        mu = kwargs.get('mu', self.mu)
+        
+        # Convert spherical [theta, phi] to cartesian vector
+        mu = jnp.asarray(mu)
+        if mu.size == 3:
+             # Assume already cartesian if size 3
+             mu_cart = mu
+        elif mu.ndim > 0:
+             theta = mu[0]
+             phi = mu[1]
+             st = jnp.sin(theta)
+             ct = jnp.cos(theta)
+             sp = jnp.sin(phi)
+             cp = jnp.cos(phi)
+             mu_cart = jnp.array([st * cp, st * sp, ct])
+        else:
+             # Default or scalar? Should not happen if mu is (2,) params
+             mu_cart = jnp.array([1.0, 0.0, 0.0]) # Dummy fallback
+
+        return c1_stick(bvals, gradient_directions, mu_cart, lambda_par)

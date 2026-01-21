@@ -9,10 +9,10 @@ from skimage.metrics import mean_squared_error as mse
 
 from dmipy_jax.io.connectome2 import load_connectome2_mri
 from dmipy_jax.core.modeling_framework import JaxMultiCompartmentModel
+from dmipy_jax.core.acquisition import SimpleAcquisitionScheme as JaxAcquisition
 from dmipy_jax.signal_models.cylinder_models import RestrictedCylinder
 from dmipy_jax.signal_models.sphere_models import SphereGPD
-from dmipy_jax.inverse.amico import AMICOSolver, calculate_mean_parameter_map
-from dmipy_jax.inverse.solvers import GlobalOptimizer, MicrostructureOperator, AMICOSolver as GlobalAMICOSolver
+from dmipy_jax.inverse.global_amico import GlobalAMICOSolver
 
 # Helper to generate directions
 def get_fibonacci_sphere(samples=1):
@@ -63,7 +63,7 @@ def main():
     affine = data_dict['affine']
     
     # Remove single slice dim
-    dwi = jnp.squeeze(dwi, axis=0)
+    dwi = jnp.squeeze(dwi, axis=0) # (40, 40, N_meas)
     print(f"Data Shape: {dwi.shape}")
 
     # Normalize by approx b0
@@ -74,128 +74,102 @@ def main():
     # 2. Setup AMICO Model
     print("Initializing AMICO Dictionary...")
     
+    # Re-wrap scheme into JaxAcquisition with timing
+    # Typically Connectome 2.0: Delta=43ms, delta=12ms approx ? 
+    # Or just use arbitrary values valid for restricted/sphere models.
+    # We'll assume typical clinical/research values.
+    acq = JaxAcquisition(
+        scheme.bvalues, 
+        scheme.gradient_directions,
+        delta=0.012, 
+        Delta=0.043,
+        b0_threshold=50
+    )
+
     # Directions for restricted cylinder
     n_dirs = 32
     dirs_cart = get_fibonacci_sphere(n_dirs)
     dirs_sphere = cart2sphere(dirs_cart)
-    # Convert to list of arrays/tuples for gridding?
-    # AMICOSolver uses itertools.product. If we pass a list of arrays, it works.
-    mu_grid = [d for d in dirs_sphere] # List of (2,) arrays
+    mu_grid = [d for d in dirs_sphere] # List of (2,) arrays (theta, phi)
 
     # Diameters
     diameters = np.linspace(1e-6, 8e-6, 6) # 1 to 8 microns
 
-    # Define Dictionary Grid
-    # Using specific names based on model index suffix if needed, but here simple names might collide?
-    # JaxMultiCompartmentModel assigns names. If checking `amico.py`, it handles suffixes `_1`, `_2`.
-    # Let's inspect MCM parameter names first.
-    
     mc_model = JaxMultiCompartmentModel([
         RestrictedCylinder(lambda_par=1.7e-9), 
         SphereGPD(diffusion_constant=3.0e-9, diameter=15e-6) # Large sphere as free water proxy
     ])
     
-    # RestrictedCylinder is model 0. SphereGPD is model 1.
-    # Parameter names will be:
-    # RC: 'mu_1', 'diameter_1' (since 'diameter' collides with sphere probably?)
-    # Sphere: 'diameter_2' ??
-    # Let's verify names.
-    print("Model Parameter Names:", mc_model.parameter_names)
-    
-    # Construct Grid
-    # We map our grid values to these names.
-    # If standard names are preserved (no collision), we use them.
-    # 'mu' is unique to RC? Yes.
-    # 'diameter' is shared. So it will be renamed.
-    # Likely 'diameter_1' (RC) and 'diameter_2' (Sphere).
-    
-    # Helper to find correct name
-    rc_diam_name = 'diameter'
-    if 'diameter_1' in mc_model.parameter_names:
-        rc_diam_name = 'diameter_1'
+    # Handle parameter naming for grid
+    rc_diam_name = 'diameter_1' if 'diameter_1' in mc_model.parameter_names else 'diameter'
         
     grid = {
         'mu': mu_grid,
         rc_diam_name: diameters
-        # Sphere diameter is fixed in __init__, so no grid needed if fixed.
     }
     
-    # Initialize Solver
-    # Use the GlobalAMICOSolver from solvers.py (since we confirmed it has generate_dictionary)
-    # But wait, `dmipy_jax.inverse.amico` had `AMICOSolver` too.
-    # I imported `AMICOSolver` from `dmipy_jax.inverse.amico`.
-    # Let's check which one works.
-    # `from dmipy_jax.inverse.amico import AMICOSolver` -> This is the one we viewed in file.
-    # It has `generate_kernels` (vmap wrapper) AND `generate_dictionary` (itertools)?
-    # No, `inverse/amico.py` had duplicate classes.
-    # I will assume `solvers.py` has `GlobalAMICOSolver`?
-    # In `inverse/__init__.py`: `from .amico import AMICOSolver`.
-    # The `solvers.py` file had `class AMICOSolver` inside it too! (Step 24).
-    # It seems `solvers.py`'s `AMICOSolver` is the JAX/SCICO efficient one.
-    # I will use `GlobalAMICOSolver` (aliased from solvers.py in my import above).
-    
-    solver = GlobalAMICOSolver(mc_model, scheme)
-    phi = solver.generate_dictionary(grid)
-    print(f"Dictionary Size: {phi.shape}")
+    # Initialize Global Solver
+    solver = GlobalAMICOSolver(mc_model, acq, grid)
+    print(f"Dictionary Size: {solver.dict_matrix.shape}")
     
     # 3. Establish Ground Truth (High SNR Fit)
     print("Fitting Ground Truth (High SNR)...")
-    # Solve voxel-wise (lambda_tv=0) or small regularization
-    # Using `solver.fit` which is voxel-wise/vmap PGM.
-    gt_coeffs = solver.fit(dwi_norm.reshape(-1, dwi_norm.shape[-1]), phi, lambda_l1=1e-3, lambda_l2=0.0)
-    gt_coeffs = gt_coeffs.reshape(*dwi_norm.shape[:-1], -1) # (40, 40, N_atoms)
     
-    # Compute GT Parameter Maps
-    # We want Mean Diagrameter.
-    # Weights for RC are needed. Cylinder is model 0.
-    # Atoms corresponding to RC?
-    # Dictionary generation order: itertools.product of cylinder params + Sphere params?
-    # Wait, `generate_dictionary` concatenates sub-models.
-    # Cylinder atoms come first?
-    # We need to know slices.
-    # `generate_dictionary` logic:
-    # 1. Cylinder (N_mu * N_diam atoms)
-    # 2. Sphere (1 atom, if no grid)
+    # Use global solver with small L1 for ground truth, TV=0
+    # Or just use fit_global with TV=0
+    gt_coeffs = solver.fit_global(
+        dwi_norm, 
+        lambda_tv=0.0, 
+        lambda_l1=1e-3, 
+        maxiter=100
+    )
+    # gt_coeffs: (40, 40, N_atoms) assumed since dwi_norm is (40,40, N_meas)
     
-    n_cyl_atoms = len(mu_grid) * len(diameters)
-    n_sph_atoms = 1 # Assuming 1 fixed sphere
+    # Calculate Mean Diameter Map for Ground Truth
+    # Need to reconstruct diameter vector per atom
+    # Order in generate_kernels: Loop submodels -> Loop combinations
+    # Model 1 (RC): itertools.product(mu, diameter)
+    # Model 2 (Sphere): single atom
     
-    # Check total
-    if phi.shape[1] != (n_cyl_atoms + n_sph_atoms):
-        print(f"Warning: atoms count mismatch. Expected {n_cyl_atoms + n_sph_atoms}, got {phi.shape[1]}")
-    
-    # Extract Cylinder Weights
-    weights_cyl = gt_coeffs[..., :n_cyl_atoms]
-    weights_sph = gt_coeffs[..., n_cyl_atoms:]
-    
-    # Normalize Cylinder Weights for Mean Diameter Calculation
-    # We only care about diameter distribution WITHIN the cylinder compartment?
-    # Or global mean diameter?
-    # Usually Mean Axon Diameter is weighted average of cylinder diameters.
-    
-    # Calculate Mean Diameter
-    # We need the diameter value for each atom.
-    # Order in `itertools.product(mu, diameter)`:
-    # mu changes slowest? or fastest?
-    # `val_lists = [mu_grid, diameters]` -> product(mu, diam)
-    # Order: (mu1, d1), (mu1, d2)... (mu2, d1)...
-    # So diameter cycles fastest.
+    n_mu = len(mu_grid)
+    n_diam = len(diameters)
+    n_cyl_atoms = n_mu * n_diam
     
     # Create vector of diameters for atoms
-    # Tile diameters N_dirs times
-    diams_per_atom = np.tile(diameters, len(mu_grid))
+    # itertools order: mu varies for EACH diameter? Or diameter varies for each mu?
+    # global_amico.py: `combinations = list(itertools.product(*val_lists))`
+    # val_lists order depends on `sub_model_params` order.
+    # RestrictedCylinder params: mu, lambda_par, diameter
+    # If using default order: mu, lambda_par, diameter.
+    # But dictionary_params has 'mu', 'diameter'. 'lambda_par' is fixed.
+    # param_order depends on sub_model loop.
+    # Usually: 'mu', 'lambda_par', 'diameter'.
+    # So product(mu_grid, [lam], diameters)
+    # mu is first -> Slowest varying axis.
+    # diameter is last -> Fastest varying axis.
+    # So for each mu, we cycle through all diameters.
+    
+    # diams_per_atom pattern: 
+    # [d1, d2, d3, d4, d5, d6, d1, d2...]
+    diams_per_atom = np.tile(diameters, n_mu)
     diams_param_vec = jnp.array(diams_per_atom)
     
-    # calculate_mean_parameter_map helper in amico.py assumes direct grid.
-    # We do manual calculation here for safety.
+    def calc_mean_diameter(coeffs):
+        # Extract cylinder coeffs
+        # coeffs: (..., N_total)
+        w_cyl = coeffs[..., :n_cyl_atoms]
+        
+        denom = jnp.sum(w_cyl, axis=-1)
+        denom = jnp.where(denom < 1e-6, 1.0, denom)
+        
+        mrd = jnp.sum(w_cyl * diams_param_vec, axis=-1) / denom
+        return mrd
+
+    gt_mrd = calc_mean_diameter(gt_coeffs)
     
-    denom = jnp.sum(weights_cyl, axis=-1)
-    denom = jnp.where(denom < 1e-6, 1.0, denom)
-    gt_mrd = jnp.sum(weights_cyl * diams_param_vec, axis=-1) / denom
-    
-    # 4. Synthetic Downgrade Loop
-    snr_levels = [20, 30] # Limit to 2 for speed in demo
-    tv_reg_values = jnp.logspace(-4, 0, 10) # 1e-4 to 1.0
+    # 4. Calibration Loop
+    snr_levels = [30] # Just one SNR for speed
+    tv_reg_values = [0.001, 0.01, 0.1, 0.5] # Fewer points
     
     results = {
         'snr': [],
@@ -204,122 +178,38 @@ def main():
         'ssim': []
     }
     
-    # Initialize Global Optimizer
-    op = MicrostructureOperator(mc_model, scheme, input_shape=gt_coeffs.shape)
-    # Wait, GlobalOptimizer (TV) solves for coefficients X directly.
-    # `GlobalOptimizer` in `solvers.py` uses `MicrostructureOperator` as A?
-    # But `MicrostructureOperator` is non-linear?
-    # `MicrostructureOperator` wraps `model.model_func`.
-    # AMICO is Linear: Y = Phi * X.
-    # We want to solve min_X ||Phi X - Y|| + TV(X).
-    # `GlobalOptimizer` in `solvers.py` takes `MicrostructureOperator`.
-    # I should construct a `LinearOperator` wrapping `Phi`.
+    # Pre-calculate L0 (Lipschitz) once? 
+    # GlobalAMICOSolver does it internally per fit call.
     
-    phi_op = scico.linop.MatrixOperator(phi)
-    # We need to wrap it to handle spatial dimensions.
-    # Input X: (H, W, N_atoms). output Y: (H, W, N_meas).
-    # scico MatrixOperator usually acts on last dim?
-    # scico `MatrixOperator` A(x) -> A @ x.
-    # If x is (..., N), A @ x works if mapped?
-    
-    # We can use `Identity` for spatial + `MatrixOperator` for channel?
-    # Or just vmap the multiplication?
-    # Custom operator for dictionary:
-    class DictionaryOperator(scico.linop.LinearOperator):
-        def __init__(self, dictionary, input_shape):
-            self.D = dictionary
-            output_shape = input_shape[:-1] + (dictionary.shape[0],)
-            super().__init__(input_shape=input_shape, output_shape=output_shape)
-            
-        def _eval(self, x):
-            # x: (..., N_atoms)
-            # D: (N_meas, N_atoms)
-            # D @ x.T ?
-            # jnp.dot(x, D.T) -> (..., N_meas)
-            return jnp.dot(x, self.D.T)
-            
-        def _adj(self, y):
-            # y: (..., N_meas)
-            # D.T @ y.T -> x
-            # jnp.dot(y, D) -> (..., N_atoms)
-            return jnp.dot(y, self.D)
-            
-    dict_op = DictionaryOperator(phi, gt_coeffs.shape)
-    
-    # Global Optimizer wrapper?
-    # `GlobalOptimizer` in `solvers.py` assumes `op` and calculates `L0`.
-    # It defines `f = SquaredL2Loss(y=y, A=self.op)`.
-    # It adds TV.
-    # I will instantiate GlobalOptimizer with `dict_op`.
-    
-    global_solver = GlobalOptimizer(dict_op)
-    
-    # Pre-calculate Lipschitz
-    L0 = jnp.linalg.norm(phi, ord=2)**2
+    gt_mrd_np = np.array(gt_mrd)
+    data_range = 10e-6 # Fixed range (0 to 10 microns)
     
     for snr in snr_levels:
         print(f"Processing SNR {snr}...")
         noisy_signal = add_rician_noise(dwi_norm, snr)
         
-        mse_list = []
-        ssim_list = []
-        
         for lam in tv_reg_values:
             print(f"  Lambda TV: {lam:.2e}")
             
-            # Solve Global TV
-            # Start from zeros or small random?
-            est_coeffs = global_solver.solve_tv(
+            est_coeffs = solver.fit_global(
                 noisy_signal, 
                 lambda_tv=lam, 
-                maxiter=50, # 50 iters for speed
-                L0=L0
-            ) 
+                lambda_l1=1e-3,
+                maxiter=30, # Decrease iter for speed
+                display=False
+            )
             
-            # Enforce non-negativity?
-            # `GlobalOptimizer.solve_tv` in `solvers.py` uses just PGM with `g=TV`.
-            # It DOES NOT enforce non-negativity of X!
-            # It solves `min ||Ax-y|| + TV(x)`.
-            # AMICO requires X >= 0.
-            # We need `g = TV(x) + Indicator(x>=0)`.
-            # Standard PGM handles sum of functionals?
-            # SCICO PGM takes `g`. `g` must be proxable.
-            # Prox of (TV + NonNeg) is hard.
-            # Normally we use ADMM for this.
-            
-            # Hack: Project to non-negative after solving? Or rely on data?
-            # Or use `GlobalOptimizer`?
-            # Wait, `GlobalOptimizer` implementation in `solvers.py` (lines 300+)
-            # only puts TV in `g`.
-            
-            # I must strictly enforce Non-Negativity for volume fractions.
-            # I will clip result?
-            est_coeffs = jnp.maximum(0, est_coeffs)
-            
-            # Re-normalize? AMICO weights should sum to 1?
-            # Usually AMICO has `sum(x)=1` constraint? Or L1?
-            # `AMICOSolver` (voxelwise) uses L1 + NonNeg.
-            # My global solver here lacks L1/NonNeg term in the loop.
-            
-            # Correct Approach:
-            # Modify `GlobalOptimizer` to accept `g_list`?
-            # Or just proceed with TV-only for the "Calibration" demo sake, assuming weights ~positive.
-            # Clipping is a reasonable approximation for this demo.
-            
-            # Calculate Param Maps
-            weights_cyl_est = est_coeffs[..., :n_cyl_atoms]
-            denom_est = jnp.sum(weights_cyl_est, axis=-1)
-            denom_est = jnp.where(denom_est < 1e-6, 1.0, denom_est)
-            est_mrd = jnp.sum(weights_cyl_est * diams_param_vec, axis=-1) / denom_est
+            est_mrd = calc_mean_diameter(est_coeffs)
+            est_mrd_np = np.array(est_mrd)
             
             # Metrics
             # Compare est_mrd vs gt_mrd
-            # GT is also a map.
-            val_mse = mse(np.array(gt_mrd), np.array(est_mrd))
-            val_ssim = ssim(np.array(gt_mrd), np.array(est_mrd), data_range=est_mrd.max()-est_mrd.min())
+            val_mse = mse(gt_mrd_np, est_mrd_np)
             
-            mse_list.append(val_mse)
-            ssim_list.append(val_ssim)
+            # Use fixed data_range for SSIM to avoid drift/instability
+            val_ssim = ssim(gt_mrd_np, est_mrd_np, data_range=data_range)
+            
+            print(f"    MSE: {val_mse:.2e}, SSIM: {val_ssim:.4f}")
             
             results['snr'].append(snr)
             results['lambda'].append(lam)
@@ -328,31 +218,38 @@ def main():
             
     # 5. Plotting
     print("Plotting results...")
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(12, 5))
     
-    # Reshape results
     n_lams = len(tv_reg_values)
+    
     for i, snr in enumerate(snr_levels):
-        # Extract subset
-        # This is fragile, better to structure storage.
-        # Just slicing:
-        dataset_mse = results['mse'][i*n_lams : (i+1)*n_lams]
-        dataset_ssim = results['ssim'][i*n_lams : (i+1)*n_lams]
+        start_idx = i * n_lams
+        end_idx = (i + 1) * n_lams
+        
+        curr_lams = results['lambda'][start_idx:end_idx]
+        curr_mse = results['mse'][start_idx:end_idx]
+        curr_ssim = results['ssim'][start_idx:end_idx]
         
         plt.subplot(1, 2, 1)
-        plt.semilogx(tv_reg_values, dataset_mse, label=f'SNR {snr}')
-        plt.xlabel('Lambda TV')
-        plt.ylabel('MSE (Mean Radius)')
-        plt.title('Error Landscape')
-        plt.legend()
+        plt.semilogx(curr_lams, curr_mse, 'o-', label=f'SNR {snr}')
         
         plt.subplot(1, 2, 2)
-        plt.semilogx(tv_reg_values, dataset_ssim, label=f'SNR {snr}')
-        plt.xlabel('Lambda TV')
-        plt.ylabel('SSIM')
-        plt.title('Structural Similarity')
-        plt.legend()
+        plt.semilogx(curr_lams, curr_ssim, 'o-', label=f'SNR {snr}')
         
+    plt.subplot(1, 2, 1)
+    plt.xlabel('Lambda TV')
+    plt.ylabel('MSE (Mean Diameter)')
+    plt.title('Error Landscape')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.subplot(1, 2, 2)
+    plt.xlabel('Lambda TV')
+    plt.ylabel('SSIM')
+    plt.title('Structural Similarity')
+    plt.grid(True)
+    plt.legend()
+    
     plt.tight_layout()
     plt.savefig('experiments/calibration_results.png')
     print("Saved plot to experiments/calibration_results.png")

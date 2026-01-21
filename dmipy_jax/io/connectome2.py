@@ -8,6 +8,7 @@ from dmipy_jax.core.acquisition import acquisition_scheme_from_bvalues
 from dmipy_jax.acquisition import JaxAcquisition
 from dipy.io.image import load_nifti
 from dipy.io.gradients import read_bvals_bvecs
+import datalad.api as dl
 
 # Dataset ID: ds006181 (Connectome 2.0)
 DS006181_GIT_URL = "https://github.com/OpenNeuroDatasets/ds006181.git"
@@ -41,17 +42,52 @@ def load_connectome2_mri(path: Path = None, subject: str = "sub-01", session: st
     if path is None:
         path = fetch_connectome2()
         
-    subj_dir = path / subject / session / "dwi"
-    if not subj_dir.exists():
-         raise FileNotFoundError(f"Subject directory not found: {subj_dir}")
-         
-    # Find dwi file
-    # sub-01_ses-01_acq-ConnectomX_dwi.nii.gz
-    dwi_files = list(subj_dir.glob("*dwi.nii.gz"))
-    if not dwi_files:
-        raise FileNotFoundError(f"No DWI NIfTI found in {subj_dir}")
-    dwi_path = dwi_files[0]
+    print(f"DEBUG: Loading Connectome2 from {path}")
     
+    # Check for derivatives first (Preprocessed)
+    # Structure: derivatives/preprocessed_dwi/sub-01
+    deriv_dir = path / "derivatives" / "preprocessed_dwi" / subject
+    print(f"DEBUG: Checking deriv_dir={deriv_dir}, exists={deriv_dir.exists()}")
+    if deriv_dir.exists():
+        # Look for preprocessed dwi
+        dwi_files = list(deriv_dir.glob("*dwi.nii.gz"))
+        if dwi_files:
+             subj_dir = deriv_dir
+             dwi_path = dwi_files[0]
+        else:
+             subj_dir = None
+    else:
+        subj_dir = None
+        
+    if subj_dir is None:
+        # Fallback to raw BIDS
+        # Handle session
+        if session:
+            subj_dir = path / subject / session / "dwi"
+        else:
+             subj_dir = path / subject / "dwi"
+             
+        if not subj_dir.exists() and session:
+             # Try without session
+             subj_dir = path / subject / "dwi"
+
+        if not subj_dir.exists():
+             raise FileNotFoundError(f"Subject directory not found: {subj_dir} (checked derivatives and raw)")
+             
+        # Find dwi file
+        dwi_files = list(subj_dir.glob("*dwi.nii.gz"))
+        if not dwi_files:
+            raise FileNotFoundError(f"No DWI NIfTI found in {subj_dir}")
+        dwi_path = dwi_files[0]
+    
+    # Retrieve data via DataLad if it's a pointer file (or just ensure it's there)
+    print(f"DEBUG: Ensuring data presence for {dwi_path}")
+    try:
+        # We must specify the dataset path because CWD might be different
+        dl.get(path=str(dwi_path), dataset=str(path))
+    except Exception as e:
+        print(f"WARNING: DataLad get failed: {e}. Assuming file is already present or handled.")
+
     # Load data
     data, affine = load_nifti(str(dwi_path))
     if voxel_slice is not None:

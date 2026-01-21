@@ -1,0 +1,21 @@
+participant_id	sex	age	group
+sub-01	M	35	Glioma WHO III
+sub-02	M	35	Glioma WHO II
+sub-03	F	62	Meningioma WHO I
+sub-04	F	64	Glioma WHO IV
+sub-05	M	37	Health control
+sub-06	F	53	Diffuse large B-cell lymphoma
+sub-07	F	54	Multiple sclerosis
+sub-08	F	70	Cortical cerebral infarction
+sub-09	M	52	Diffuse large B-cell lymphoma
+sub-10	M	65	Glioma WHO IV
+sub-11	M	34	Glioma WHO III
+sub-12	F	43	Gray matter heterotopia
+sub-13	M	28	Glioma WHO II
+sub-14	M	50	Glioma WHO IV
+sub-15	F	31	Health control
+sub-16	F	53	Glioma WHO II
+sub-17	M	46	Brain abscess
+sub-18	F	60	Glioma WHO III
+sub-19	F	55	Glioma WHO II
+sub-20	F	48	Brain abscess

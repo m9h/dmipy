@@ -1,75 +1,75 @@
-# Project Roadmap
+# Project Roadmap V3: The Differentiable Science Era
 
-## Phase 1: Foundation
-- [x] **JAX Port Core**:
-    - [x] Port `Acquisition` class to `JaxAcquisition` (PyTree registered).
-    - [x] Port core Signal Models (Stick, Ball, Sphere).
-    - [x] Implement `compose_models` for multi-compartment modeling.
-- [x] **Optimization Engine V1**:
-    - [x] Integrate **optimistix** for Levenberg-Marquardt (LM) solvers.
-        - *Rationale*: LM is the gold standard for NLLS in MRI, offering 2nd-order convergence and NaN-safe Trust Regions.
-    - [x] Implement voxel-wise fitting using `optimistix.least_squares`.
+**Objective**: Transcend analytical limits using Differentiable Programming (JAX), focusing on Simulation-Based Inference, Bayesian Optimal Design, and Generative Modeling.
 
-## Phase 2: Optimization & Compatibility
-- [x] **JAX-Native Modeling Framework**:
-    - [x] **Implement `JaxMultiCompartmentModel` Wrapper**: Create a high-level class wrapping `compose_models` to handle dictionary-based parameter management and provide a `fit()` API compatible with legacy `dmipy`.
-    - [x] **Implement Global Initialization**: Port the "Brute" phase of `Brute2FineOptimizer` using `jax.vmap` grid search to provide robust initial guesses for the LM solver.
-    - [x] **Port Missing Models**: Implement `TortuosityModel`, `RestrictedCylinder`, `PlaneModels`, and `Tensor` (G2).
-- [x] **Advanced Fitting & UQ (New)**:
-    - [x] **Surrogate Modeling**: Implemented Generalized Polynomial Chaos (gPC) for accelerating slow models (`dmipy_jax.core.surrogate`).
-    - [x] **Uncertainty Quantification**: Implemented Tier 1 (CRLB) uncertainty estimation in `JaxMultiCompartmentModel`.
-    - [ ] Scaling to 1M+ voxels using `jax.vmap`.
-    - [ ] Prepare for Neural Network Training (Stochastic) using `optax`.
-- [x] **Verification**:
-    - [x] Benchmark against original `dmipy`.
-    - [x] Validate accuracy on synthetic phantom data.
-    - [x] Port key examples (`demo_ball_and_stick_jax`, `simulate_noddi_sandi_jax`) to verify end-to-end user experience.
+## Completed Foundations (Phases 1-3.5)
+- [x] **Core Infrastructure**: JAX port of dmipy signal models, `JaxAcquisition`.
+- [x] **Scientific Stack**: Adoption of `equinox`, `diffrax`, `optimistix`, `scico`.
+- [x] **Inverse Problems**: Fast AMICO (ADMM), Global TV Regularization.
+- [x] **Simulation**: Bloch Simulator (`diffrax`), Particle Engine (`jax-md`), Differentiable SDEs.
+- [x] **Basic Inference**: Levenberg-Marquardt fitting (`optimistix`), Variational Inference basics (`inference/variational.py`).
 
-## Phase 3: Inverse & Global Fitting (scico)
-- [x] **Inverse Architect Foundation**:
-    - [x] Integrate **scico** dependency.
-    - [x] Implement `MicrostructureOperator` to wrap `dmipy` models as JAX-compatible operators.
-- [ ] **Linearized Inference (AMICO)**:
-    - [x] Port core AMICO solver using ADMM (`AMICOSolver`).
-    - [ ] Build robust dictionary generators to replace legacy `cvxpy` implementation.
-    - [ ] Benchmark `scico` vs `cvxpy` for speed and accuracy.
-- [ ] **Global Reconstruction**:
-    - [x] Implement `GlobalOptimizer` with Total Variation (TV) regularization.
-    - [ ] Calibrate regularizers for in-vivo data.
-    - [ ] Investigate advanced priors (Hessian, Non-local Means).
-- [ ] **Advanced Features**:
-    - [ ] Constrained Spherical Deconvolution (CSD) via sparse reconstruction.
-    - [ ] Joint reconstruction and parameter estimation.
+---
 
-## PyPulseq Integration
-- **Status:** In Progress
-- **Goal:** Bridge the gap between sequence design (PyPulseq) and high-performance simulation (Dmipy-JAX).
-- **Features:** 
-    - `dmipy_jax.external.pulseq`: Bridge module to convert `.seq` files or objects into JAX-compatible structures.
-    - Support for `GeneralSequence` (dense waveforms) for Bloch simulation.
-    - Support for `JaxAcquisition` (b-vals/b-vecs) for microstructure fitting.
+## Phase 4: Differentiable Science (COMPLETE)
 
-## Phase 3.5: New Horizons (Beyond Dmipy)
-- [x] **Simulation Engine**:
-    - [x] Implement Monte Carlo simulator for complex geometries (`dmipy_jax.simulation`).
-    - [x] GPU-accelerated particle tracking.
-- [x] **Tractography**:
-    - [x] Implement Differentiable Streamline Integrator (Soft Walker).
-    - [x] End-to-end optimization of tractography parameters.
-- [x] **Bio-Electromagnetism**:
-    - [x] Conductivity mapping (Nernst-Einstein).
-    - [x] tDCS optimization loss functions.
+### 4.1 Optimal Experimental Design (OED)
+*Goal: Design the perfect MRI protocol by differentiating through the simulator.*
+- [x] **CRB Minimization**: Minimize local uncertainty using Fisher Information (D-Optimality). (**Done in `optimization/acquisition.py`**)
+- [x] **Bayesian OED (Next Frontier)**:
+    -   Maximize Mutual Information $I(\theta; y) = H(y) - H(y|\theta)$.
+    -   Use `MeanFieldGaussian` VI to estimate posterior entropy for diverse tissue priors.
+    -   Optimize protocol parameters to minimize average posterior entropy across a population.
+- [x] **Algebraic Protocol Design (Advanced)**:
+    -   Analyze the polynomial ideal of signal models to find b-values that minimize the Grobner basis complexity. (**Implemented Engine in `algebra/identifiability.py`**)
+    -   Goal: "Linearize" the algebra of inversion by selecting optimal shells.
 
-## Phase 4: Beyond Parity (Advanced Spherical Models)
-- **Goal:** Extend the biophysical modeling capabilities beyond the original `dmipy` scope, focusing on advanced spherical and exchange models.
-- **Key Models:**
-    - [ ] **Permeable Spheres (Exchange)**: Implement models with finite membrane permeability to account for intra/extra-cellular exchange (e.g., Kärger, NEXI).
-        - *Rationale*: Crucial for long diffusion times and cell membrane characterization.
-    - [ ] **Concentric Spheres**: Model soma with nucleus (two compartments).
-        - *Rationale*: Explains relaxation-diffusion correlations (T1/T2 vs D) in soma imaging.
-    - [ ] **Restricted Ellipsoids**: Analytical or numerical approximations for non-spherical somas.
-        - *Rationale*: Captures microscopic anisotropy of gray matter cell bodies.
-    - [ ] **Gamma-Distributed Spheres**: Native optimization of diameter distributions (polydispersity).
-        - *Rationale*: More realistic than single-diameter models; leverages JAX for distribution parameter optimization.
-    - [ ] **T2-Dot**: Stationary compartment with T2 relaxation.
-        - *Rationale*: Modeling myelin water or other trapped, non-diffusing pools with distinct relaxation times.
+### 4.2 Simulation-Based Inference (SBI)
+*Goal: Instant, accurate inversion without analytical approximations.*
+- [x] **Physics-Informed Encoders**: Simple MLP inversion.
+- [x] **Amortized Posterior Estimation**:
+    -   Implement **Normalizing Flows** (Conditioned on signal $y$) to output complex posterior distributions $p(\theta|y)$. (**Implemented RQS Flow in `dmipy_jax/inference/flows.py`**)
+    -   Handle multi-modal posteriors (degeneracy) which standard MLPs and VI cannot.
+    -   **Self-Supervised Refinement**: Fine-tune the flow on specific patient data using the physics loss (reconstruction error). (**Implemented `SSFTTrainer` in `inference/ssft.py` with Global TV**)
+- [x] **Algebraic Initializers**:
+    -   Derive lightweight rational function approximations from Elimination Ideals (using Grobner bases). (**Implemented `SymbolicInverter` and DTI Init in `dmipy_jax/fitting/algebraic.py`**)
+    -   **SymPy2JAX Acceleration**: Compile these symbolic solutions into TPU-accelerated `eqx.Module` initializers.
+
+### 4.3 Neural Biophysics
+*Goal: Discover tissue properties that analytical models ignore.*
+- [x] **Neural Exchange**: Learned exchange rates using Neural ODEs. (**Implemented in `biophysics/neural_exchange.py`**)
+- [x] **Neural Signal Representations**:
+    -   Represent the signal attenuation $E(q)$ as a Convex Neural Network (ICNN) to enforce physical monotonicity/convexity constraints. (**Implemented in `biophysics/neural_signal.py`**)
+    -   Learn the "Universal Propagator" from data while guaranteeing $E(0)=1$ and $|q|^2$-like decay.
+
+### 4.4 Uncertainty-Aware Mapping
+*Goal: Quantify confidence in every pixel.*
+- [x] **Bayesian Inference**: Variational Inference (`MeanFieldGaussian`, `VIMinimizer`) implemented in `inference/variational.py`.
+- [x] **Degeneracy Quantification**: Output posterior variance and parameter correlations for every voxel. (**Achieved via VI and Flows**)
+- [x] **Exact Algebraic Identifiability**:
+    -   **Engine**: Grobner Basis solver implemented in `algebra/identifiability.py`. (**Done**)
+    -   **Application**: Analytically solve for degenerate modes (`sympy`) to guide SBI models. (**Implemented in `algebra/wrapper.py` & `optimization/oed.py`**)
+
+### 4.5 Generative Microstructure Phantoms
+*Goal: "Infinite data" for amortized inference.*
+- [x] **Generative Microstructure Phantoms**:
+    -   Combine `diffrax` SDEs with Score-Based Generative Models (SGMs). (**Implemented SGM in `dmipy_jax/simulation/phantoms.py`**)
+    -   Learn joint distribution $p(\theta)$ of microstructural parameters.
+
+---
+
+## Phase 5: Validation & Clinical Translation (ACTIVE)
+- [ ] **Differentiable Histology Bridge**: Direct optimization of MRI models against histology inputs.
+- [ ] **Multi-Modal Fusion**: Joint modeling of Diffusion + T1/T2 + MT.
+
+---
+
+## Next Development Steps (Agent Prompts)
+
+1.  **Differentiable Histology Bridge**:
+    *   Create `dmipy_jax/validation/histology.py`.
+    *   Load histology images (e.g. from Zenodo).
+    *   Differentiate fitting error w.r.t histology-predicted signals.
+
+2.  **Multi-Modal Fusion**:
+    *   Implement joint T1-Diffusion models (e.g. relaxation-diffusion spectrum).

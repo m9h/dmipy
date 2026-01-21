@@ -34,3 +34,12 @@ Dmipy-JAX supports a wide range of biophysical models, including:
 *   **Tortuous Zeppelin**: Extra-axonal water with tortuosity constraints.
 *   **Bingham/Watson Distributions**: Orientation dispersion.
 
+Parameter Estimation
+--------------------
+
+Unlike the original Dmipy which relied on `scipy.optimize`, Dmipy-JAX leverages **Optimistix** for non-linear least squares fitting. By default, we utilize the **Levenberg-Marquardt** algorithm, which serves as a second-order optimizer. This approach provides:
+
+1.  **Robust Convergence**: Superior handling of the non-linear microstructure landscapes compared to first-order methods (like Adam/L-BFGS).
+2.  **Batched Execution**: The solver is fully vectorizable, allowing us to fit thousands of voxels simultaneously on the GPU.
+
+

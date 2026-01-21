@@ -1,0 +1,15 @@
+{
+    "participant_id": {
+      "Description": "Participant identifier"
+    },
+    "age": {
+      "Description": "Age in years"
+    },
+    "sex": {
+      "Description": "self-rated by participant, M for male/F for female"
+    },
+    "group": {
+      "Description": "Description of the lesion, and WHO classification of tumours"
+    }
+  }
+  

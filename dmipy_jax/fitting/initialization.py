@@ -124,6 +124,23 @@ class GlobalBruteInitializer:
         best_idx = jnp.argmin(mse_scores)
         return init_grid[best_idx]
 
+    @partial(jax.jit, static_argnums=(0,))
+    def select_best_candidate(self, data, candidate_predictions, init_grid):
+        """
+        Selects best candidate using precomputed predictions.
+        Optimization for multi-voxel fitting to avoid re-simulating candidates per voxel.
+        
+        Args:
+            data: (N_meas,)
+            candidate_predictions: (N_cand, N_meas)
+            init_grid: (N_cand, N_params)
+        """
+        # MSE
+        diff = candidate_predictions - data
+        mse = jnp.mean(diff**2, axis=-1)
+        best_idx = jnp.argmin(mse)
+        return init_grid[best_idx]
+
     def generate_random_grid(self, n_samples=1000, key=None):
         """Generates random parameter candidates within bounds."""
         if key is None:

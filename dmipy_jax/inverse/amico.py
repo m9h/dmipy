@@ -79,7 +79,46 @@ class AMICOSolver(eqx.Module):
         # We need [N_measurements, N_atoms] for matrix multiplication y = Phi @ x
         return atoms.T
 
-    def fit(self, data: jnp.ndarray, lambda_reg: float = 0.0, constrained: bool = True):
+    def _fit_batch(self, Y_batch: jnp.ndarray, LHS: jnp.ndarray, c_and_lower: tuple, lambda_reg: float, rho: float, constrained: bool):
+        """
+        Internal batch fitting function (to be JIT-compiled).
+        """
+        K = self.dict_matrix.shape[1]
+        A = self.dict_matrix
+        AtY = A.T @ Y_batch # [N_atoms, Batch]
+        
+        x = jnp.zeros((K, Y_batch.shape[1]))
+        z = jnp.zeros_like(x)
+        u = jnp.zeros_like(x)
+        
+        def admm_step(carry, _):
+            x, z, u = carry
+            rhs = AtY + rho * (z - u)
+            x_new = jax.scipy.linalg.cho_solve(c_and_lower, rhs)
+            v = x_new + u
+            kappa = lambda_reg / rho
+            
+            if constrained:
+                # Enforce non-negativity first
+                # Using relu
+                v_proj = jnp.maximum(v, 0)
+            else:
+                v_proj = v
+            
+            if lambda_reg > 0:
+                 # Soft thresholding (L1 prox)
+                 z_new = jnp.sign(v_proj) * jnp.maximum(jnp.abs(v_proj) - kappa, 0)
+            else:
+                 z_new = v_proj
+                 
+            u_new = u + x_new - z_new
+            return (x_new, z_new, u_new), None
+
+        final_carry, _ = jax.lax.scan(admm_step, (x, z, u), None, length=100)
+        X_hat, _, _ = final_carry
+        return X_hat
+
+    def fit(self, data: jnp.ndarray, lambda_reg: float = 0.0, constrained: bool = True, batch_size: int = 10000):
         """
         Fit the model to the data using ADMM.
         
@@ -87,69 +126,84 @@ class AMICOSolver(eqx.Module):
             data: Signal data [N_measurements] or [N_voxels, N_measurements].
             lambda_reg: Regularization parameter (e.g. for L1 sparsity).
             constrained: If True, enforces non-negativity (x >= 0).
+            batch_size: Number of voxels to process at once (default 10000).
             
         Returns:
             Estimated weights [..., N_atoms]
         """
         # Handle single voxel case
         if data.ndim == 1:
-            data = data[None, :] # [1, N_measurements]
+            data = data[None, :]
             was_1d = True
         else:
             was_1d = False
 
-        # Transpose to [N_measurements, N_voxels] for Y = A X
-        Y = data.T
+        # Input data is [N_voxels, N_measurements]
+        N_voxels = data.shape[0]
+        N_atoms = self.dict_matrix.shape[1]
         
-        # Dictionary operator A: [M, K]
-        # We want to solve Y = A X where X is [K, N_voxels]
-        dictionary_op = linop.MatrixOperator(self.dict_matrix)
+        # Precompute Solver Matrices (Shared across batches)
+        needs_admm = constrained or (lambda_reg > 0)
         
-        # Calculate X shape [K, N_voxels]
-        X_shape = (self.dict_matrix.shape[1], Y.shape[1])
-        
-        # Data fidelity term: (1/2) || Y - A X ||_2^2
-        f = loss.SquaredL2Loss(y=Y, A=dictionary_op)
-        
-        # Regularization / Constraints
-        g_list = []
-        C_list = []
-        
-        # Non-negativity constraint: I(X >= 0)
-        # Applied element-wise to X
-        if constrained:
-            g_list.append(functional.NonNegativeIndicator())
-            C_list.append(linop.Identity(X_shape)) # Identity on X
+        if needs_admm:
+            rho = 1.0
+            A = self.dict_matrix
+            AtA = A.T @ A
+            LHS = AtA + rho * jnp.eye(N_atoms)
+            c_and_lower = jax.scipy.linalg.cho_factor(LHS)
             
-        # L1 Regularization: lambda ||X||_1
-        # scico L1Norm sums over all elements by default, which is correct
-        # min sum(|x_ij|) is equivalent to sum_j(min sum_i(|x_ij|))
-        if lambda_reg > 0:
-            g_list.append(lambda_reg * functional.L1Norm())
-            C_list.append(linop.Identity(X_shape))
+            # Compile the batch runner
+            # We use partial/closure to capture static config logic
+            # OR pass them as args. Passing as args is cleaner for JIT.
             
-        if not g_list:
-            # Fallback to simple least squares if no constraints/reg
-            # X = pinv(A) @ Y
-            X_hat = jnp.linalg.lstsq(self.dict_matrix, Y)[0]
-        else:
-            # Solve with ADMM
-            # X0 shape: [N_atoms, N_voxels]
-            X0 = jnp.zeros(X_shape)
-            
-            solver = optimize.ADMM(
-                f=f,
-                g_list=g_list,
-                C_list=C_list,
-                rho_list=[1.0] * len(g_list),
-                x0=X0,
-                maxiter=100
-            )
-            
-            X_hat = solver.solve() # [N_atoms, N_voxels]
+            # Helper JIT function
+            @jax.jit
+            def run_batch(d_batch):
+                 # Transpose inside 
+                 return self._fit_batch(d_batch.T, LHS, c_and_lower, lambda_reg, rho, constrained)
 
-        # Transpose back to [N_voxels, N_atoms]
-        X_hat = X_hat.T
+            # Python Loop for Chunking
+            results = []
+            num_batches = int(jnp.ceil(N_voxels / batch_size))
+            
+            for i in range(num_batches):
+                start = i * batch_size
+                end = min((i + 1) * batch_size, N_voxels)
+                
+                if i % 10 == 0:
+                     print(f"Processing batch {i}/{num_batches}...")
+
+                batch_data = data[start:end]
+                batch_res = run_batch(batch_data) # Returns [atoms, batch]
+                
+                # Transpose back and move to CPU (optional, here we keep on device)
+                # If we keep on device, result array grows. 
+                # For 1M voxels x 2000 atoms x 4 bytes = 8GB. 
+                # Hopefully output fits, but intermediates don't.
+                
+                results.append(batch_res.T)
+                
+            X_hat = jnp.concatenate(results, axis=0)
+
+        else:
+             # Least Squares (Matrix-based)
+             # X = pinv(A) @ Y
+             # If pinv is precomputed, we can just matmul.
+             # Or use lstsq. Using lstsq batch-wise is safer too.
+             
+             @jax.jit
+             def run_lstsq(d_batch):
+                  # d_batch: [B, M] -> Y: [M, B]
+                  return jnp.linalg.lstsq(self.dict_matrix, d_batch.T)[0].T
+
+             results = []
+             num_batches = int(jnp.ceil(N_voxels / batch_size))
+             for i in range(num_batches):
+                 start = i * batch_size
+                 end = min((i + 1) * batch_size, N_voxels)
+                 results.append(run_lstsq(data[start:end]))
+                 
+             X_hat = jnp.concatenate(results, axis=0)
         
         if was_1d:
             return X_hat[0]

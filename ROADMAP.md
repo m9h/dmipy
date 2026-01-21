@@ -1,75 +1,82 @@
-# Project Roadmap V3: The Differentiable Science Era
+# Project Roadmap V4: Clinical Translation & Real-World Validation
 
-**Objective**: Transcend analytical limits using Differentiable Programming (JAX), focusing on Simulation-Based Inference, Bayesian Optimal Design, and Generative Modeling.
-
-## Completed Foundations (Phases 1-3.5)
-- [x] **Core Infrastructure**: JAX port of dmipy signal models, `JaxAcquisition`.
-- [x] **Scientific Stack**: Adoption of `equinox`, `diffrax`, `optimistix`, `scico`.
-- [x] **Inverse Problems**: Fast AMICO (ADMM), Global TV Regularization.
-- [x] **Simulation**: Bloch Simulator (`diffrax`), Particle Engine (`jax-md`), Differentiable SDEs.
-- [x] **Basic Inference**: Levenberg-Marquardt fitting (`optimistix`), Variational Inference basics (`inference/variational.py`).
+**Objective**: Transcend analytical limits using Differentiable Programming (JAX), moving from **Theoretical Simulation-Based Inference (SBI)** to **Real-World Clinical Validation**.
 
 ---
 
-## Phase 4: Differentiable Science (COMPLETE)
+## 🏗️ Completed Foundations (Phases 1-5)
 
-### 4.1 Optimal Experimental Design (OED)
-*Goal: Design the perfect MRI protocol by differentiating through the simulator.*
-- [x] **CRB Minimization**: Minimize local uncertainty using Fisher Information (D-Optimality). (**Done in `optimization/acquisition.py`**)
-- [x] **Bayesian OED (Next Frontier)**:
-    -   Maximize Mutual Information $I(\theta; y) = H(y) - H(y|\theta)$.
-    -   Use `MeanFieldGaussian` VI to estimate posterior entropy for diverse tissue priors.
-    -   Optimize protocol parameters to minimize average posterior entropy across a population.
-- [x] **Algebraic Protocol Design (Advanced)**:
-    -   Analyze the polynomial ideal of signal models to find b-values that minimize the Grobner basis complexity. (**Implemented Engine in `algebra/identifiability.py`**)
-    -   Goal: "Linearize" the algebra of inversion by selecting optimal shells.
+Everything from `dmipy` porting to the latest SIREN networks.
 
-### 4.2 Simulation-Based Inference (SBI)
-*Goal: Instant, accurate inversion without analytical approximations.*
-- [x] **Physics-Informed Encoders**: Simple MLP inversion.
-- [x] **Amortized Posterior Estimation**:
-    -   Implement **Normalizing Flows** (Conditioned on signal $y$) to output complex posterior distributions $p(\theta|y)$. (**Implemented RQS Flow in `dmipy_jax/inference/flows.py`**)
-    -   Handle multi-modal posteriors (degeneracy) which standard MLPs and VI cannot.
-    -   **Self-Supervised Refinement**: Fine-tune the flow on specific patient data using the physics loss (reconstruction error). (**Implemented `SSFTTrainer` in `inference/ssft.py` with Global TV**)
-- [x] **Algebraic Initializers**:
-    -   Derive lightweight rational function approximations from Elimination Ideals (using Grobner bases). (**Implemented `SymbolicInverter` and DTI Init in `dmipy_jax/fitting/algebraic.py`**)
-    -   **SymPy2JAX Acceleration**: Compile these symbolic solutions into TPU-accelerated `eqx.Module` initializers.
-
-### 4.3 Neural Biophysics
-*Goal: Discover tissue properties that analytical models ignore.*
-- [x] **Neural Exchange**: Learned exchange rates using Neural ODEs. (**Implemented in `biophysics/neural_exchange.py`**)
-- [x] **Neural Signal Representations**:
-    -   Represent the signal attenuation $E(q)$ as a Convex Neural Network (ICNN) to enforce physical monotonicity/convexity constraints. (**Implemented in `biophysics/neural_signal.py`**)
-    -   Learn the "Universal Propagator" from data while guaranteeing $E(0)=1$ and $|q|^2$-like decay.
-
-### 4.4 Uncertainty-Aware Mapping
-*Goal: Quantify confidence in every pixel.*
-- [x] **Bayesian Inference**: Variational Inference (`MeanFieldGaussian`, `VIMinimizer`) implemented in `inference/variational.py`.
-- [x] **Degeneracy Quantification**: Output posterior variance and parameter correlations for every voxel. (**Achieved via VI and Flows**)
-- [x] **Exact Algebraic Identifiability**:
-    -   **Engine**: Grobner Basis solver implemented in `algebra/identifiability.py`. (**Done**)
-    -   **Application**: Analytically solve for degenerate modes (`sympy`) to guide SBI models. (**Implemented in `algebra/wrapper.py` & `optimization/oed.py`**)
-
-### 4.5 Generative Microstructure Phantoms
-*Goal: "Infinite data" for amortized inference.*
-- [x] **Generative Microstructure Phantoms**:
-    -   Combine `diffrax` SDEs with Score-Based Generative Models (SGMs). (**Implemented SGM in `dmipy_jax/simulation/phantoms.py`**)
-    -   Learn joint distribution $p(\theta)$ of microstructural parameters.
+- [x] **Core Infrastructure**: `dmipy-jax`, `JaxAcquisition`, `equinox`/`diffrax` stack.
+- [x] **Differentiable Physics**: Bloch Simulator, Particle Engine, Differentiable SDEs.
+- [x] **Optimization & OED**: CRB Minimization, Bayesian OED, Algebraic Protocol Design.
+- [x] **Simulation-Based Inference (SBI)**:
+    -   Amortized Posterior Estimation (Normalizing Flows).
+    -   Physics-informed encoders and algebraic initializers.
+    -   Hardware acceleration (TPU/GPU).
+- [x] **Advanced Biophysics**:
+    -   Neural Exchange (Neural ODEs).
+    -   **SIREN Networks**: Continuous signal representation (implemented in `dmipy_jax/core/networks.py`).
 
 ---
 
-## Phase 5: Validation & Clinical Translation (ACTIVE)
-- [ ] **Differentiable Histology Bridge**: Direct optimization of MRI models against histology inputs.
-- [ ] **Multi-Modal Fusion**: Joint modeling of Diffusion + T1/T2 + MT.
+## 🏥 Phase 6: Real-World Validation (ACTIVE)
+
+*Goal: Validate computational models against biological ground truth.*
+
+- [ ] **Differentiable Histology Bridge**:
+    -   **Dataset**: [Histo-µSim](https://zenodo.org/records/14559356) (Histology-informed microstructural diffusion simulations).
+    -   **Task**: Create `dmipy_jax/validation/histology.py`.
+    -   **Validation Loop**: Differentiate fitting error w.r.t histology-predicted signals to validate microstructural indices (e.g., cell radius vs. actual radius).
+
+- [ ] **Phanthom Validation**:
+    -   Validate SBI models against physical phantoms (e.g., MGH/Fibercup) where ground truth is known.
 
 ---
 
-## Next Development Steps (Agent Prompts)
+## 🧠 Phase 7: Clinical Translation (NEW)
 
-1.  **Differentiable Histology Bridge**:
-    *   Create `dmipy_jax/validation/histology.py`.
-    *   Load histology images (e.g. from Zenodo).
-    *   Differentiate fitting error w.r.t histology-predicted signals.
+*Goal: Deploy Differentiable MRI in neurosurgical planning.*
 
-2.  **Multi-Modal Fusion**:
-    *   Implement joint T1-Diffusion models (e.g. relaxation-diffusion spectrum).
+- [ ] **Neurosurgical Diffusion Validation**:
+    -   **Target Dataset**: **OpenNeuro BTC_preop (ds001226)** and **BTC_postop** (Brain Tumor Center, gliomas).
+    -   **Context**: Multi-shell HARDI data from glioma patients.
+    -   **Objective**: Test if SBI/SIREN models can delineate tumor boundaries better than standard DTI/CSD.
+- [ ] **Pathology-Specific Priors**:
+    -   Adapt `dmipy_jax` priors for infilatrating tumor tissue (e.g., increased diffusivity, reduced anisotropy).
+    -   Implement "Tumor-Aware" SBI networks trained on mixed healthy/pathological simulations.
+- [ ] **Clinical Metrics**:
+    -   Compare "Time-to-Inference" vs. standard tools (FSL/Mrtrix).
+    -   Quantify uncertainty in tumor margin estimation.
+
+---
+
+## 🚀 Next Development Steps (Agent Prompts)
+
+### 1. Differentiable Histology Bridge (Priority 1)
+*   **Goal**: Prove biological accuracy using **Histo-µSim**.
+*   **Action**: Implement `HistoDataset` loader and `HistologySimulator` in `dmipy_jax/validation/histology.py`.
+
+### 2. Clinical Dataset Pipeline (Priority 2)
+*   **Goal**: Ingest real clinical data.
+*   **Action**: Create `dmipy_jax/data/openneuro.py` to fetch and preprocess Basic Tumor Center (BTC) datasets from OpenNeuro.
+*   **Verification**: Run standard DTI fit on a glioma subject and visualize the tumor leveraging JAX acceleration.
+
+### 3. Multi-Modal Degeneracy Resolution
+*   **Context**: Combine Diffusion with T1/T2 maps (available in OpenNeuro datasets) to resolve microstructure ambiguity.
+*   **Action**: Implement Joint T1-Diffusion Inversion in `dmipy_jax/core/multimodal.py`.
+
+---
+
+## 📚 Literature & Tech Stack
+
+### 1. Clinical datasets
+*   **OpenNeuro ds001226 (BTC_preop)**: High-grade glioma patients with multi-shell dMRI.
+*   **Histo-µSim**: Synthetic ground-truth from histology.
+
+### 2. Simulation-Based Inference (SBI)
+*   **Ref**: *Simulation-Based Inference at the Theoretical Limit* (Maximilian et al., 2024).
+
+### 3. Differentiable Physics (SIREN)
+*   **Ref**: *Implicit Neural Representation of Multi-shell CSD* (Hendriks et al., 2024).

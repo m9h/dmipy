@@ -14,13 +14,14 @@ class SimpleAcquisitionScheme(eqx.Module):
     delta: Optional[Any]
     Delta: Optional[Any]
     TE: Optional[Any]
+    TR: Optional[Any]
     qvalues: Optional[Any]
     gradient_strengths: Optional[Any]
     shell_indices: Optional[Any] = None
     unique_shell_indices: Optional[Any] = None
 
     def __init__(self, bvalues, gradient_directions, 
-                 delta=None, Delta=None, TE=None, 
+                 delta=None, Delta=None, TE=None, TR=None,
                  qvalues=None, gradient_strengths=None,
                  b0_threshold=10e6):
         
@@ -34,6 +35,7 @@ class SimpleAcquisitionScheme(eqx.Module):
         self.delta = jnp.array(delta) if delta is not None else None
         self.Delta = jnp.array(Delta) if Delta is not None else None
         self.TE = jnp.array(TE) if TE is not None else None
+        self.TR = jnp.array(TR) if TR is not None else None
         
         # Calculated if not provided
         self.qvalues = qvalues
@@ -53,7 +55,7 @@ class SimpleAcquisitionScheme(eqx.Module):
         print(f"b-values range: {jnp.min(self.bvalues)} - {jnp.max(self.bvalues)}")
 
 def acquisition_scheme_from_bvalues(bvalues, gradient_directions, 
-                                    delta=None, Delta=None, TE=None, 
+                                    delta=None, Delta=None, TE=None, TR=None,
                                     min_b_shell_distance=50e6, b0_threshold=10e6):
     """
     Factory function matching dmipy signature but returning SimpleAcquisitionScheme.
@@ -71,7 +73,8 @@ def acquisition_scheme_from_bvalues(bvalues, gradient_directions,
     delta_ = _tile_if_scalar(delta, n)
     Delta_ = _tile_if_scalar(Delta, n)
     TE_ = _tile_if_scalar(TE, n)
+    TR_ = _tile_if_scalar(TR, n)
     
     return SimpleAcquisitionScheme(bvalues, gradient_directions, 
-                                   delta=delta_, Delta=Delta_, TE=TE_, 
+                                   delta=delta_, Delta=Delta_, TE=TE_, TR=TR_,
                                    b0_threshold=b0_threshold)

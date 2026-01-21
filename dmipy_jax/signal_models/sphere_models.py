@@ -146,7 +146,6 @@ def spherical_jn_jax(n, z):
     safe_z = jnp.where(z < 1e-10, 1e-10, z)
     return jnp.sqrt(jnp.pi / (2 * safe_z)) * jsp.bessel_jn(safe_z, v=n + 0.5)
 
-
 def spherical_jn_derivative_jax(n, z):
     # j_n'(z) = j_{n-1}(z) - (n+1)/z * j_n(z)
     # Be careful at z=0.

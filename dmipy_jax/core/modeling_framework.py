@@ -4,6 +4,26 @@ import jax.numpy as jnp
 import numpy as np
 from dmipy_jax.composer import compose_models
 from dmipy_jax.fitting.optimization import OptimistixFitter, VoxelFitter
+import equinox as eqx
+
+class CompartmentModel(eqx.Module):
+    """
+    Abstract base class for all signal models (compartments).
+    """
+    def __call__(self, bvals, gradient_directions, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def parameter_names(self):
+        raise NotImplementedError
+    
+    @property
+    def parameter_cardinality(self):
+        raise NotImplementedError
+
+    @property
+    def parameter_ranges(self):
+        raise NotImplementedError
 
 class JaxMultiCompartmentModel:
     """

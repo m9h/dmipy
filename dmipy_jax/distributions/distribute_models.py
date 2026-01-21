@@ -64,7 +64,7 @@ class DistributedModel(eqx.Module):
         # This should be fine for reading.
         return dict(self._parameter_ranges)
 
-    def __call__(self, bvals, bvecs, **kwargs):
+    def __call__(self, bvals, gradient_directions, **kwargs):
         # 1. Get distribution grid
         dist_kwargs = {k: kwargs[k] for k in self.distribution.parameter_names if k in kwargs}
         # Use default if not present (handled by distribution's __call__ if it uses self.param)
@@ -75,7 +75,7 @@ class DistributedModel(eqx.Module):
         domain, probability = self.distribution(**dist_kwargs)
         
         # 2. Integrate
-        # We scan/vmap over the domain (e.g. diameters)
+        # We scan/vmap over the domain
         
         def evaluate_at_point(point_val):
             # Update kwargs with the target parameter value
@@ -83,28 +83,39 @@ class DistributedModel(eqx.Module):
             point_kwargs[self.target_parameter] = point_val
             
             # Base model call
-            return self.base_model(bvals, bvecs, **point_kwargs)
+            # Ensure base model receives gradient_directions
+            return self.base_model(bvals, gradient_directions=gradient_directions, **point_kwargs)
             
         # Vmap over domain
         signals = jax.vmap(evaluate_at_point)(domain) # (N_steps, N_measurements)
         
-        # Integrate: integral( S(x) * P(x) dx )
-        # weighted_signals = signals * probability[:, None]
-        # result = jnp.trapz(weighted_signals, x=domain, axis=0)
-        
-        # Better: P(x) is PDF. S_total = Integral S(x) P(x) dx.
+        # Integrate: integral( S(x) * P(x) dx ) or sum( S(x) * w(x) )
         weighted_signals = signals * probability[:, None]
-        # Use trapezoid if available, else manual
-        if hasattr(jnp, 'trapezoid'):
-            result = jnp.trapezoid(weighted_signals, x=domain, axis=0)
-            pdf_area = jnp.trapezoid(probability, x=domain)
-        else:
-            # Fallback for trapz if it exists, roughly equivalent
-            result = jnp.trapz(weighted_signals, x=domain, axis=0)
-            pdf_area = jnp.trapz(probability, x=domain)
         
-        # Safe division
-        pdf_area = jnp.where(pdf_area < 1e-12, 1.0, pdf_area)
-        result = result / pdf_area
+        # Check if domain is likely 1D continuous (scalar per point) or multidimensional (vector per point)
+        # If domain is (N,) -> 1D continuous -> Trapezoid
+        # If domain is (N, D) -> Multi-D (Spherical) -> Weighted Sum (assuming prob are weights)
+        
+        if domain.ndim == 1:
+             # Use trapezoid if available, else manual
+            if hasattr(jnp, 'trapezoid'):
+                result = jnp.trapezoid(weighted_signals, x=domain, axis=0)
+                pdf_area = jnp.trapezoid(probability, x=domain)
+            else:
+                # Fallback for trapz if it exists, roughly equivalent
+                result = jnp.trapz(weighted_signals, x=domain, axis=0)
+                pdf_area = jnp.trapz(probability, x=domain)
+            
+            # Safe division
+            pdf_area = jnp.where(pdf_area < 1e-12, 1.0, pdf_area)
+            result = result / pdf_area
+        else:
+            # Assume Discrete / Weighted Sum
+            # probability contains the weights sum(w) should be 1.
+            result = jnp.sum(weighted_signals, axis=0)
+            # No normalization needed if weights already sum to 1?
+            # Or we can normalize if we want robustness.
+            # let's assume probability are weights.
+            pass
         
         return result

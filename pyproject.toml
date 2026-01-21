@@ -44,6 +44,8 @@ dependencies = [
   "scikit-image>=0.26.0",
   "matplotlib>=3.10.8",
   "cvxpy>=1.7.5",
+  "tqdm>=4.67.1",
+  "corner>=2.2.3",
 ]
 
 [project.urls]

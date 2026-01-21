@@ -1,0 +1,50 @@
+ERROR:2026-01-21 08:11:46,878:jax._src.xla_bridge:477: Jax plugin configuration error: Exception when calling jax_plugins.xla_cuda12.initialize()
+Traceback (most recent call last):
+  File "/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/jax/_src/xla_bridge.py", line 475, in discover_pjrt_plugins
+    plugin_module.initialize()
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/jax_plugins/xla_cuda12/__init__.py", line 328, in initialize
+    _check_cuda_versions(raise_on_first_error=True)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/jax_plugins/xla_cuda12/__init__.py", line 285, in _check_cuda_versions
+    local_device_count = cuda_versions.cuda_device_count()
+RuntimeError: jaxlib/cuda/versions_helpers.cc:113: operation cuInit(0) failed: Unknown CUDA error 303; cuGetErrorName failed. This probably means that JAX was unable to load the CUDA libraries.
+Running Differentiable Histology Bridge Demo...
+Downloading Histo-uSim data from https://zenodo.org/records/14559356/files/histo_usim_data.tar.gz?download=1...
+Failed to download: HTTP Error 403: Forbidden
+Warning: Histo files not found. Returning SYNTHETIC ground truth for demo.
+Histology Ground Truth Loaded:
+  radius: shape (10, 10, 1)
+  density: shape (10, 10, 1)
+SimpleAcquisitionScheme init: bvalues shape (4,)
+
+[DEBUG] Sensitivity Check:
+  Diameter 2.00e-06 vs 4.00e-06
+  Signal 1 mean: 0.7583433389663696
+  Signal 2 mean: 0.7583433389663696
+  Mean Difference: 0.0
+  CRITICAL: Model appears insensitive to diameter!
+  Running DEBUG CYLINDER manual check:
+DEBUG CYLINDER CALLED
+  Inputs: lambda=0.0017, diam=2e-06
+  Bvals: [   0. 1000. 1000. 2000.]
+  Tau: 0.026666665449738503
+  Q_mag: [    0.   30820.22 30820.22 43586.37]
+  Q_perp: [    0.   30820.22 30820.22     0.  ]
+  Argument: [0.         0.19364916 0.19364916 0.        ]
+  J1 term: [0.8801012 0.9953198 0.9953198 0.8801012]
+  Signal Perp: [1.         0.99066144 0.99066144 1.        ]
+  Debug Sig (d=2.00e-06): [1.         0.99066144 0.99066144 0.03337327]
+--------------------------------
+
+Simulating signals from Histology GT...
+Predicted Signal Shape: (100, 4)
+Signal Mean: 0.7583433389663696
+Signal Min: 0.03337326645851135, Max: 1.0
+Validation Loss (MSE): 0.000000e+00
+MRI Signal Mean: 0.7583433389663696
+Difference Mean: 0.0
+Checking Differentiability...
+Gradient norm w.r.t radius: 0.000000
+Saved demo_histology_bridge.png
+Success.

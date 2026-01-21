@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import sys; sys.path.append('.'); import dmipy_jax; print('Success')
+                                      ^^^^^^^^^^^^^^^^
+  File "/home/mhough/src/dmipy/dmipy_jax/__init__.py", line 19, in <module>
+    from dmipy_jax import acquisition
+  File "/home/mhough/src/dmipy/dmipy_jax/acquisition.py", line 1, in <module>
+    import jax
+ModuleNotFoundError: No module named 'jax'

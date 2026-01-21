@@ -83,6 +83,7 @@ def c2_cylinder(bvals, bvecs, mu, lambda_par, diameter, big_delta, small_delta):
     # Let's derive q_mag from bvals.
     tau = big_delta - small_delta / 3.0
     q_mag = jnp.sqrt(bvals / (tau + 1e-9)) / (2 * jnp.pi)
+    q_mag = q_mag * 1e3 # Convert mm^-1 to m^-1 (since bvals is s/mm^2 and diameter is m)
     
     # Project gradients perpendicular to fiber axis
     # |g_perp| = |g - (g . mu)mu| = |g| * sqrt(1 - (g_hat . mu)^2)
@@ -251,6 +252,7 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     # This matches the SGP relation b = (2pi q)^2 * tau.
     
     q_mag = jnp.sqrt(bvals / (tau + 1e-12)) / (2 * jnp.pi)
+    q_mag = q_mag * 1e3 # Convert mm^-1 to m^-1
     
     # Project gradients perpendicular to fiber axis
     sin_theta_sq = 1 - dot_prod**2

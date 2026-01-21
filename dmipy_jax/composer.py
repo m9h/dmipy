@@ -119,6 +119,15 @@ def compose_models(models):
             if acquisition.Delta is not None:
                 kwargs['Delta'] = acquisition.Delta
                 kwargs['big_delta'] = acquisition.Delta
+            
+            # Inject TE/TR for relaxation models
+            if hasattr(acquisition, 'TE') and acquisition.TE is not None:
+                kwargs['TE'] = acquisition.TE
+            if hasattr(acquisition, 'TR') and acquisition.TR is not None:
+                kwargs['TR'] = acquisition.TR
+            
+            # Pass acquisition object for advanced models
+            kwargs['acquisition'] = acquisition
 
             sub_signal = model(
                 bvals=acquisition.bvalues,

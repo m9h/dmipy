@@ -1,7 +1,9 @@
+from dmipy_jax.core.modeling_framework import CompartmentModel
 from dmipy_jax.signal_models import g1_ball, g2_zeppelin, g2_tensor
 from jax import numpy as jnp
+from typing import Any, Optional
 
-class G1Ball:
+class G1Ball(CompartmentModel):
     r"""
     The Ball model [1]_ - an isotropic Tensor with one diffusivity.
     JAX implementation.
@@ -17,15 +19,14 @@ class G1Ball:
     }
 
 
-    def __init__(self, lambda_iso=None):
-        self.lambda_iso = lambda_iso
+    lambda_iso: Any = None
 
     def __call__(self, bvals, **kwargs):
         lambda_iso = kwargs.get('lambda_iso', self.lambda_iso)
         return g1_ball(bvals, None, lambda_iso)
 
 
-class G2Zeppelin:
+class G2Zeppelin(CompartmentModel):
     r"""
     The Zeppelin model [1]_ - an axially symmetric Tensor.
     """
@@ -39,10 +40,9 @@ class G2Zeppelin:
     }
 
 
-    def __init__(self, mu=None, lambda_par=None, lambda_perp=None):
-        self.mu = mu
-        self.lambda_par = lambda_par
-        self.lambda_perp = lambda_perp
+    mu: Any = None
+    lambda_par: Any = None
+    lambda_perp: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         lambda_par = kwargs.get('lambda_par', self.lambda_par)
@@ -61,7 +61,7 @@ class G2Zeppelin:
         return g2_zeppelin(bvals, gradient_directions, mu_cart, lambda_par, lambda_perp)
 
 
-class G2Tensor:
+class G2Tensor(CompartmentModel):
     r"""
     The Full Tensor model [1]_ - a general anisotropic diffusion tensor.
     Parametrized by 3 eigenvalues and orientation (Euler angles or 2 vectors).
@@ -76,9 +76,8 @@ class G2Tensor:
     # 3 eigenvalues, 3 Euler angles for orientation
     parameter_cardinality = {'eigenvalues': 3, 'orientation': 3}
 
-    def __init__(self, eigenvalues=None, orientation=None):
-        self.eigenvalues = eigenvalues
-        self.orientation = orientation
+    eigenvalues: Any = None
+    orientation: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         eigenvalues = kwargs.get('eigenvalues', self.eigenvalues)

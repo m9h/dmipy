@@ -1,0 +1,10 @@
+/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/dipy/core/geometry.py:150: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  cos = np.divide(z, r, where=r > 0)
+/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/dipy/core/geometry.py:151: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  theta = np.arccos(cos, where=(cos >= -1) & (cos <= 1))
+/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/dipy/core/geometry.py:150: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  cos = np.divide(z, r, where=r > 0)
+/home/mhough/src/dmipy/.venv/lib/python3.13/site-packages/dipy/core/geometry.py:151: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  theta = np.arccos(cos, where=(cos >= -1) & (cos <= 1))
+IXI fetcher fetch_ixi_1_shot NOT found
+IXI fetcher fetch_ixi_dataset NOT found

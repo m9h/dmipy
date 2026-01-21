@@ -1,7 +1,9 @@
+from dmipy_jax.core.modeling_framework import CompartmentModel
 from dmipy_jax.signal_models import c1_stick, c2_cylinder
 from jax import numpy as jnp
+from typing import Any, Optional
 
-class C1Stick:
+class C1Stick(CompartmentModel):
     r"""
     The Stick model [1]_ - a cylinder with zero radius.
     JAX implementation using c1_stick kernel.
@@ -15,9 +17,8 @@ class C1Stick:
     }
 
 
-    def __init__(self, mu=None, lambda_par=None):
-        self.mu = mu
-        self.lambda_par = lambda_par
+    mu: Any = None
+    lambda_par: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         lambda_par = kwargs.get('lambda_par', self.lambda_par)
@@ -36,7 +37,7 @@ class C1Stick:
         return c1_stick(bvals, gradient_directions, mu_cart, lambda_par)
 
 
-class C2Cylinder:
+class C2Cylinder(CompartmentModel):
     r"""
     The Cylinder model [1]_ - finite radius with Soderman approximation.
     JAX implementation using c2_cylinder kernel.
@@ -51,10 +52,9 @@ class C2Cylinder:
     }
 
 
-    def __init__(self, mu=None, lambda_par=None, diameter=None):
-        self.mu = mu
-        self.lambda_par = lambda_par
-        self.diameter = diameter
+    mu: Any = None
+    lambda_par: Any = None
+    diameter: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         # Requires big_delta and small_delta from acquisition scheme/kwargs?

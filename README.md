@@ -1,6 +1,11 @@
 
 # Dmipy-JAX: Differentiable Microstructure Imaging
 
+[![CI](https://github.com/m9h/dmipy/actions/workflows/ci.yml/badge.svg)](https://github.com/m9h/dmipy/actions/workflows/ci.yml)
+[![python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Coverage](https://img.shields.io/badge/coverage-15%25-red)](https://github.com/m9h/dmipy/actions)
+
 > [!NOTE]
 > This is a JAX-accelerated port of the original **Dmipy** toolbox. It leverages **Equinox**, **Optimistix**, and **JAX** for GPU-accelerated, differentiable microstructure modeling.
 

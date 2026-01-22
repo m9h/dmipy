@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import scipy.special as ssp
 from jax.scipy import special as jsp
-from jax import pure_callback, jit, vmap
+from jax import pure_callback, jit, vmap, lax
 from dmipy_jax.constants import GYRO_MAGNETIC_RATIO
 import equinox as eqx
 from jaxtyping import Array, Float
@@ -209,15 +209,29 @@ class RestrictedCylinder(eqx.Module):
         return c2_cylinder(bvals, gradient_directions, mu_cart, lambda_par, diameter, big_delta, small_delta)
 
 
+def bessel_jn_fixed(v, z):
+    """
+    Computes J_v(z) using JAX native implementation.
+    JAX's bessel_jn(z, v=v) returns an array of shape (v+1, *z.shape) containing [J0, ..., Jv].
+    We return the last element (Jv).
+    """
+    # Cast v to int for static argument
+    v_int = int(v)
+    # Call JAX implementation
+    # Note: jsp.bessel_jn computes all orders up to v.
+    vals = jsp.bessel_jn(z, v=v_int)
+    # Return the last element (order v)
+    return vals[v_int]
+
 def jvp_v1(v, z):
     """
     Compute the first derivative of Bessel function of the first kind Jv(z) with respect to z.
     Formula: Jv'(z) = 0.5 * (J(v-1, z) - J(v+1, z))
     """
-    return 0.5 * (jsp.bessel_jn(z, v=v - 1) - jsp.bessel_jn(z, v=v + 1))
+    # Use bessel_jn_fixed for consistency
+    return 0.5 * (bessel_jn_fixed(v - 1, z) - bessel_jn_fixed(v + 1, z))
 
 
-@jit
 def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp, tau, alpha):
     """
     Computes signal for a Cylinder with finite radius using Callaghan's approximation.
@@ -252,7 +266,11 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     # This matches the SGP relation b = (2pi q)^2 * tau.
     
     q_mag = jnp.sqrt(bvals / (tau + 1e-12)) / (2 * jnp.pi)
-    q_mag = q_mag * 1e3 # Convert mm^-1 to m^-1
+    q_mag = q_mag * 1e3 # Convert mm^-1 to m^-1 to match radius in meters
+    
+    # Ensure tau broadcasts with (1, K) if it is (N,)
+    if jnp.ndim(tau) == 1:
+        tau = tau[:, None]
     
     # Project gradients perpendicular to fiber axis
     sin_theta_sq = 1 - dot_prod**2
@@ -261,8 +279,6 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     
     radius = diameter / 2.0
     
-    # Pre-calculate common terms
-    # Pre-calculate common terms
     # Pre-calculate common terms
     q_argument = 2 * jnp.pi * q_perp * radius
     q_argument_2 = q_argument ** 2
@@ -279,9 +295,9 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     # Legacy: J = special.j1(q_argument) ** 2
     # update = 4 * exp(...) * q_arg^2 / (q_arg^2 - alpha^2)^2 * J
     
-    J_m0 = jsp.bessel_jn(q_argument, v=1) ** 2 # (N,)
+    J_m0 = bessel_jn_fixed(1, q_argument) ** 2 # (N,)
     
-    # Vectorized compute over K roots for m=0
+    # Vectorize compute over K roots for m=0
     # exp_factor: (K,) scalar (per root)
     # But tau is (N,) or scalar? usually scalar per shell, but can be array.
     # Let's assume tau is scalar for now or broadcastable.
@@ -304,7 +320,7 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     # Prevent division by zero if q_arg ~ alpha (resonance)
     denom_0 = jnp.maximum(denom_0, 1e-12)
     
-    term_0 = (4 * exp_term_0 * q_arg_2_expanded / denom_0)
+    term_0 = (8 * exp_term_0 * q_arg_2_expanded / denom_0)
     
     # Sum over k
     sum_0 = jnp.sum(term_0, axis=1) # (N,)
@@ -318,14 +334,20 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     
     n_functions = alpha.shape[1]
     
-    def loop_body(m, accumulated_res):
+    # Iterate m from 1 to n_functions
+    # Using jax.lax.fori_loop to handle dynamic bounds (n_functions is tracer if alpha is dynamic leaf JAX array).
+    
+    # Iterate m from 1 to n_functions
+    # Must use python loop because bessel_jn order v must be static int
+    for m in range(1, int(n_functions)):
         # alpha for this m
         alpha_m = alpha[:, m] # (K,)
-        alpha_m_sq = alpha_m[None, :] ** 2 # (1, K)
         
         # J term: J'm(q_arg)
-        # Legacy: J = special.jvp(m, q_argument, 1)
+        # JAX special.bessel_jn(z, v=v)
         J_val = jvp_v1(m, q_argument) # (N,)
+        
+        alpha_m_sq = alpha_m[None, :] ** 2 # (1, K)
         
         q_arg_J = (q_argument * J_val) ** 2 # (N,)
         q_arg_J_expanded = q_arg_J[:, None] # (N, 1)
@@ -342,21 +364,14 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
         
         numerator_factor = alpha_m_sq / (alpha_m_sq - m**2) # (1, K)
         
-        term_m = (8 * exp_term_m * numerator_factor * q_arg_J_expanded / denom_m)
+        term_m = (16 * exp_term_m * numerator_factor * q_arg_J_expanded / denom_m)
         
         sum_m = jnp.sum(term_m, axis=1) # (N,)
         
-        return accumulated_res + sum_m
-    
-    # Iterate m from 1 to n_functions - 1
-    # We can use jax.lax.fori_loop if we want to condense the graph, 
-    # but that requires 'm' to be dynamic in 'bessel_jn' or handled carefully.
-    # bessel_jn supports float v, so dynamic m (as generic int/float) in scan/fori should work.
-    # However, alpha slice `alpha[:, m]` needs dynamic index.
-    
-    # Using python loop for now to be safe + explicit
-    for m in range(1, int(n_functions)):
-        res = loop_body(m, res)
+        # DEBUG
+        # print(f"Processing m={m}, res shape: {res.shape}, sum_m shape: {sum_m.shape}")
+        
+        res = res + sum_m
         
     # Handle q_perp = 0 case (no attenuation perpendicular)
     res = jnp.where(q_perp > 1e-9, res, 1.0)
@@ -426,12 +441,9 @@ class CallaghanRestrictedCylinder(eqx.Module):
 
     def _precompute_roots(self, n_roots, n_functions):
         import numpy as np
-        # Use numpy for this ensuring it runs at instantiation
+        import scipy.special as ssp
         alpha = np.empty((n_roots, n_functions))
-        alpha[0, 0] = 0
-        if n_roots > 1:
-            alpha[1:, 0] = ssp.jnp_zeros(0, n_roots - 1)
-        for m in range(1, n_functions):
+        for m in range(n_functions):
             alpha[:, m] = ssp.jnp_zeros(m, n_roots)
         return jnp.array(alpha)
 

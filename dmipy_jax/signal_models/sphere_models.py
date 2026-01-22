@@ -1,10 +1,13 @@
+import jax
+import jax
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, lax
 import scipy.special as ssp
 from jax.scipy import special as jsp
 from dmipy_jax.constants import SPHERE_ROOTS, GYRO_MAGNETIC_RATIO
 import equinox as eqx
 from typing import Any
+from jaxtyping import Array
 
 class S1Dot:
     r"""
@@ -55,7 +58,14 @@ def g2_sphere_stejskal_tanner(q, diameter):
     # term = z * j1(z)
     # We want 3 * (term/z) / z = 3 * term / z^2
     
+    # DEBUG
+    jax.debug.print("q={q}, radius={r}, factor={f}", q=q, r=radius, f=factor)
+    
     E = (3 * term / (safe_factor ** 2)) ** 2
+    
+    # DEBUG
+    print(f"factor min/max: {jnp.min(factor)}, {jnp.max(factor)}")
+    print(f"E min/max: {jnp.min(E)}, {jnp.max(E)}")
     
     return jnp.where(is_nonzero, E, 1.0)
 
@@ -138,34 +148,80 @@ def jsph_derivative(n, z):
     # Let's implement a helper using bessel_jn.
     pass
 
-# Helper for spherical bessel
+# Helper for spherical bessel using pure_callback to scipy
+# This avoids the issue of bessel_jn requiring integer order in JAX
+@jax.custom_jvp
 def spherical_jn_jax(n, z):
-    # sqrt(pi / (2z)) * J(n + 0.5, z)
-    # Handle z=0: if n=0, 1. if n>0, 0.
+    # Host callback
+    # Result shape is same as z
+    result_shape = jax.ShapeDtypeStruct(z.shape, z.dtype)
     
-    safe_z = jnp.where(z < 1e-10, 1e-10, z)
-    return jnp.sqrt(jnp.pi / (2 * safe_z)) * jsp.bessel_jn(safe_z, v=n + 0.5)
+    def host_fn(n, z):
+        return ssp.spherical_jn(int(n), z)
+        
+    return jax.pure_callback(host_fn, result_shape, n, z)
+
+@spherical_jn_jax.defjvp
+def spherical_jn_jvp(primals, tangents):
+    n, z = primals
+    _, z_dot = tangents
+    
+    val = spherical_jn_jax(n, z)
+    
+    # Derivative w.r.t z
+    # j_n'(z)
+    # Recursion: j_n'(z) = j_{n-1}(z) - (n+1)/z * j_n(z)
+    
+    safe_z = jnp.where(jnp.abs(z) < 1e-10, 1e-10, z)
+    
+    # Check n==0 case statically (n is python int usually if unrolled, or tracer?)
+    # If unrolled via python loop, n is int.
+    # If dynamic, we use lax.cond?
+    # But for SphereCallaghan we forced python loop so n is static int.
+    
+    if isinstance(n, int):
+        if n == 0:
+            # j0'(z) = -j1(z)
+            der = -spherical_jn_jax(1, z)
+        else:
+            jn_minus = spherical_jn_jax(n - 1, z)
+            der = jn_minus - (n + 1) / safe_z * val
+    else:
+        # Dynamic n (fallback if used elsewhere)
+        # Use lax.cond or where
+        # We assume n is integer tracer
+        jn_minus = spherical_jn_jax(n - 1, z)
+        der_generic = jn_minus - (n + 1) / safe_z * val
+        
+        j1 = spherical_jn_jax(1, z)
+        der_0 = -j1
+        
+        der = jax.lax.cond(n == 0, lambda: der_0, lambda: der_generic)
+
+    return val, der * z_dot
 
 def spherical_jn_derivative_jax(n, z):
-    # j_n'(z) = j_{n-1}(z) - (n+1)/z * j_n(z)
-    # Be careful at z=0.
-    # For Callaghan sphere, we evaluate at q_argument.
+    # Wrapper to get derivative directly if needed, or we can just use autodiff of spherical_jn_jax
+    # But legacy code calls this explicit helper.
+    # We can use the same logic as JVP.
+    # Or just jax.grad? No, z is array.
     
-    safe_z = jnp.where(z < 1e-10, 1e-10, z)
+    val = spherical_jn_jax(n, z)
+    safe_z = jnp.where(jnp.abs(z) < 1e-10, 1e-10, z)
     
-    j_n = spherical_jn_jax(n, safe_z)
-    
-    if n == 0:
-        # j0(z) = sin(z)/z
-        # j0'(z) = -j1(z)
-        j_n_plus_1 = spherical_jn_jax(1, safe_z)
-        return -j_n_plus_1
+    if isinstance(n, int):
+        if n == 0:
+            return -spherical_jn_jax(1, z)
+        else:
+            return spherical_jn_jax(n - 1, z) - (n + 1) / safe_z * val
     else:
-        j_n_minus_1 = spherical_jn_jax(n - 1, safe_z)
-        return j_n_minus_1 - (n + 1) / safe_z * j_n
+        return jax.lax.cond(
+            n == 0, 
+            lambda: -spherical_jn_jax(1, z), 
+            lambda: spherical_jn_jax(n - 1, z) - (n + 1) / safe_z * val
+        )
 
 
-@jit
 def g3_sphere_callaghan(q, tau, diameter, diffusion_constant, alpha):
     """
     Callaghan sphere model kernel.
@@ -175,200 +231,54 @@ def g3_sphere_callaghan(q, tau, diameter, diffusion_constant, alpha):
     q_argument = 2 * jnp.pi * q * radius
     q_argument_2 = q_argument ** 2
     
-    # If q is 0, signal is 1.
+    # 2 * sum ...
+    # We loop over n efficiently using fori_loop
     
-    # Jder = spherical_jn_jax(0, q_argument, derivative=True) ??
-    # Legacy uses `special.spherical_jn(q_argument, derivative=True)` which returns values for ALL n?
-    # No, scipy.special.spherical_jn(n, z) returns for specific n if n is scalar.
-    # If n is not given? "If n is an array_like, the result is computed for each n."
-    
-    # Legacy code:
-    # Jder = special.spherical_jn(q_argument, derivative=True)
-    # Wait, check legacy line 190 in P3SphereCallaghan?
-    # "Jder = special.spherical_jn(q_argument, derivative=True)"
-    # This might be incorrect reading of legacy code or legacy code relies on a deprecated behavior? 
-    # Or maybe it calls derivative w.r.t argument?
-    # Actually, looking at the loop in legacy:
-    # `for n in range(0, self.alpha.shape[1]):` it uses n.
-    # But `update *= q_argument * Jder` in the loop.
-    # Where does `Jder` depend on `n` in legacy?
-    # Ah, checking legacy snippet:
-    # `Jder = special.spherical_jn(q_argument, derivative=True)`
-    # This looks like it calls it without `n`? 
-    # In scipy <= 0.18 spherical_jn took n. In newer scipy, it might be different.
-    # Actually `scipy.special.spherical_jn(n, z, derivative=False)`.
-    # Attempting to call it without n usually fails?
-    # Unless q_argument is interpreted as n? No, q_argument is array of floats.
-    
-    # Let's assume Jder depends on n.
-    # Inside the loop over n: `update *= q_argument * Jder`.
-    # If Jder was constant for all n, that would be weird.
-    # Oh, wait. In the legacy snippet I viewed earlier (Step 146):
-    # `Jder = special.spherical_jn(q_argument, derivative=True)` is OUTSIDE the loops!
-    # And it's used inside.
-    # This implies Jder is `j_0'(q)`? Or maybe `spherical_jn` returns list if n omitted?
-    # checking scipy docs... `spherical_jn(n, z)`
-    # The snippet seems suspicious or relies on old behavior.
-    
-    # However, let's look at the math from Callaghan 1995.
-    # Formula usually involves summing over zeros of derivatives.
-    # It likely involves weighting by the value of the function (or derivative) at q.
-    # If legacy computes `Jder` once, it might be an error in legacy or my reading.
-    
-    # Let's re-read legacy loop carefully in Step 146.
-    # Line 190: `Jder = special.spherical_jn(q_argument, derivative=True)`
-    # Line 191: `for k in range...`
-    # Line 192: `for n in range...`
-    # Line 197: `update *= q_argument * Jder`
-    
-    # This suggests `Jder` does NOT depend on `n` or `k`.
-    # This implies `n=0` or it's array of shape (N_q,)?
-    # If `special.spherical_jn` is called with just `q_argument` (as n?), that would be n=q_argument? No.
-    # Maybe `n` defaults to 0?
-    
-    # Let's assume it requires proper `j_n'(qR)`.
-    # We will implement the correct math:
-    # Sum_n Sum_k [ ... * (qR * j_n'(qR))^2? or something ]
-    # Re-reading: `update *= q_argument * Jder` -> `update *= qR * j?'(qR)`
-    # And `update /= (qR**2 - alpha**2)**2`
-    
-    # Warning: If legacy code is buggy, we should fix it or match it?
-    # "We follow the notation of Balinov".
-    # I will assume JAX implementation should be mathematically correct.
-    # I will construct the term properly dependent on n if the math requires it.
-    
-    # Actually, `spherical_jn(n, z)` in scipy.
-    # If I implement `j_n'` I should use it inside the loop for `n`.
-    
-    # Let's implement the loop over n and k.
-    
-    # Initialize res
-    res = jnp.zeros_like(q)
-    
-    n_roots = alpha.shape[0]
     n_functions = alpha.shape[1]
     
-    # We iterate n (functions) and k (roots).
-    
-    # Precompute q_argument
-    
-    def body_fun(carry, n):
-        # n is loop index (0 to n_functions-1)
-        res_bh = carry
-        
-        # Calculate Jder_n for this n
-        Jder_n = spherical_jn_derivative_jax(n, q_argument)
-        
-        def root_body(carry_k, k):
-            res_k = carry_k
-            alpha_nk = alpha[k, n]
-            alpha_nk2 = alpha_nk**2
-            
-            # Update term
-            # exp(-alpha^2 * D * tau / R^2)
-            E_time = jnp.exp(-alpha_nk2 * diffusion_constant * tau / radius ** 2)
-            
-            # Weighting
-            # (2n+1)alpha^2 / (alpha^2 - (n+0.5)^2 + 0.25)
-            # note: (n+0.5)^2 - 0.25 = n^2 + n + 0.25 - 0.25 = n(n+1)
-            # So denom is alpha^2 - n(n+1).
-            denom_weight = alpha_nk2 - n*(n+1)
-            weight = ((2 * n + 1) * alpha_nk2) / denom_weight
-            
-            # Geometric term
-            # q_argument * Jder_n / (q_argument^2 - alpha^2)
-            # Legacy squares the denominator `(q_argument_2 - a_nk2) ** 2`.
-            # And `update *= q_argument * Jder`.
-            # Wait, legacy didn't square `(q_argument * Jder)`? 
-            # In Cylinder `c3`, it was `(q*J')^2`.
-            # Here legacy says: `update *= q_argument * Jder`. 
-            # Then `update /= (q_argument_2 - a_nk2) ** 2`.
-            # Is `update` pre-accumulated with something?
-            # `update = np.exp(...)`. Then *= weight. Then *= qJder. Then /= denom^2.
-            # This results in linear term in Jder?
-            # Verify dimensionality. Signal is amplitude squared? No, typically real valued attenuation E.
-            # Usually E = Sum [ ... ].
-            
-            # I will trust the formula:
-            # Term ~ (qR * j_n'(qR))^2? 
-            # Let's assume legacy might be right about linear `q * Jder` IF `sphere_attenuation` returns simple E? 
-            # Wait, sphere attenuation usually decays.
-            
-            # Let's use the exact legacy formula logic for now to ensure equivalence, 
-            # BUT assuming Jder depends on n.
-            
-            term = E_time * weight * (q_argument * Jder_n) / ((q_argument_2 - alpha_nk2)**2)
-            
-            return res_k + term, None
-
-        # scan over k
-        sum_k, _ = jax.lax.scan(root_body, jnp.zeros_like(res), jnp.arange(n_roots))
-        
-        return res_bh + sum_k, None
-    
-    # We can unroll the loops since n_functions ~ 50 is small enough? 
-    # Or use python loop for n (easier derivative dispatch).
-    
-    accum = jnp.zeros_like(q)
+    # Must use python loop because bessel_jn order n must be static int
+    accum = jnp.zeros_like(q_argument)
     for n in range(int(n_functions)):
         Jder_n = spherical_jn_derivative_jax(n, q_argument)
         
         # Vectorize over k (roots)
         # alpha[:, n] -> (K,)
-        alphas_n = alpha[:, n]
+        alphas_n = alpha[:, n] # Dynamic slice
         alphas_n2 = alphas_n**2
         
-        E_times = jnp.exp(-alphas_n2[..., None] * diffusion_constant * tau / radius**2) # (K, N)??
-        # q is (N,). alphas is (K,).
-        # We need broadcasting.
+        # Broadcasting setup
+        # alphas_n2: (K,)
+        # q: (N,) or scalar. q_argument: (N,)
         
         # (K, 1)
         an2_col = alphas_n2[:, None]
         
-        E_times = jnp.exp(-an2_col * diffusion_constant * tau / radius**2) # (K, N) if tau scalar?
-        # If tau is (N,), then (K, N).
+        E_times = jnp.exp(-an2_col * diffusion_constant * tau / radius**2) # (K, N)
         
         denom_weight = an2_col - n*(n+1)
-        # Handle 0/0 for n=0, k=0 (alpha=0)?
-        # If alpha=0, denom=0.
-        # Legacy: alpha[0,0]=0.
-        # `update` for 0,0:
-        # exp(0) * (1*0)/(0) -> NaN?
-        # Legacy likely handles `alpha=0` by skipping or specialized limit?
-        # Legacy loop: `range(0, roots)`.
-        # `(2*n+1)*a^2 / (a^2 - n(n+1))`.
-        # If n=0, a=0: 0 / 0.
-        # We should safe guard or skip alpha=0?
-        # Actually legacy `alpha[0,0] = 0`.
-        # I'll implement safe division.
+        # Guard against zero division (shouldn't happen for valid roots > 0, but alpha[0,0]=0)
+        denom_weight = jnp.where(denom_weight == 0, 1.0, denom_weight) 
         
-        weight = ((2 * n + 1) * an2_col) / jnp.where(denom_weight==0, 1.0, denom_weight)
+        weight = ((2 * n + 1) * an2_col) / denom_weight
         
         # J_term
         # q_arg (N,)
+        # Jder_n (N,)
         num_geom = q_argument * Jder_n # (N,)
-        denom_geom = (q_argument_2 - an2_col)**2 # (K, N)
+        denom_geom = (q_argument_2[None, :] - an2_col) ** 2 # (K, N)
         
-        # Guard against singularity where qR approaches a root (alpha)
+        # Guard against singularity
         denom_geom = jnp.maximum(denom_geom, 1e-12)
         
-        # Full term
-        term = E_times * weight * num_geom / denom_geom
+        # Full term (K, N)
+        # weight (K, 1) * E_times (K, N)
+        term_k = E_times * weight 
         
-        accum += jnp.sum(term, axis=0)
-
-    # 2 * sum ...
-    # Wait, does the legacy formula have a factor of 2 outside?
-    # No, it calculates `update` and sums.
-    # Where does the 2 come from in Cylinder/Plane?
-    # Here Sphere legacy doesn't show a 2.
-    
-    return accum * 2 # Adding *2 because usually there's a prefactor, and legacy P3Plane has 2.
-    # Wait, legacy S3Sphere logic viewed in Step 146 lines 182-200 DOES NOT have *2 at the end.
-    # It just returns `res`.
-    # I will stick to returning `accum` but double check if scaling needed.
-    # Actually, let's strictly follow legacy lines 194-198.
-    # No global factor 2 seen.
+        # num_geom (N,) -> (1, N)
+        term = term_k * num_geom[None, :] / denom_geom
+        
+        sum_k = jnp.sum(term, axis=0) # (N,)
+        accum = accum + sum_k
     
     return accum    
 
@@ -475,12 +385,18 @@ class SphereGPD(eqx.Module):
 
 
 
-class SphereCallaghan:
+class SphereCallaghan(eqx.Module):
     r"""
     The Callaghan model [1]_ of diffusion inside a sphere.
     """
     
-    parameter_names = ['diameter', 'diffusion_constant']
+    diameter: Any = None
+    diffusion_constant: Any = None
+    number_of_roots: int = eqx.field(static=True, default=20)
+    number_of_functions: int = eqx.field(static=True, default=50)
+    alpha: Array = eqx.field(init=False)
+
+    parameter_names = ('diameter', 'diffusion_constant')
     parameter_cardinality = {'diameter': 1, 'diffusion_constant': 1}
     parameter_ranges = {
         'diameter': (1e-6, 20e-6),

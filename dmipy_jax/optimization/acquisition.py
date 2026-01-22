@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import equinox as eqx
 import optimistix as optx
+import optax
 from jaxtyping import Array, Float, PyTree
 from typing import Callable, Dict, Union
 from dmipy_jax.acquisition import JaxAcquisition
@@ -169,7 +170,9 @@ def optimize_acquisition(
 
     # Optimistix solver
     # Use Gradient Descent as it is more robust for this non-convex landscape with sigmoid mappings
-    solver = optx.GradientDescent(learning_rate=0.05, rtol=1e-3, atol=1e-3)
+    # Optimistix solver
+    # Revert to BFGS for stability if Adam fails
+    solver = optx.BFGS(rtol=1e-3, atol=1e-3)
     
     # Run minimization
     sol = optx.minimise(

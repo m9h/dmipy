@@ -51,6 +51,6 @@ def test_fetch_openneuro_mock():
         assert args['path'] == "/tmp/test"
 
 def test_fetch_bigmac_integration():
-    with patch("dmipy_jax.data.bigmac.fetch_openneuro") as mock_fetch:
+    with patch("dmipy_jax.data.bigmac.fetch_datalad") as mock_fetch:
         bigmac.fetch_bigmac("/tmp/bigmac")
-        mock_fetch.assert_called_once_with("ds005089", path="/tmp/bigmac")
+        mock_fetch.assert_called_once_with(bigmac.BIGMAC_URL, path="/tmp/bigmac")

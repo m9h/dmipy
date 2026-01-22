@@ -67,7 +67,7 @@ class LegendrePolynomial(Polynomial):
         
         n = order
         i = jnp.arange(n - 1)
-        beta = 0.5 / jnp.sqrt(1 - (2 * (i + 1)) ** -2)
+        beta = 0.5 / jnp.sqrt(1.0 - (2.0 * (i + 1)) ** -2.0)
         idx = jnp.arange(n)
         diag = jnp.zeros(n)
         # Construct tridiagonal matrix

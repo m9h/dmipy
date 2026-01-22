@@ -39,11 +39,8 @@ def test_restricted_cylinder():
     bvals = jnp.array([0.0, 3000.0])
     bvecs = jnp.array([[1,0,0], [0,0,1]])
     # Needs Delta/delta
-<<<<<<< HEAD
     acq = JaxAcquisition(bvals, bvecs, Delta=0.04, delta=0.03)
-=======
-    acq = JaxAcquisition(bvals, bvecs, big_delta=0.04, small_delta=0.03)
->>>>>>> recovery_work_v2
+
     
     mu = jnp.array([0.0, 0.0])
     lambda_par = 1.7e-9

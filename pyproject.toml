@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "JAX-accelerated Microstructure Imaging (Drop-in replacement for dmipy)"
 readme = "README.md"
 license = { file = "LICENSE" }
+requires-python = ">=3.12"
 authors = [
   { name = "Rutger Fick", email = "fick.rutger@gmail.com" },
 ]
@@ -46,6 +47,13 @@ dependencies = [
   "cvxpy>=1.7.5",
   "tqdm>=4.67.1",
   "corner>=2.2.3",
+  "flowjax>=17.2.1",
+  "healpy>=1.19.0",
+  "scikit-learn>=1.8.0",
+  "torch>=2.1.0",
+  "torchvision>=0.16.0",
+  "timm>=1.0.24",
+  "opencv-python>=4.13.0.90",
 ]
 
 [project.urls]
@@ -61,6 +69,8 @@ dmipy-report = "dmipy_jax.cli.bids_report:main"
 test = [
     "pytest",
     "pyjulia",
+    "sybil",
+    "pytest-cov",
 ]
 doc = [
     "sphinx",
@@ -68,4 +78,19 @@ doc = [
     "myst-parser",
     "sphinx-copybutton",
     "sphinxcontrib-bibtex",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=dmipy_jax --cov-report=term-missing"
+testpaths = [
+    "dmipy_jax/tests",
+    "docs/tutorials",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[dependency-groups]
+dev = [
+    "mdt>=1.2.7",
 ]

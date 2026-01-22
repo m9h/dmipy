@@ -19,7 +19,7 @@ class AMICOSolver(eqx.Module):
     """
     
     dict_matrix: jnp.ndarray = eqx.field(init=False)
-    acquisition: Any = eqx.field(static=True)
+    acquisition: Any
     
     def __init__(self, model: Any, acquisition: Any, dictionary_params: Dict[str, jnp.ndarray]):
         """
@@ -79,7 +79,9 @@ class AMICOSolver(eqx.Module):
         # We need [N_measurements, N_atoms] for matrix multiplication y = Phi @ x
         return atoms.T
 
-    def _fit_batch(self, Y_batch: jnp.ndarray, LHS: jnp.ndarray, c_and_lower: tuple, lambda_reg: float, rho: float, constrained: bool):
+
+
+    def _fit_batch(self, Y_batch: jnp.ndarray, LHS: jnp.ndarray, c_and_lower: tuple, lambda_reg: float, rho: float, constrained: bool, max_iter: int):
         """
         Internal batch fitting function (to be JIT-compiled).
         """
@@ -114,11 +116,11 @@ class AMICOSolver(eqx.Module):
             u_new = u + x_new - z_new
             return (x_new, z_new, u_new), None
 
-        final_carry, _ = jax.lax.scan(admm_step, (x, z, u), None, length=100)
+        final_carry, _ = jax.lax.scan(admm_step, (x, z, u), None, length=max_iter)
         X_hat, _, _ = final_carry
         return X_hat
 
-    def fit(self, data: jnp.ndarray, lambda_reg: float = 0.0, constrained: bool = True, batch_size: int = 10000):
+    def fit(self, data: jnp.ndarray, lambda_reg: float = 0.0, constrained: bool = True, batch_size: int = 10000, max_iter: int = 1000, rho: float = 1.0):
         """
         Fit the model to the data using ADMM.
         
@@ -127,6 +129,8 @@ class AMICOSolver(eqx.Module):
             lambda_reg: Regularization parameter (e.g. for L1 sparsity).
             constrained: If True, enforces non-negativity (x >= 0).
             batch_size: Number of voxels to process at once (default 10000).
+            max_iter: Maximum ADMM iterations.
+            rho: ADMM penalty parameter.
             
         Returns:
             Estimated weights [..., N_atoms]
@@ -146,7 +150,7 @@ class AMICOSolver(eqx.Module):
         needs_admm = constrained or (lambda_reg > 0)
         
         if needs_admm:
-            rho = 1.0
+            # rho is arg
             A = self.dict_matrix
             AtA = A.T @ A
             LHS = AtA + rho * jnp.eye(N_atoms)
@@ -160,7 +164,7 @@ class AMICOSolver(eqx.Module):
             @jax.jit
             def run_batch(d_batch):
                  # Transpose inside 
-                 return self._fit_batch(d_batch.T, LHS, c_and_lower, lambda_reg, rho, constrained)
+                 return self._fit_batch(d_batch.T, LHS, c_and_lower, lambda_reg, rho, constrained, max_iter)
 
             # Python Loop for Chunking
             results = []
@@ -209,3 +213,41 @@ class AMICOSolver(eqx.Module):
             return X_hat[0]
         else:
             return X_hat
+
+def calculate_mean_parameter_map(weights: jnp.ndarray, dictionary_params: Dict[str, jnp.ndarray], parameter_name: str) -> jnp.ndarray:
+    """
+    Calculates the mean parameter map from the estimated weights.
+    
+    Mean = Sum(w_i * p_i)
+    
+    Args:
+        weights: Estimated weights [..., N_atoms].
+        dictionary_params: The dictionary parameters used to generate the atoms.
+        parameter_name: The name of the parameter to calculate the mean for.
+        
+    Returns:
+        Mean parameter map [...,]
+    """
+    # 1. Reconstruct the parameter grid for the requested parameter
+    keys = list(dictionary_params.keys())
+    values = list(dictionary_params.values())
+    
+    # We need to know the order of keys to find the index of parameter_name
+    if parameter_name not in keys:
+        raise ValueError(f"Parameter '{parameter_name}' not found in dictionary parameters.")
+    
+    # Generate the grid exactly as in generate_kernels
+    grids = jnp.meshgrid(*values, indexing='ij')
+    
+    param_idx = keys.index(parameter_name)
+    param_grid = grids[param_idx]
+    
+    # Flatten to [N_atoms]
+    param_flat = param_grid.ravel()
+    
+    # 2. Compute weighted sum
+    # weights: [..., N_atoms]
+    # param_flat: [N_atoms]
+    # We want dot product along the last axis.
+    
+    return jnp.dot(weights, param_flat)

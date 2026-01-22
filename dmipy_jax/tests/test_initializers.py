@@ -1,45 +1,53 @@
 import jax
 import jax.numpy as jnp
 import pytest
-from dmipy_jax.algebra.initializers import AlgebraicInitializer
+from dmipy_jax.fitting.algebraic_initializers import derive_rational_solution
 
-def test_algebraic_initializer_kurtosis():
-    print("Testing Algebraic Initializer (Kurtosis)...")
+from dmipy_jax.fitting.algebraic_initializers import derive_rational_solution
+
+def test_algebraic_initializer_monoexponential():
+    print("Testing Algebraic Initializer (Mono-Exponential)...")
     
     # 1. Setup Ground Truth
-    D_true = 2.0e-3 # mm^2/s
-    K_true = 1.0    # dimensionless
-    S0 = 1.0
+    # Single compartment: f1 * exp(-b * D1)
+    f1_true = 0.7  # w1
+    D1_true = 2.0e-3 # mm^2/s
     
-    # b-values in s/mm^2
-    b_values = jnp.array([0.0, 1000.0, 2000.0])
+    # b-values (s/mm^2)
+    # Typically need 2 shells for N=1 (4 equations: y0..y3? No)
+    # derive_rational_solution for N=1 expects measurements y0, y1...
+    # For N=1 (2 unknowns: f, D), we need 2 measurements.
+    b_values = (1000.0, 2000.0)
     
-    # 2. Generate Synthetic Signal (DKI Model)
-    # ln(S/S0) = -b*D + (1/6)*b^2*D^2*K
-    log_S = -b_values * D_true + (1.0/6.0) * (b_values**2) * (D_true**2) * K_true
-    signals = S0 * jnp.exp(log_S)
+    # 2. Generate Synthetic Signal
+    # S = f * exp(-b * D)
+    signals = jnp.array([
+        f1_true * jnp.exp(-b * D1_true) 
+        for b in b_values
+    ])
     
-    # 3. Run Initializer
-    initializer = AlgebraicInitializer(target_b_indices=(1, 2))
+    # 3. Derive and Run Initializer
+    # N=1
+    initializer = derive_rational_solution(b_values, n_compartments=1)
     
     # JIT the inference
     predict_fn = jax.jit(initializer)
-    preds = predict_fn(b_values, signals)
+    preds = predict_fn(signals)
     
-    D_pred = preds['D']
-    K_pred = preds['K']
+    # Output keys should be f_1, D_1
+    print("Predicted Keys:", preds.keys())
     
-    print(f"Ground Truth: D={D_true}, K={K_true}")
-    print(f"Predictions:  D={D_pred}, K={K_pred}")
+    f1_pred = preds['f_1']
+    D1_pred = preds['D_1']
+    
+    print(f"Ground Truth: f={f1_true}, D={D1_true}")
+    print(f"Predictions:  f={f1_pred}, D={D1_pred}")
     
     # 4. Verify
-    # We expect exact match (floating point error only) for this exact model
-    # since the derivation is exact for the truncation order.
+    assert jnp.isclose(f1_pred, f1_true, atol=1e-5), f"f mismatch"
+    assert jnp.isclose(D1_pred, D1_true, atol=1e-5), f"D mismatch"
     
-    assert jnp.isclose(D_pred, D_true, atol=1e-5), f"D mismatch: {D_pred} vs {D_true}"
-    assert jnp.isclose(K_pred, K_true, atol=1e-2), f"K mismatch: {K_pred} vs {K_true}"
-    
-    print("✅ SUCCESS: Algebraic initializer recovered parameters.")
+    print("SUCCESS: Algebraic initializer recovered Mono-Exp parameters.")
 
 if __name__ == "__main__":
-    test_algebraic_initializer_kurtosis()
+    test_algebraic_initializer_monoexponential()

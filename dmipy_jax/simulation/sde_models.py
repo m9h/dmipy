@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import diffrax
 import equinox as eqx
 from typing import Optional, Tuple, Any, Callable
+from dmipy_jax.preprocessing.inputs import interpolate_field
 
 class RestrictedAnalyticSDE(eqx.Module):
     """
@@ -84,6 +85,7 @@ def solve_restricted_sde_batch(
             dt0=dt0,
             y0=y0,
             saveat=save,
+            stepsize_controller=diffrax.ConstantStepSize(),
             max_steps=100000 # Increased for safety
         )
         return sol
@@ -94,7 +96,85 @@ def solve_restricted_sde_batch(
     # Vmap the solver
     batch_sol = jax.vmap(solve_single)(y0_batch, keys)
     
+    
     return batch_sol
+
+class CurvedTractSDE(eqx.Module):
+    """
+    SDE for particle movement along a curved fiber bundle defined by dense vector/potential fields.
+    
+    Drift: -k * grad(Potential)  (Confines particles to the bundle core)
+    Diffusion: Anisotropic tensor D(x) aligned with Vector Field T(x).
+    """
+    vector_field: jnp.ndarray  # (3, H, W, D)
+    potential_field: jnp.ndarray # (H, W, D)
+    affine: jnp.ndarray # (4, 4)
+    
+    diffusivity_long: float
+    diffusivity_trans: float
+    k_confinement: float
+    
+    def __init__(self, 
+                 vector_field: jnp.ndarray, 
+                 potential_field: jnp.ndarray,
+                 affine: jnp.ndarray,
+                 diffusivity_long: float,
+                 diffusivity_trans: float,
+                 k_confinement: float = 10.0):
+        
+        self.vector_field = vector_field
+        self.potential_field = potential_field
+        self.affine = affine
+        self.diffusivity_long = diffusivity_long
+        self.diffusivity_trans = diffusivity_trans
+        self.k_confinement = k_confinement
+
+    def drift(self, t: float, y: jnp.ndarray, args: Any) -> jnp.ndarray:
+        """
+        Drift = -k * Gradient(Potential(y))
+        """
+        # Define a scalar function U(pos) to differentiate
+        def U(pos):
+            # Potential field is (H,W,D) scalar
+            # interpolate_field returns scalar for this input
+            return interpolate_field(self.potential_field, pos, self.affine, order=1)
+            
+        # Compute gradient of potential at current position y
+        grad_U = jax.grad(U)(y)
+        
+        return -self.k_confinement * grad_U
+
+    def diffusion(self, t: float, y: jnp.ndarray, args: Any) -> jnp.ndarray:
+        """
+        Diffusion Matrix L such that L L^T = D(y).
+        
+        D(y) = D_long * (v v^T) + D_trans * (I - v v^T)
+        where v is the normalized tangent vector at y.
+        """
+        # 1. Sample vector field at y
+        # vector_field is (3, H, W, D). Interpolate returns (3,)
+        v_raw = interpolate_field(self.vector_field, y, self.affine, order=1)
+        
+        # 2. Normalize v
+        norm_v = jnp.linalg.norm(v_raw) + 1e-9
+        v = v_raw / norm_v  # (3,)
+        
+        # 3. Construct D tensor
+        # v v^T -> outer product
+        P_long = jnp.outer(v, v)
+        dim = y.shape[0]
+        I = jnp.eye(dim)
+        P_trans = I - P_long
+        
+        D_tensor = self.diffusivity_long * P_long + self.diffusivity_trans * P_trans
+        
+        # 4. Return Cholesky factor L
+        # D is symmetric positive definite (if D_long, D_trans > 0).
+        # Add small jitter for numerical stability if needed
+        L = jnp.linalg.cholesky(D_tensor + 1e-6 * I)
+        
+        return L
+
 
 if __name__ == "__main__":
     # verification script

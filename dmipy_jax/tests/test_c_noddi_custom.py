@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jax.scipy.stats import beta
 import numpy as np
 from dmipy_jax.models.c_noddi import CNODDI
-from dmipy_jax.fitting import ConstrainedOptimizer
+from dmipy_jax.fitting.optimization import ConstrainedOptimizer
 from dmipy_jax.acquisition import JaxAcquisition
 
 def test_cnoddi_tortuosity():

@@ -175,3 +175,92 @@ def simulate_signal(
     M_final = y_final[:3]
     
     return M_final
+
+@eqx.filter_jit
+def simulate_acquisition(
+    phantom: eqx.Module, # IsochromatPhantom
+    sequence: eqx.Module, # PulseSequence
+    duration: float,
+    dt: float = None,
+    max_steps: int = 100000
+) -> jax.Array:
+    """
+    Simulates an acquisition for a phantom and sequence.
+    Returns the complex signal (Mx + iMy) summed over all spins at t=duration.
+    
+    Args:
+        phantom: IsochromatPhantom containing spins.
+        sequence: PulseSequence providing gradients and RF.
+        duration: Simulation duration.
+        
+    Returns:
+        Complex signal (scalar).
+    """
+    
+    # 1. Kernel for single spin
+    def simulate_spin(pos, T1, T2, M0_val, df):
+        # State: M = [Mx, My, Mz]
+        # Initial: M0 along z? Usually M0 is magnitude of equilibrium Mz.
+        # Assume start at equilibrium: [0, 0, M0]
+        y0 = jnp.array([0., 0., M0_val])
+        
+        def vector_field(t, M, args):
+            # M is (3,)
+            Mx, My, Mz = M
+            
+            # Fields
+            # Gradients G(t) in T/m
+            G = sequence.get_gradients(t) # (3,)
+            # RF B1(t) in Tesla (complex) -> B1x + iB1y
+            B1 = sequence.get_rf(t)
+            
+            # Omega_z = gamma * (G . r + df/gamma * 2pi?) 
+            # df is off-resonance in Hz. Omega = 2pi * df.
+            bz_grad = jnp.dot(G, pos) # T
+            omega_z = GYRO_MAGNETIC_RATIO * bz_grad + 2 * jnp.pi * df
+            
+            # Omega_xy
+            omega_x = GYRO_MAGNETIC_RATIO * jnp.real(B1)
+            omega_y = GYRO_MAGNETIC_RATIO * jnp.imag(B1)
+            
+            # dMx = My*Oz - Mz*Oy
+            dMx_rot = My * omega_z - Mz * omega_y
+            # dMy = Mz*Ox - Mx*Oz
+            dMy_rot = Mz * omega_x - Mx * omega_z
+            # dMz = Mx*Oy - My*Ox
+            dMz_rot = Mx * omega_y - My * omega_x
+            
+            # Relaxation
+            dMx_rel = -Mx / T2
+            dMy_rel = -My / T2
+            dMz_rel = -(Mz - M0_val) / T1
+            
+            return jnp.array([dMx_rot + dMx_rel, dMy_rot + dMy_rel, dMz_rot + dMz_rel])
+
+        # ODE Solver
+        term = diffrax.ODETerm(vector_field)
+        solver = diffrax.Dopri5()
+        stepsize_controller = diffrax.PIDController(rtol=1e-5, atol=1e-6)
+        
+        dt0 = dt if dt is not None else duration / 100.0
+        
+        sol = diffrax.diffeqsolve(
+            term, solver, t0=0.0, t1=duration, dt0=dt0, y0=y0,
+            stepsize_controller=stepsize_controller, max_steps=max_steps
+        )
+        return sol.ys[-1]
+
+    # 2. Vmap over phantom
+    # phantom.positions: (N, 3)
+    # phantom.T1: (N,)
+    
+    sim_func = jax.vmap(simulate_spin)
+    M_finals = sim_func(phantom.positions, phantom.T1, phantom.T2, phantom.M0, phantom.off_resonance)
+    
+    # 3. Aggregate Signal
+    # Signal = Sum(Mx + iMy)
+    Mx = M_finals[:, 0]
+    My = M_finals[:, 1]
+    
+    signal = jnp.sum(Mx + 1j * My)
+    return signal

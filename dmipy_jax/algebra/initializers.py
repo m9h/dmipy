@@ -146,7 +146,106 @@ def get_biexponential_initializer(b_values: List[float]):
     # Let's assume user provides adequate b-values or we interpolate?
     # For now, let's stick to MonoExponential as the robust base.
     # It initializes S0 and D (mean), which scales the problem correctly.
-    pass
+def segmented_ivim_init(bvalues: Array, signals: Array, b_threshold: float = 200.0) -> Array:
+    """
+    Robust Segmented Least Squares Initializer for IVIM.
+    
+    Args:
+        bvalues: (N,) array of b-values (s/m^2).
+        signals: (..., N) array of signals. 
+                 Supports batching if vmapped, but core logic assumes 1D signal.
+                 If 1D, returns (3,) array [D_tissue, D_pseudo, f].
+    
+    Returns:
+        params: (..., 3) array containing [D_tissue, D_pseudo, f].
+    """
+    # Ensure inputs are arrays
+    bvalues = jnp.asarray(bvalues)
+    signals = jnp.asarray(signals)
+    
+    # 1. Estimate S0 from b=0 (or mean of b < 10?)
+    # Assuming b=0 is present and first, or we search for it.
+    # robust: min b-value.
+    is_b0 = bvalues < 10.0 # tolerance
+    S0 = jnp.mean(jnp.where(is_b0, signals, 0.0), axis=-1) / (jnp.mean(is_b0) + 1e-9)
+    # Avoid div by zero if no b0 (unlikely)
+    S0 = jnp.maximum(S0, 1e-6)
+    
+    # Normalize signal
+    S_norm = signals / S0
+    
+    # 2. High b-value fit (D_tissue)
+    # Regime: b > b_threshold. S ~ (1-f) exp(-b Dt)
+    # ln(S) ~ ln(1-f) - b Dt
+    mask_high = bvalues > b_threshold
+    
+    # Linear Regression: y = mx + c => ln(S) = -Dt * b + ln(1-f)
+    # A = [b, 1]
+    b_high = bvalues[mask_high]
+    s_high = S_norm[mask_high]
+    
+    # Handle Noise floors / negatives in log
+    s_high = jnp.maximum(s_high, 1e-4) 
+    y_high = jnp.log(s_high)
+    
+    # Cu = (At A)^-1 At y. 
+    # A is (N_high, 2). matrix stack [ -b_high, 1 ]
+    A_high = jnp.stack([-b_high, jnp.ones_like(b_high)], axis=1)
+    
+    # lstsq
+    sol_high, _, _, _ = jnp.linalg.lstsq(A_high, y_high, rcond=None)
+    D_tissue = sol_high[0]
+    intercept = sol_high[1]
+    
+    # f_estimate from intercept: intercept = ln(1-f) => 1-f = exp(int) => f = 1 - exp(int)
+    f_est = 1.0 - jnp.exp(intercept)
+    
+    # Clip physical bounds
+    D_tissue = jnp.clip(D_tissue, 0.0, 5e-9)
+    f_est = jnp.clip(f_est, 0.0, 1.0)
+    
+    # 3. Low b-value fit (D_pseudo)
+    # Residual: S_perf = S_norm - (1-f) exp(-b Dt)
+    # Regime: S_perf ~ f exp(-b Dp)
+    # ln(S_perf/f) ~ -b Dp
+    
+    # Re-calculate contribution of tissue compartment for all b
+    S_tissue = (1 - f_est) * jnp.exp(-bvalues * D_tissue)
+    S_perf_resid = S_norm - S_tissue
+    
+    # Filter for low b (but > 0 to have decay)
+    mask_low = (bvalues <= b_threshold) & (bvalues > 10.0)
+    
+    b_low = bvalues[mask_low]
+    s_low = S_perf_resid[mask_low]
+    
+    # Ideally: ln(s_low) = ln(f) - b * Dp
+    # usage: ln(s_low / f) = -b * Dp
+    # y = -b * Dp. 
+    
+    # Robustness: If f is tiny, this is unstable.
+    # If f < 0.01, Dp is ill-defined. Set to default.
+    
+    def estimate_dp(b_l, s_l, f_val):
+        # Prevent log(negative)
+        s_l = jnp.maximum(s_l, 1e-6)
+        y_low = jnp.log(s_l / (f_val + 1e-9))
+        
+        # A = [-b]
+        A_low = -b_l[:, None]
+        sol_low, _, _, _ = jnp.linalg.lstsq(A_low, y_low, rcond=None)
+        return sol_low[0]
+
+    D_pseudo = jax.lax.cond(
+        (f_est > 0.01) & (jnp.sum(mask_low) > 0),
+        lambda: estimate_dp(b_low, s_low, f_est),
+        lambda: 10.0 * D_tissue # Default fallback
+    )
+    
+    # Bounds for Dp (must be > D_tissue)
+    D_pseudo = jnp.clip(D_pseudo, D_tissue, 100e-9)
+    
+    return jnp.stack([D_tissue, D_pseudo, f_est])
 
 if __name__ == "__main__":
     print("Verifying Algebraic Initializers...")

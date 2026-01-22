@@ -337,6 +337,43 @@ class JaxMultiCompartmentModel:
         
         if data.ndim == 1:
             init_params = initializer.compute_initial_guess(data, acquisition, candidates)
+            
+            # Fit Single Voxel
+            fitted_params, _ = fitter.fit(data, acquisition, init_params)
+            
+            # Calculate Uncertainty
+            stds = None
+            if compute_uncertainty:
+                residuals = data - self.model_func(fitted_params, acquisition)
+                sigma_est = jnp.sqrt(jnp.mean(residuals**2))
+                from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
+                J = compute_jacobian(self.model_func, fitted_params, acquisition)
+                stds = compute_crlb_std(J, sigma=sigma_est)
+
+            # Pack Results
+            ret = {}
+            idx = 0
+            for name in self.parameter_names:
+                card = self.parameter_cardinality[name]
+                if card == 1:
+                    ret[name] = fitted_params[idx]
+                    idx += 1
+                else:
+                    ret[name] = fitted_params[idx:idx+card]
+                    idx += card
+            
+            if compute_uncertainty and stds is not None:
+                idx = 0
+                for name in self.parameter_names:
+                    card = self.parameter_cardinality[name]
+                    if card == 1:
+                        ret[f"{name}_std"] = stds[idx]
+                        idx += 1
+                    else:
+                        ret[f"{name}_std"] = stds[idx:idx+card]
+                        idx += card
+            
+            return ret
         else:
             # Multi-voxel
             data = data.reshape(-1, data.shape[-1])

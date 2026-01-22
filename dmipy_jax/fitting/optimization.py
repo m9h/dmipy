@@ -215,3 +215,78 @@ class CustomLMFitter:
         steps = stats['steps'] # Fixed steps
         
         return fitted_params_real, steps
+
+class ConstrainedOptimizer:
+    """
+    A generic constrained optimizer that supports priors (MAP estimation).
+    Uses jaxopt.LBFGSB.
+    """
+    def __init__(self, model_func, priors=None, solver_settings=None, scales=None):
+        self.model_func = model_func
+        self.priors = priors if priors is not None else []
+        
+        self.scales = jnp.array(scales) if scales is not None else None
+            
+        self.solver_settings = {
+            'maxiter': 100,
+            'tol': 1e-5
+        }
+        if solver_settings:
+            self.solver_settings.update(solver_settings)
+
+    @partial(jax.jit, static_argnums=(0,))
+    def fit(self, init_params, data, bounds=None):
+        """
+        Fits data with optional bounds and priors.
+        Note: The arguments are slightly different from VoxelFitter to match test usage.
+        test usage: fit(init_params, data, bounds=bounds)
+        The model_func already embeds acquisition or is a partial.
+        """
+        
+        # Handle scaling
+        # If self.scales is not None, we solve for p_internal = p / scales
+        n_params = len(init_params)
+        scales = self.scales if self.scales is not None else jnp.ones(n_params)
+        
+        init_params_solver = init_params / scales
+        
+        # Adjust bounds if present
+        if bounds is not None:
+            lb, ub = bounds
+            bounds_solver = (lb / scales, ub / scales)
+        else:
+            bounds_solver = None
+
+        def objective(params_solver):
+            params_real = params_solver * scales
+            
+            # model_func in the test handles acquisition internally or is partial
+            prediction = self.model_func(params_real) 
+            
+            # MSE
+            mse = jnp.mean((data - prediction) ** 2)
+            
+            # Priors (Negative Log Probability)
+            # We minimize Objective -> Minimize -LogPrior
+            prior_term = 0.0
+            for prior in self.priors:
+                # prior returns log_pdf
+                prior_term -= prior(params_real)
+                
+            return mse + prior_term
+
+        # Solver
+        # bounds must be tuple of arrays? jaxopt supports (lower, upper).
+        solver = jaxopt.LBFGSB(
+            fun=objective,
+            **self.solver_settings
+        )
+        
+        sol = solver.run(
+            init_params_solver,
+            bounds=bounds_solver
+        )
+        
+        fitted_params_real = sol.params * scales
+        return fitted_params_real, sol.state
+

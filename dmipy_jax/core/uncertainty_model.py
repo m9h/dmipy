@@ -149,7 +149,11 @@ def propagate_uncertainty(
     # model_func(params, acq)
     # Vmap over params
     signals = jax.vmap(lambda p: model_func(p, acquisition))(params_batch)
-    # signals shape: (N_samples, N_measurements)
+    # signals shape: (N_samples, N_measurements) or (N_samples,) if scalar output
+    
+    # Ensure 2D
+    if signals.ndim == 1:
+        signals = signals[:, None]
     
     # 4. Fit Surrogate
     # We fit the surrogate mapping X_std -> Signal

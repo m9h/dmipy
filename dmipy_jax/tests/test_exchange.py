@@ -3,18 +3,18 @@ import jax.numpy as jnp
 import pytest
 from dmipy_jax.components.exchange import KargerExchange
 from dmipy_jax.signal_models.sphere_models import SphereStejskalTanner
-from dmipy_jax.signal_models.gaussian_models import G1Ball
-from dmipy_jax.core.acquisition import JaxAcquisition
+from dmipy_jax.signal_models.gaussian_models import Ball
+from dmipy_jax.acquisition import JaxAcquisition
 
 class TestKargerExchange:
     def test_initialization(self):
         """Test proper initialization and parameter management."""
-        c1 = G1Ball()
+        c1 = Ball()
         c2 = SphereStejskalTanner()
         karger = KargerExchange([c1, c2])
         
         # Check standard parameters
-        assert "model0_diffusivity" in karger.parameter_names
+        assert "model0_lambda_iso" in karger.parameter_names
         assert "model1_diameter" in karger.parameter_names
         
         # Check exchange logic
@@ -25,7 +25,7 @@ class TestKargerExchange:
 
     def test_prediction_basic(self):
         """Test prediction runs without error and returns reasonable signal."""
-        c1 = G1Ball()
+        c1 = Ball()
         c2 = SphereStejskalTanner()
         karger = KargerExchange([c1, c2])
         
@@ -35,7 +35,7 @@ class TestKargerExchange:
         acq = JaxAcquisition(bvalues=bvals, gradient_directions=bvecs, delta=0.01, Delta=0.02)
         
         # Construct params
-        # model0_diffusivity: 2e-9
+        # model0_lambda_iso: 2e-9
         # model1_diameter: 5e-6
         # partial_volume_0: 0.5
         # exchange_time_01: 1.0 (slow eq)
@@ -49,7 +49,7 @@ class TestKargerExchange:
         
     def test_jit_compilation(self):
         """Ensure the predict function is JIT-compatible."""
-        c1 = G1Ball()
+        c1 = Ball()
         c2 = SphereStejskalTanner()
         karger = KargerExchange([c1, c2])
         
@@ -67,7 +67,7 @@ class TestKargerExchange:
         With extremely long exchange time (tau -> inf), implementation should limit 
         to sum of independent compartments: f1*S1 + f2*S2.
         """
-        c1 = G1Ball()
+        c1 = Ball()
         c2 = SphereStejskalTanner()
         karger = KargerExchange([c1, c2])
         
@@ -85,13 +85,10 @@ class TestKargerExchange:
         signal_karger = karger.predict(params, acq)
         
         # Independent calculation
-        s1 = c1(bvals=bvals, gradient_directions=bvecs, diffusivity=diff)
-        s2 = c2(bvals=bvals, gradient_directions=bvecs, diameter=diam)
+        s1 = c1(bvals=bvals, gradient_directions=bvecs, lambda_iso=diff)
+        s2 = c2(bvals=bvals, gradient_directions=bvecs, diameter=diam, small_delta=0.01, big_delta=0.02)
         signal_indep = f1 * s1 + (1 - f1) * s2
         
         # Should be very close
         assert jnp.allclose(signal_karger, signal_indep, atol=1e-5)
-<<<<<<< HEAD
 
-=======
->>>>>>> recovery_work_v2

@@ -55,7 +55,8 @@ class TestAMICOSolver:
         # Fit
         # Use simple non-negative least squares logic (lambda=0 is fine if dictionary is well-conditioned enough)
         # But ADMM might need tuning. Let's try lambda=0 first (just non-negativity).
-        weights_hat = solver.fit(data, lambda_reg=0.0, constrained=True)
+        # Tune ADMM for float32 precision and small dictionary
+        weights_hat = solver.fit(data, lambda_reg=0.0, constrained=True, rho=0.1, max_iter=2000)
         
         # Verify
         assert jnp.allclose(weights_hat, true_weights, atol=1e-2)

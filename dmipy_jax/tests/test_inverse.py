@@ -26,6 +26,8 @@ class MockAcquisition:
         self.bvalues = bvals
         self.gradient_directions = bvecs
         self.N_measurements = len(bvals)
+        self.delta = None
+        self.Delta = None
 
 @pytest.fixture
 def acquisition():

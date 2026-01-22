@@ -43,8 +43,8 @@ class AlgebraicInitializer(eqx.Module):
     param_names: List[str] = eqx.field(static=True)
     
     def __init__(self, funcs: List[Callable], param_names: List[str]):
-        self.funcs = funcs
-        self.param_names = param_names
+        self.funcs = tuple(funcs)
+        self.param_names = tuple(param_names)
         
     def __call__(self, signals: jnp.ndarray) -> Dict[str, float]:
         """

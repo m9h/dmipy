@@ -174,6 +174,10 @@ class KargerExchange:
             s_i = model(
                 bvals=acquisition.bvalues,
                 gradient_directions=acquisition.gradient_directions,
+                delta=acquisition.delta,
+                Delta=acquisition.Delta,
+                small_delta=acquisition.delta,
+                big_delta=acquisition.Delta,
                 **submodel_params[i]
             )
             uncoupled_signals.append(s_i)

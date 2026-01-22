@@ -167,7 +167,8 @@ def fit_vi(
     tissue_model: eqx.Module,
     acquisition: Any,
     data: Array,
-    init_params: Dict[str, float],
+    init_params: Optional[Dict[str, float]] = None,
+    algebraic_inverter: Optional[Callable] = None,
     sigma_noise: float = 0.02, # Typical MRI noise
     learning_rate: float = 0.01,
     num_steps: int = 1000,
@@ -177,9 +178,47 @@ def fit_vi(
     Fits posterior distributions q(theta) using Variational Inference.
     
     Args:
-        init_params: Initial guess in PHYSICAL space (e.g. diameter in meters).
-                     These are automatically transformed to unconstrained+scaled space for optimization.
+        init_params: Initial guess in PHYSICAL space. Optional if inverter is provided.
+        algebraic_inverter: A function/Module that takes `data` and returns physical parameters.
+                            If provided, `init_params` will be generated from this.
+                            Expected to have `.output_names` attribute if it returns an array,
+                            or return a dict directly.
     """
+    if algebraic_inverter is not None:
+        # Generate init_params from data
+        inferred = algebraic_inverter(data)
+        
+        # Check if we need to unpack
+        if hasattr(algebraic_inverter, 'output_names'):
+            names = algebraic_inverter.output_names
+            # inferred is likely an array
+            if hasattr(inferred, 'tolist'):
+                vals = inferred.tolist()
+            else:
+                vals = inferred
+            init_params_inferred = dict(zip(names, vals))
+            
+            # Merge or overwrite? 
+            # If user provided init_params partially, we could merge. 
+            # But for simplicity, we use inferred as base.
+            if init_params is None:
+                init_params = init_params_inferred
+            else:
+                # Update user provided params with inferred ones (user overrides? or inferred overrides?)
+                # Usually inferred is the "guess". User provided explicit guess should probably take precedence?
+                # Actually, if user passed inverter, they probably want to use it.
+                # Let's say: use inferred, but allow user to override specific keys if init_params is not None.
+                for k, v in init_params_inferred.items():
+                    if k not in init_params:
+                        init_params[k] = v
+        else:
+            # Assume it returns a dict
+            if init_params is None:
+                init_params = inferred
+                
+    if init_params is None:
+        raise ValueError("Must provide either `init_params` or `algebraic_inverter`.")
+        
     key = jax.random.PRNGKey(seed)
     
     # Define scales locally to match VIMinimizer (should ideally be shared or passed)

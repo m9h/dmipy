@@ -1,7 +1,9 @@
 
+import jax
 import jax.numpy as jnp
-from dmipy_jax.algebra.identifiability import construct_polynomial_system, analyze_identifiability, define_signal_components
+from dmipy_jax.algebra.identifiability import construct_polynomial_system, analyze_identifiability, define_signal_components, compute_invariants
 import logging
+import sympy
 
 def check_identifiability(bvalues, model_name="SphereGPD"):
     """
@@ -51,7 +53,6 @@ def check_identifiability(bvalues, model_name="SphereGPD"):
     
     try:
         # We need to construct symbolic Ys if we want general proof.
-        import sympy
         y_syms = [sympy.Symbol(f'y_{i}') for i in range(len(b_vals_list))]
         
         polys, variables = construct_polynomial_system(b_vals_list, y_syms, n_compartments)
@@ -90,3 +91,49 @@ def print_identifiability_report(result):
         # Ideally check degree product (Bezout) for max count
     else:
         print("  Status: Potential Infinite Solutions (Under-determined)")
+
+def get_model_invariants(b_values, model_name="SphereGPD"):
+    """
+    Returns JAX-compilable functions P(signal) that must be zero on the model manifold.
+    
+    Returns:
+        invariant_fn(signal): JAX function returning array of residuals.
+    """
+    # 1. Get compartments
+    if model_name in ["SphereGPD", "Zeppelin", "BallStick", "CylinderGPD"]:
+        n_compartments = 2
+    else:
+        n_compartments = 2
+        
+    b_vals_list = [float(b) for b in b_values]
+    
+    # 2. Compute invariants symbolically
+    invariants_sym, y_syms = compute_invariants(b_vals_list, n_compartments)
+    
+    if not invariants_sym:
+        print("No invariants found (or system is trivial/underdetermined).")
+        return None
+        
+    print(f"Found {len(invariants_sym)} invariant polynomials.")
+    
+    # 3. JAX compilation
+    # We want a function fn(y_array) -> [res1, res2...]
+    # Lambdify usually takes *args.
+    # invariants_sym is a list of expressions.
+    
+    # Create a vector function [P1, P2...]
+    # lambdify(y_syms, invariants_sym, 'jax')
+    
+    try:
+        jax_func_raw = sympy.lambdify(y_syms, invariants_sym, modules='jax')
+    except Exception as e:
+        print(f"Lambdify failed: {e}")
+        return None
+        
+    def invariant_fn(signal):
+        # signal is JAX array (N_b,)
+        # unpack to args
+        # Ensure list
+        return jnp.stack(jax_func_raw(*signal))
+        
+    return invariant_fn

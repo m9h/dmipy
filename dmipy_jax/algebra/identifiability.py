@@ -137,3 +137,64 @@ def analyze_identifiability(polynomials, variables):
         "basis": [str(p) for p in gb]
     }
 
+def compute_invariants(
+    b_values: List[float],
+    n_compartments: int
+) -> Tuple[List[sympy.Expr], List[sympy.Symbol]]:
+    """
+    Computes the algebraic invariants of the signal manifold.
+    Eliminates model parameters to find relationships strictly between signal measurements.
+    
+    Args:
+        b_values: List of b-values.
+        n_compartments: Number of compartments.
+        
+    Returns:
+        invariants: List of sympy polynomials P(y_0, y_1, ...) that should be zero.
+        y_syms: The symbols y_0, ... used in the polynomials.
+    """
+    import sympy
+    
+    # 1. Setup Symbols
+    y_syms = [sympy.Symbol(f'y_{i}') for i in range(len(b_values))]
+    
+    # 2. Construct System (S(theta) - y = 0)
+    system_polys, params = construct_polynomial_system(b_values, y_syms, n_compartments)
+    
+    # 3. Define Ring Variables: Parameters + Signals
+    # We want to eliminate Parameters. Best order: lex(Parameters > Signals)
+    # This means params are "more expensive", so GB will try to express them in terms of y,
+    # or find equations without them.
+    
+    all_vars = params + y_syms
+    
+    # 4. Compute Grobner Basis
+    # Note: efficient calculation for elimination is usually Block order (lex block for elimination vars, grevlex for rest).
+    # SymPy doesn't support block orders explicitly in groebner() API easily?
+    # It does: order='lex' usually works for elimination if vars are ordered correctly.
+    # We pass variables in order elimination_first -> keep_last.
+    
+    print(f"[Identifiability] Computing Grobner Basis to eliminate {len(params)} parameters...")
+    gb = sympy.groebner(system_polys, all_vars, order='lex')
+    
+    # 5. Filter for polynomials containing ONLY y
+    # Since we used lex with params > y, the polynomials at the end of the basis
+    # should depend only on y.
+    
+    invariants = []
+    param_set = set(params)
+    
+    for p in gb:
+        # Check if any parameter is in the free symbols
+        # Note: GB elements are poly-like, need .free_symbols (if Expr) or gens check (if Poly)
+        # sympy.groebner returns Poly or Expr depending on usage? It returns a GrobnerBasis object which iterates Expr usually.
+        # But let's check.
+        if isinstance(p, sympy.Poly):
+            syms = set(p.gens)
+        else:
+            syms = p.free_symbols
+
+        if not (syms & param_set):
+            invariants.append(p)
+            
+    return invariants, y_syms

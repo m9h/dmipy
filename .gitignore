@@ -5,3 +5,17 @@
 __pycache__/
 .uv
 .venv
+
+# Data and Artifacts
+*.npz
+*.h5
+*.pkl
+*.png
+*.tsv
+.coverage
+
+# Datasets
+ds004910/
+data/
+sbi_dmri_temp/
+results/

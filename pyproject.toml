@@ -27,7 +27,7 @@ dependencies = [
   "jaxopt",
   "blackjax",
   "furo",
-  "equinox",
+  "equinox>=0.11.0",
   "optimistix",
   "lineax",
   "diffrax",
@@ -35,7 +35,8 @@ dependencies = [
   "jax-md",
   "ipython",
   "pypulseq",
-  "scico",
+  "scico>=0.0.7",
+  "unxt",
   "datalad",
   "nibabel",
   "h5py",
@@ -98,3 +99,6 @@ uguide = { git = "https://github.com/mjallais/uGUIDE" }
 dev = [
     "mdt>=1.2.7",
 ]
+
+[tool.ruff]
+exclude = ["dmipy_jax/external"]

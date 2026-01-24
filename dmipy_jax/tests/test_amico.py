@@ -25,7 +25,7 @@ class TestAMICOSolver:
             'diffusivity': jnp.array([1e-3, 2e-3, 3e-3])
         }
         
-        solver = AMICOSolver(dummy_stick, acquisition, dict_params)
+        solver = AMICOSolver.create(dummy_stick, acquisition, dict_params)
         
         assert solver.dict_matrix.shape == (4, 3) # 4 measurements, 3 atoms
         
@@ -43,7 +43,7 @@ class TestAMICOSolver:
         ds = jnp.linspace(0.5e-3, 3.0e-3, 6) # 6 atoms
         dict_params = {'diffusivity': ds}
         
-        solver = AMICOSolver(dummy_stick, acquisition, dict_params)
+        solver = AMICOSolver.create(dummy_stick, acquisition, dict_params)
         
         # Ground Truth: Only 2nd atom (index 1) has weight 1.0
         true_weights = jnp.zeros(6)
@@ -67,7 +67,7 @@ class TestAMICOSolver:
         acquisition = {'bvals': bvals}
         ds = jnp.linspace(0.5e-3, 3.0e-3, 5) 
         dict_params = {'diffusivity': ds}
-        solver = AMICOSolver(dummy_stick, acquisition, dict_params)
+        solver = AMICOSolver.create(dummy_stick, acquisition, dict_params)
         
         # Mixture: 0.5 * Atom 0 + 0.5 * Atom 4
         true_weights = jnp.array([0.5, 0.0, 0.0, 0.0, 0.5])
@@ -83,7 +83,7 @@ class TestAMICOSolver:
         acquisition = {'bvals': bvals}
         ds = jnp.array([1e-3, 2e-3])
         dict_params = {'diffusivity': ds}
-        solver = AMICOSolver(dummy_stick, acquisition, dict_params)
+        solver = AMICOSolver.create(dummy_stick, acquisition, dict_params)
         
         # Batch of 2 voxels
         # Vixel 0: Atom 0

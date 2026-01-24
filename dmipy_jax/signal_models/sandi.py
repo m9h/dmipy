@@ -405,7 +405,6 @@ def get_sandi_model(
         # Compose
         S_total = (f_stick * S_stick + 
                    f_sphere * S_sphere + 
-                   f_zeppelin * f_zeppelin * 0 + # WAIT, logic error in line above, f_zeppelin * S_zeppelin
                    f_zeppelin * S_zeppelin +
                    f_ball * S_ball)
                    

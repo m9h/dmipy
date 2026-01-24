@@ -29,8 +29,14 @@ os.makedirs(const.OUTPUT_FOLDER, exist_ok=True)
 from project.utils.utils import compute_prior_stats
 import project.utils.utils as utils
 
+
 # --- Monkeypatching ---
-# The InverseSR code contains a bug where compute_prior_stats calls setup_noise_inputs without hparams.
+# 1. Patch utils.OUTPUT_FOLDER directly because of module aliasing issues
+# (utils.py imports OUTPUT_FOLDER from utils.const, but we might have loaded project.utils.const)
+utils.OUTPUT_FOLDER = const.OUTPUT_FOLDER
+logger.info(f"Patched output folder to: {utils.OUTPUT_FOLDER}")
+
+# 2. The InverseSR code contains a bug where compute_prior_stats calls setup_noise_inputs without hparams.
 # We patch it to handle this.
 
 original_setup_noise_inputs = utils.setup_noise_inputs

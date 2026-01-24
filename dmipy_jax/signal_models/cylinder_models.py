@@ -42,7 +42,8 @@ def safe_bessel_j1(z):
     taylor_out = jax.vmap(taylor_j1)(jnp.atleast_1d(z))
     
     safe_z_for_std = jnp.where(z < threshold, 10.0, z)
-    std_out_safe = jsp.bessel_jn(v=1, z=safe_z_for_std)[1]
+    # Use bessel_jn_fixed(1, z) which uses safe callback
+    std_out_safe = bessel_jn_fixed(1, safe_z_for_std)
     
     # Ensure shapes match
     if taylor_out.ndim != std_out_safe.ndim:
@@ -209,19 +210,44 @@ class RestrictedCylinder(eqx.Module):
         return c2_cylinder(bvals, gradient_directions, mu_cart, lambda_par, diameter, big_delta, small_delta)
 
 
+@jax.custom_jvp
+def bessel_jn_safe(z, v):
+    """
+    Computes J_v(z) using scipy.special.jv via pure_callback (Host CPU),
+    with custom JVP for gradients.
+    v is treated as a float/array input in the signature for JVP, 
+    but we expect it to be integer-like constant usually.
+    Actually, to support 'v' as auxiliary, we should trace it?
+    Let's assume v is an integer scalar passed as argument.
+    """
+    # Callback to host scipy
+    # Output shape matches z
+    result_shape = jax.ShapeDtypeStruct(z.shape, z.dtype)
+    return pure_callback(lambda z_in, v_in: ssp.jv(v_in, z_in), result_shape, z, v, vmap_method='legacy_vectorized')
+
+@bessel_jn_safe.defjvp
+def bessel_jn_safe_jvp(primals, tangents):
+    z, v = primals
+    hz, hv = tangents
+    # dJ_v/dz = 0.5 * (J_(v-1) - J_(v+1))
+    # We assume dJ_v/dv = 0 (v is integer constant)
+    val = bessel_jn_safe(z, v)
+    
+    j_minus = bessel_jn_safe(z, v - 1.0)
+    j_plus = bessel_jn_safe(z, v + 1.0)
+    diff_val = 0.5 * (j_minus - j_plus)
+    
+    return val, diff_val * hz
+
+
 def bessel_jn_fixed(v, z):
     """
-    Computes J_v(z) using JAX native implementation.
-    JAX's bessel_jn(z, v=v) returns an array of shape (v+1, *z.shape) containing [J0, ..., Jv].
-    We return the last element (Jv).
+    Computes J_v(z) safely using the callback mechanism.
     """
-    # Cast v to int for static argument
-    v_int = int(v)
-    # Call JAX implementation
-    # Note: jsp.bessel_jn computes all orders up to v.
-    vals = jsp.bessel_jn(z, v=v_int)
-    # Return the last element (order v)
-    return vals[v_int]
+    # Ensure inputs are appropriate for the callback
+    # v might be int, cast to float for JVP consistency if needed or pass as is?
+    # ssp.jv takes real order.
+    return bessel_jn_safe(z, float(v))
 
 def jvp_v1(v, z):
     """
@@ -367,11 +393,6 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
         term_m = (16 * exp_term_m * numerator_factor * q_arg_J_expanded / denom_m)
         
         sum_m = jnp.sum(term_m, axis=1) # (N,)
-        
-        # DEBUG
-        # print(f"Processing m={m}, res shape: {res.shape}, sum_m shape: {sum_m.shape}")
-        
-        res = res + sum_m
         
     # Handle q_perp = 0 case (no attenuation perpendicular)
     res = jnp.where(q_perp > 1e-9, res, 1.0)

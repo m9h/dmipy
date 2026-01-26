@@ -27,9 +27,9 @@ class Zeppelin(eqx.Module):
     # lambda ~ 1e-9 m^2/s = 1 um^2/ms.
     # Let's use SI in ranges: (1e-10, 3e-9)
     parameter_ranges = {
-        'mu': ([-3.14, -6.28], [3.14, 6.28]), 
-        'lambda_par': (0.0, 3e-9), 
-        'lambda_perp': (0.0, 3e-9)
+        'mu': ([0.0, 3.14159], [-3.14159, 3.14159]), 
+        'lambda_par': (0.1e-9, 3e-9), 
+        'lambda_perp': (0.1e-9, 3e-9)
     }
     
     mu: Optional[Any] = None

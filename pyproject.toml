@@ -35,7 +35,7 @@ dependencies = [
   "jax-md",
   "ipython",
   "pypulseq",
-  "scico",
+  "scico>=0.0.6",
   "datalad",
   "nibabel",
   "h5py",
@@ -55,6 +55,9 @@ dependencies = [
   "timm>=1.0.24",
   "opencv-python>=4.13.0.90",
   "uguide",
+  "e3nn-jax>=0.20.8",
+  "numpyro>=0.19.0",
+  "vbjax>=0.0.18",
 ]
 
 [project.urls]
@@ -97,4 +100,5 @@ uguide = { git = "https://github.com/mjallais/uGUIDE" }
 [dependency-groups]
 dev = [
     "mdt>=1.2.7",
+    "pytest>=9.0.2",
 ]

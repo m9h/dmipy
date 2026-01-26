@@ -119,3 +119,51 @@ def sh_basis_real(theta, phi, lmax):
         col_idx += (l + 1)
             
     return jnp.stack(real_basis_list, axis=-1)
+
+def fit_spherical_harmonics(signal, acquisition, lmax=4):
+    r"""
+    Fit Real Spherical Harmonics to the diffusion signal.
+    
+    This function computes the coefficients $c_{lm}$ such that:
+    $S \approx \sum c_{lm} Y_{lm}(\theta, \phi)$
+    
+    The fit is performed via linear least squares:
+    $C = (Y^T Y)^{-1} Y^T S = Y^\dagger S$
+    
+    Args:
+        signal (jnp.ndarray): Diffusion signal array. 
+                              Shape can be (N_gradients,) for a single voxel 
+                              or (..., N_gradients) for a batch of voxels.
+        acquisition (JaxAcquisition): Acquisition object containing gradient directions.
+        lmax (int): Maximum SH order (even). Default is 4.
+        
+    Returns:
+        coeffs (jnp.ndarray): SH coefficients. 
+                              Shape (..., N_coeffs) where N_coeffs = (lmax+1)(lmax+2)/2.
+    """
+    # 1. Extract gradient directions (Cartesian) and convert to Spherical
+    # bvecs shape: (N_gradients, 3)
+    bvecs = acquisition.gradient_directions
+    r, theta, phi = cart2sphere(bvecs[:, 0], bvecs[:, 1], bvecs[:, 2])
+    
+    # 2. Compute SH Design Matrix Y
+    # Shape: (N_gradients, N_coeffs)
+    Y = sh_basis_real(theta, phi, lmax)
+    
+    # 3. Compute Pseudo-Inverse
+    # Y_inv = (Y.T @ Y)^-1 @ Y.T
+    # Or simply pinv(Y)
+    # Shape: (N_coeffs, N_gradients)
+    Y_inv = jnp.linalg.pinv(Y)
+    
+    # 4. Perform Fit
+    # We want to support batching over voxels.
+    # Signal shape: (..., N_gradients)
+    # Coeffs = Signal @ Y_inv.T
+    
+    # If signal is 1D (N_gradients,), we get (N_coeffs,)
+    # If signal is (X, Y, Z, N_gradients), we get (X, Y, Z, N_coeffs)
+    
+    coeffs = jnp.dot(signal, Y_inv.T)
+    
+    return coeffs

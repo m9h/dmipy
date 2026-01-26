@@ -23,7 +23,7 @@ def safe_bessel_j1(z):
     threshold = 4.0
     
     def taylor_j1(z_val):
-        n_terms = 20
+        n_terms = 50 # Increased for stability at larger z
         z2_4 = z_val**2 / 4.0
         
         def body(carry, k):
@@ -41,15 +41,15 @@ def safe_bessel_j1(z):
 
     taylor_out = jax.vmap(taylor_j1)(jnp.atleast_1d(z))
     
-    safe_z_for_std = jnp.where(z < threshold, 10.0, z)
-    # Use bessel_jn_fixed(1, z) which uses safe callback
-    std_out_safe = bessel_jn_fixed(1, safe_z_for_std)
+    # For AxCaliber range (z < 20 usually), Taylor with sufficient terms is fine.
+    # We avoid bessel_jn entirely to keep it on GPU.
+    # We extended threshold logic implicitly by just returning taylor_out
     
-    # Ensure shapes match
-    if taylor_out.ndim != std_out_safe.ndim:
-        taylor_out = taylor_out.reshape(std_out_safe.shape)
+    # Ensure shapes match input
+    if taylor_out.ndim != z.ndim:
+        taylor_out = taylor_out.reshape(z.shape)
         
-    return jnp.where(z < threshold, taylor_out, std_out_safe)
+    return taylor_out
 
 
 @jit
@@ -84,14 +84,27 @@ def c2_cylinder(bvals, bvecs, mu, lambda_par, diameter, big_delta, small_delta):
     # Let's derive q_mag from bvals.
     tau = big_delta - small_delta / 3.0
     q_mag = jnp.sqrt(bvals / (tau + 1e-9)) / (2 * jnp.pi)
-    q_mag = q_mag * 1e3 # Convert mm^-1 to m^-1 (since bvals is s/mm^2 and diameter is m)
+    
+    # Unit Handling:
+    # If bvals are in s/mm^2 (max ~10000), q_mag is in mm^-1.
+    # If bvals are in s/m^2 (SI, >1e6), q_mag is in m^-1.
+    # We want q_mag in m^-1.
+    # Heuristic: If mean(bvals) > 50000, assume SI.
+    # Using 'bvals' max to be safe.
+    is_si = jnp.max(bvals) > 50000.0
+    
+    # If not SI (s/mm^2), we multiply by 1e3 to get m^-1.
+    # If SI (s/m^2), we leave as is.
+    scaling = jnp.where(is_si, 1.0, 1e3)
+    q_mag = q_mag * scaling
     
     # Project gradients perpendicular to fiber axis
     # |g_perp| = |g - (g . mu)mu| = |g| * sqrt(1 - (g_hat . mu)^2)
     # q_perp = q_mag * sqrt(1 - dot_prod^2)
     sin_theta_sq = 1 - dot_prod**2
     # Clip to avoid negative due to precision
-    sin_theta_sq = jnp.clip(sin_theta_sq, 0.0, 1.0) 
+    # Also clip lower bound to avoid NaN gradient at 0 (parallel)
+    sin_theta_sq = jnp.clip(sin_theta_sq, 1e-12, 1.0) 
     q_perp = q_mag * jnp.sqrt(sin_theta_sq)
     
     radius = diameter / 2.0
@@ -292,7 +305,11 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     # This matches the SGP relation b = (2pi q)^2 * tau.
     
     q_mag = jnp.sqrt(bvals / (tau + 1e-12)) / (2 * jnp.pi)
-    q_mag = q_mag * 1e3 # Convert mm^-1 to m^-1 to match radius in meters
+    
+    # Unit Handling (SI vs Legacy)
+    is_si = jnp.max(bvals) > 50000.0
+    scaling = jnp.where(is_si, 1.0, 1e3)
+    q_mag = q_mag * scaling # Convert to m^-1 if needed
     
     # Ensure tau broadcasts with (1, K) if it is (N,)
     if jnp.ndim(tau) == 1:
@@ -300,7 +317,9 @@ def c3_cylinder_callaghan(bvals, bvecs, mu, lambda_par, diameter, diffusion_perp
     
     # Project gradients perpendicular to fiber axis
     sin_theta_sq = 1 - dot_prod**2
-    sin_theta_sq = jnp.clip(sin_theta_sq, 0.0, 1.0) 
+    # Clip to avoid negative due to precision
+    # Also clip lower bound to avoid NaN gradient at 0
+    sin_theta_sq = jnp.clip(sin_theta_sq, 1e-12, 1.0) 
     q_perp = q_mag * jnp.sqrt(sin_theta_sq)
     
     radius = diameter / 2.0

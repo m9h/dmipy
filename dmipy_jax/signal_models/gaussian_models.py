@@ -29,7 +29,9 @@ def g2_zeppelin(bvals, bvecs, mu, lambda_par, lambda_perp):
         lambda_perp: Diffusivity perpendicular to the axis.
     """
     # Project gradients onto fiber axis
-    dot_prod = jnp.dot(bvecs, mu)
+    # dot_prod = jnp.dot(bvecs, mu)
+    # Use robust broadcast: (N,3) * (3,) -> (N,3) sum -> (N,)
+    dot_prod = jnp.sum(bvecs * mu, axis=-1)
     dot_prod_sq = dot_prod ** 2
     
     # S = exp( -b * (lambda_par * (g.mu)^2 + lambda_perp * (1 - (g.mu)^2)) )

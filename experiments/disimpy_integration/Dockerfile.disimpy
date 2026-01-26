@@ -1,0 +1,10 @@
+FROM nvcr.io/nvidia/pytorch:25.12-py3
+
+# Install dependencies
+RUN pip install --no-cache-dir disimpy nibabel pandas trimesh numpy scipy
+
+# Set working directory
+WORKDIR /workspace/disimpy_integration
+
+# Default command
+CMD ["/bin/bash"]

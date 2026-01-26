@@ -1,0 +1,7 @@
+{
+    "status": "AVAILABLE",
+    "dataset_root": "/home/mhough/Downloads/STE",
+    "ex_vivo": "/home/mhough/Downloads/STE/STE00_ExVivo/STE/STE.nii.gz",
+    "in_vivo": "/home/mhough/Downloads/STE/STE01/STE/STE.nii.gz",
+    "note": "Ex-Vivo verified as STE00_ExVivo. In-Vivo verified as STE01."
+}

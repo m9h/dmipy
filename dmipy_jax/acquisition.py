@@ -51,10 +51,10 @@ class JaxAcquisition:
         if self.btensors is None:
             # Construct LTE B-tensors from bvals and bvecs
             # B = bval * outer(g, g)
-            # Shapes: bvals (N,), g (N, 3) -> B (N, 3, 3)
+            # Shapes: bvals (..., N), g (..., N, 3) -> B (..., N, 3, 3)
             
-            # einsum 'n, ni, nj -> nij'
-            self.btensors = jnp.einsum('n, ni, nj -> nij', self.bvalues, self.gradient_directions, self.gradient_directions)
+            # einsum '...n, ...ni, ...nj -> ...nij'
+            self.btensors = jnp.einsum('...n, ...ni, ...nj -> ...nij', self.bvalues, self.gradient_directions, self.gradient_directions)
         else:
             self.btensors = jnp.array(self.btensors)
 

@@ -19,3 +19,16 @@ ds004910/
 data/
 sbi_dmri_temp/
 results/
+
+# Ignored by Agent
+bench/
+*.log
+*.sif
+Singularity.test
+debug_*.py
+run_*.txt
+test_result*.txt
+verification_results*.txt
+temp_*.seq
+*.png
+

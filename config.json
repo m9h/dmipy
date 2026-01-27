@@ -1,0 +1,7 @@
+{
+    "dwi": "test_data/dwi.nii.gz",
+    "bvecs": "test_data/dwi.bvecs",
+    "bvals": "test_data/dwi.bvals",
+    "model_type": "NODDI",
+    "parallel_jobs": 4
+}

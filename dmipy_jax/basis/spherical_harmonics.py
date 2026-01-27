@@ -1,4 +1,3 @@
-import jax
 import jax.numpy as jnp
 from jax.scipy.special import sph_harm_y
 
@@ -50,6 +49,9 @@ def real_sph_harm(l, m, theta, phi):
     
     # Pass n_max=l to be safe and efficient
     # Returns broadcasted shape (N,)
+    # Note: jax.scipy.special.sph_harm_y / sph_harm follows scipy convention: (m, n, theta, phi)
+    # where m is order, n is degree (l).
+    # We must pass (m_abs_arr, l_arr).
     Y = sph_harm_y(l_arr, m_abs_arr, theta, phi, n_max=l)
     
     # Check m

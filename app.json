@@ -1,0 +1,39 @@
+{
+    "name": "dmipy-jax Process",
+    "desc": "Fit microstructure models using dmipy-jax (GPU accelerated)",
+    "tags": [
+        "diffusion",
+        "microstructure",
+        "gpu",
+        "jax"
+    ],
+    "doi": "",
+    "url": "https://github.com/AthenaEPI/dmipy",
+    "config": {
+        "dwi": {
+            "type": "input",
+            "datatype": "neuro/dwi"
+        },
+        "model_type": {
+            "type": "enum",
+            "default": "NODDI",
+            "options": [
+                "NODDI",
+                "IVIM",
+                "MAPMRI"
+            ]
+        }
+    },
+    "input": {
+        "dwi": {
+            "type": "neuro/dwi",
+            "name": "DWI Data"
+        }
+    },
+    "output": {
+        "derivatives": {
+            "type": "neuro/dwi",
+            "name": "Fitted Parameters"
+        }
+    }
+}

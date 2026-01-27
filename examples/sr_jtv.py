@@ -69,10 +69,10 @@ def run_jtv():
     
     # Functional: 0.5 || x - y ||^2 + lambda || \nabla x ||_1
     g = loss.SquaredL2Loss(y=y_j)
-    # Use standard array output for Finite Difference (append=0 means prepend axis)
-    C = linop.FiniteDifference(input_shape=y_j.shape, append=0)
-    # L21Norm over the gradients (first axis)
-    h = lambda_tv * functional.L21Norm(l2_axis=0)
+    # Use standard array output for FiniteDifference (append=-1 means append axis)
+    C = linop.FiniteDifference(input_shape=y_j.shape, append=-1)
+    # L21Norm over the gradients (last axis)
+    h = lambda_tv * functional.L21Norm(l2_axis=-1)
     
     solver = optimize.ADMM(
         f=g,

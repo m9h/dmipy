@@ -147,5 +147,116 @@ def load_connectome2_mri(path: Path = None, subject: str = "sub-01", session: st
         'affine': affine,
         'bvals': bvals,
         'bvecs': bvecs,
-        'json_path': json_path
+        'json_path': json_path,
+        'dataset_path': path, # Return root path for looking up grad_dev
+        'subject': subject
     }
+
+def load_gradient_nonlinearity(path: Path, subject: str = "sub-01") -> jnp.ndarray:
+    """
+    Loads the Gradient Nonlinearity Tensor (grad_dev.nii.gz).
+    Expected shape in file: (X, Y, Z, 1, 3, 3) or (X, Y, Z, 9) or (X, Y, Z, 3, 3).
+    HCP usually stores it as separate files or a 4D volume.
+    Standard HCP: 'grad_dev.nii.gz' in 'MNINonLinear' or 'T1w' folder? 
+    For raw data, it's often in distinct folder.
+    
+    We assume it's available in the subject dir or derivatives.
+    """
+    # Potential paths
+    candidates = [
+        path / "derivatives" / "grad_dev" / subject / "grad_dev.nii.gz",
+        path / subject / "grad_dev.nii.gz",
+        path / "grad_dev.nii.gz"
+    ]
+    
+    grad_dev_path = None
+    for p in candidates:
+        if p.exists():
+            grad_dev_path = p
+            break
+            
+    if grad_dev_path is None:
+        # Check if we can download it? 
+        # For now, return None or create Identity if not found?
+        # Better to raise error if explicitly asked, but here we return None.
+        print("WARNING: Gradient Nonlinearity Tensor (grad_dev.nii.gz) not found.")
+        return None
+    
+    print(f"Loading Gradient Nonlinearity Tensor from {grad_dev_path}")
+    data, _ = load_nifti(str(grad_dev_path))
+    # data shape?
+    # If 9 components: reshape to (..., 3, 3)
+    if data.shape[-1] == 9:
+        data = data.reshape(data.shape[:-1] + (3, 3))
+    elif data.ndim == 5 and data.shape[-2:] == (3, 3):
+        pass
+    
+    return jnp.array(data)
+
+def apply_gradient_nonlinearity(scheme: JaxAcquisition, grad_dev: jnp.ndarray, roi_slice=None) -> JaxAcquisition:
+    """
+    Applies the gradient nonlinearity tensor to the acquisition scheme.
+    
+    Args:
+        scheme: The nominal acquisition scheme.
+        grad_dev: The gradient nonlinearity tensor field (X, Y, Z, 3, 3).
+        roi_slice: Tuple of slices to apply to grad_dev to match data ROI.
+        
+    Returns:
+        JaxAcquisition: A batched acquisition scheme with shapes (N_vox, N_meas, ...).
+    """
+    # 1. Crop grad_dev if needed
+    if roi_slice is not None:
+        grad_dev = grad_dev[roi_slice]
+        
+    # Flatten spatial dims to N_vox
+    # grad_dev shape: (X, Y, Z, 3, 3) -> (N_vox, 3, 3)
+    spatial_shape = grad_dev.shape[:-2]
+    n_vox = np.prod(spatial_shape)
+    L = grad_dev.reshape(n_vox, 3, 3)
+    
+    # 2. Apply to Gradients
+    # Nominal gradients: g_nom (N_meas, 3)
+    g_nom = scheme.gradient_directions
+    b_nom = scheme.bvalues 
+    
+    # We need to compute g_local = L @ g_nom.T
+    # Dimensions:
+    # L: (N_vox, 3, 3)
+    # g_nom: (N_meas, 3) -> (3, N_meas) for multiplication
+    
+    # Result: (N_vox, 3, N_meas) -> transpose to (N_vox, N_meas, 3)
+    g_local_T = jnp.matmul(L, g_nom.T) # (N_vox, 3, N_meas)
+    g_local = jnp.transpose(g_local_T, (0, 2, 1)) # (N_vox, N_meas, 3)
+    
+    # 3. Calculate Local b-values and Directions
+    # |g_local|^2
+    g_norm_sq = jnp.sum(g_local**2, axis=-1) # (N_vox, N_meas)
+    g_norm = jnp.sqrt(g_norm_sq)
+    
+    # b_local = b_nom * |g_local|^2
+    # Ensure b_nom is broadcastable (N_meas,) -> (1, N_meas)
+    b_local = b_nom[None, :] * g_norm_sq # (N_vox, N_meas)
+    
+    # directions_local = g_local / |g_local|
+    # Handle zeros safe division
+    safe_norm = jnp.where(g_norm > 0, g_norm, 1.0)
+    directions_local = g_local / safe_norm[..., None]
+    
+    # 4. Create Batched Acquisition
+    # We must replicate delta/Delta/TE if they are scalars or 1D
+    # JaxAcquisition expects arrays. If we pass (N_vox, N_meas), it's batched.
+    
+    # Need to verify if other fields need batching.
+    # Typically only bvals/bvecs/btensors change.
+    # Timings are properties of the sequence, likely constant per shot?
+    # Unless gradient limits affect timing? Assuming fixed timing.
+    
+    return JaxAcquisition(
+        bvalues=b_local,
+        gradient_directions=directions_local,
+        delta=scheme.delta,
+        Delta=scheme.Delta,
+        echo_time=scheme.echo_time,
+        total_readout_time=scheme.total_readout_time
+    )

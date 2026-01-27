@@ -171,7 +171,7 @@ class CurvedTractSDE(eqx.Module):
         # 4. Return Cholesky factor L
         # D is symmetric positive definite (if D_long, D_trans > 0).
         # Add small jitter for numerical stability if needed
-        L = jnp.linalg.cholesky(D_tensor + 1e-6 * I)
+        L = jnp.linalg.cholesky(D_tensor + 1e-14 * I)
         
         return L
 

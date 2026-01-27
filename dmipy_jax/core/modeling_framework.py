@@ -383,70 +383,122 @@ class JaxMultiCompartmentModel:
             data = data.reshape(-1, data.shape[-1])
             N_vox = data.shape[0]
             
-            # Precompute predictions to avoid N_vox x N_cand simulations
-            # vmap over candidates (0), acquisition fixed (None)
-            simulator = jax.vmap(self.model_func, in_axes=(0, None))
-            candidate_predictions = simulator(candidates, acquisition)
+            # Detect Batched Acquisition
+            # Check if bvalues has same leading dim as N_vox
+            is_batched_acq = (acquisition.bvalues.ndim > 1) and (acquisition.bvalues.shape[0] == N_vox)
             
-            # Select best
-            # vmap select_best over data (0)
-            # candidate_predictions fixed (None), candidates fixed (None)
-            selector = jax.jit(jax.vmap(initializer.select_best_candidate, in_axes=(0, None, None)))
+            # Define vmap axes based on acquisition batching
+            # if batched: (0, 0, 0), else: (0, None, 0)
+            if is_batched_acq:
+                acq_in_axis = 0
+                select_acq_axis = 0
+            else:
+                acq_in_axis = None
+                select_acq_axis = None
             
-            # Helper for fitting a batch
-            fit_vmapped = jax.jit(jax.vmap(fitter.fit, in_axes=(0, None, 0)))
+            # --- Initialization Strategy ---
+            # If acq is static: Precompute predictions once (C, M), then select.
+            # If acq is batched: We cannot precompute (C, M). 
+            # We must compute (N, C, M) or do it on the fly.
+            # Memory risk if doing (N, C, M).
+            # We'll handle it inside the selection/chunking.
+
+            if not is_batched_acq:
+                # Static Scheme Optimization
+                # vmap over candidates (0), acquisition fixed (None)
+                simulator = jax.vmap(self.model_func, in_axes=(0, None))
+                candidate_predictions = simulator(candidates, acquisition) # (C, M)
+                
+                # Selection: vmap over data(0), predictions fixed, candidates fixed
+                selector = jax.jit(jax.vmap(initializer.select_best_candidate, in_axes=(0, None, None)))
+                
+                # We can pre-calculate global selection function
+                def get_init_params(data_batch, acq_batch=None): 
+                    # acq_batch ignored here since we use precomputed predictions
+                    return selector(data_batch, candidate_predictions, candidates)
+            else:
+                # Batched Scheme
+                # We must compute predictions per voxel (or batch/chunk)
+                # selector needs to take (data, acquisition) and run simulation internally?
+                # Or we reformulate select_best_candidate to take acq.
+                
+                # initializer.select_best_candidate takes (data, candidate_predictions, candidates).
+                # We need a function: select_best_dynamic(data, acq, candidates)
+                
+                def select_best_dynamic(data_single, acq_single, candidates_all):
+                    # Simulate candidates for THIS acquisition
+                    # vmap over candidates
+                    sim_func = jax.vmap(self.model_func, in_axes=(0, None))
+                    cand_preds = sim_func(candidates_all, acq_single)
+                    # Select
+                    return initializer.select_best_candidate(data_single, cand_preds, candidates_all)
+                
+                # vmap over data(0), acq(0), candidates(None)
+                selector = jax.jit(jax.vmap(select_best_dynamic, in_axes=(0, 0, None)))
+                
+                def get_init_params(data_batch, acq_batch):
+                    return selector(data_batch, acq_batch, candidates)
+
+            # Define Fit Vmap
+            fit_vmapped = jax.jit(jax.vmap(fitter.fit, in_axes=(0, acq_in_axis, 0)))
             
-            # Helper for uncertainty
+            # Define Uncertainty Vmap
             from dmipy_jax.core.uncertainty_utils import compute_jacobian, compute_crlb_std
-            def single_pixel_uncertainty(params, data_voxel):
-                # Calculate sigma from residuals (MSE)
-                prediction = self.model_func(params, acquisition)
+            def single_pixel_uncertainty(params, data_voxel, acq_voxel):
+                prediction = self.model_func(params, acq_voxel)
                 residuals = data_voxel - prediction
                 sigma_est = jnp.sqrt(jnp.mean(residuals**2))
-                # sigma_est = estimate_sigma(params, data_voxel, acquisition)
-                J = compute_jacobian(self.model_func, params, acquisition)
+                J = compute_jacobian(self.model_func, params, acq_voxel)
                 return compute_crlb_std(J, sigma=sigma_est)
             
-            calc_uncertainty_vmapped = jax.jit(jax.vmap(single_pixel_uncertainty))
+            calc_uncertainty_vmapped = jax.jit(jax.vmap(single_pixel_uncertainty, in_axes=(0, 0, acq_in_axis)))
 
             # Determine if batching is needed
-            if batch_size is None or N_vox <= batch_size:
-                # Full VMAP
-                init_params = selector(data, candidate_predictions, candidates)
-                fitted_batch, _ = fit_vmapped(data, acquisition, init_params)
-                if compute_uncertainty:
-                    stds_batch = calc_uncertainty_vmapped(fitted_batch, data)
+            if batch_size is None and not is_batched_acq: 
+                # If static, we can try full batch (risk of OOM if N is huge, but let JAX handle it)
+                # If batched, high memory pressure, maybe force chunking?
+                # Let's default to logic: if invalid batch_size, assume FULL.
+                batch_size = N_vox
+            
+            if batch_size is None:
+                 batch_size = N_vox
+
+            import math
+            n_chunks = math.ceil(N_vox / batch_size)
+            fitted_chunks = []
+            stds_chunks = []
+            
+            for i in range(n_chunks):
+                start_idx = i * batch_size
+                end_idx = min((i + 1) * batch_size, N_vox)
+                
+                data_chunk = data[start_idx:end_idx]
+                
+                # Handle Acquisition Chunking
+                if is_batched_acq:
+                    acq_chunk = jax.tree_map(lambda x: x[start_idx:end_idx] if hasattr(x, 'shape') and x.shape[0]==N_vox else x, acquisition)
                 else:
-                    stds_batch = None
+                    acq_chunk = acquisition
+                
+                # Compute Init
+                if is_batched_acq:
+                    init_chunk = get_init_params(data_chunk, acq_chunk)
+                else:
+                    init_chunk = get_init_params(data_chunk)
+                
+                # Run Fit
+                res_chunk, _ = fit_vmapped(data_chunk, acq_chunk, init_chunk)
+                fitted_chunks.append(res_chunk)
+                
+                if compute_uncertainty:
+                    std_chunk = calc_uncertainty_vmapped(res_chunk, data_chunk, acq_chunk)
+                    stds_chunks.append(std_chunk)
+            
+            fitted_batch = jnp.concatenate(fitted_chunks, axis=0)
+            if compute_uncertainty:
+                stds_batch = jnp.concatenate(stds_chunks, axis=0)
             else:
-                # Chunked Processing
-                import math
-                n_chunks = math.ceil(N_vox / batch_size)
-                fitted_chunks = []
-                stds_chunks = []
-                
-                for i in range(n_chunks):
-                    start_idx = i * batch_size
-                    end_idx = min((i + 1) * batch_size, N_vox)
-                    
-                    data_chunk = data[start_idx:end_idx]
-                    
-                    # Compute Init for Chunk (Memory Safe)
-                    init_chunk = selector(data_chunk, candidate_predictions, candidates)
-                    
-                    # Run Fit
-                    res_chunk, _ = fit_vmapped(data_chunk, acquisition, init_chunk)
-                    fitted_chunks.append(res_chunk)
-                    
-                    if compute_uncertainty:
-                        std_chunk = calc_uncertainty_vmapped(res_chunk, data_chunk)
-                        stds_chunks.append(std_chunk)
-                
-                fitted_batch = jnp.concatenate(fitted_chunks, axis=0)
-                if compute_uncertainty:
-                    stds_batch = jnp.concatenate(stds_chunks, axis=0)
-                else:
-                    stds_batch = None
+                stds_batch = None
             
             
             # 5. Pack results

@@ -252,23 +252,27 @@ class JaxMultiCompartmentModel:
         return ret
 
 
-    def fit(self, acquisition, data, method="Levenberg-Marquardt", compute_uncertainty=True, batch_size=None):
+    def fit(self, acquisition, data, method="Levenberg-Marquardt", compute_uncertainty=True, batch_size=None,
+            initialization_method="brute", library=None, trained_model=None):
         """
         Fits the model to data.
-        
+
         Args:
             acquisition: JaxAcquisition object
             data: Signal data array. Shape (N_meas,) for single voxel or (N_vox, N_meas) for multiple.
             method: Optimization method (default: "Levenberg-Marquardt").
             compute_uncertainty: If True, computes CRLB standard deviations (default: True).
-        
+            initialization_method: One of "brute" (default), "dictionary", or "sbi".
+            library: SimulationLibrary instance (required if initialization_method="dictionary").
+            trained_model: Trained SBI model (required if initialization_method="sbi").
+
         Returns:
             dict: Fitted parameters in dictionary format.
                   If compute_uncertainty is True, includes keys with '_std' suffix.
         """
         # 1. Prepare Ranges for Fitter
         # OptimistixFitter expects a list of (min, max) for every single scalar parameter in the flat array.
-        
+
         flat_ranges = []
         scales_list = []
         for name in self.parameter_names:
@@ -320,20 +324,25 @@ class JaxMultiCompartmentModel:
             # Default to Optimistix (Levenberg-Marquardt)
             fitter = OptimistixFitter(self.model_func, flat_ranges, scales=scales)
         
-        # 3. Initial Guess
-        # Use GlobalBruteInitializer (Random Search in this implementation)
+        # 3. Initial Guess — dispatch on initialization_method
         from dmipy_jax.fitting.initialization import GlobalBruteInitializer
-        
-        # Determine number of initialization points.
-        # For single voxel: 50 points? For 1M voxels, maybe fewer per voxel or shared?
-        # If we use random grid, we can generate ONE grid and check it against all voxels (vmapped)
-        
-        initializer = GlobalBruteInitializer(self)
-        
-        # Generate random candidates using helper
-        # Use simple fixed key or allow user key? For now fixed for reproducibility
-        key = jax.random.PRNGKey(42)
-        candidates = initializer.generate_random_grid(n_samples=2000, key=key)
+
+        if initialization_method == "dictionary":
+            from dmipy_jax.fitting.hybrid_initializer import DictionaryInitializer
+            if library is None:
+                raise ValueError("library must be provided for initialization_method='dictionary'")
+            initializer = DictionaryInitializer(library)
+            candidates = None  # not used by DictionaryInitializer
+        elif initialization_method == "sbi":
+            from dmipy_jax.fitting.hybrid_initializer import SBIInitializer
+            if trained_model is None:
+                raise ValueError("trained_model must be provided for initialization_method='sbi'")
+            initializer = SBIInitializer(trained_model)
+            candidates = None
+        else:
+            initializer = GlobalBruteInitializer(self)
+            key = jax.random.PRNGKey(42)
+            candidates = initializer.generate_random_grid(n_samples=2000, key=key)
         
         if data.ndim == 1:
             init_params = initializer.compute_initial_guess(data, acquisition, candidates)

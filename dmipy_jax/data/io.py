@@ -55,3 +55,20 @@ def load_bvals_bvecs(bval_path: str, bvec_path: str) -> JaxAcquisition:
         bvals = bvals * 1e6
 
     return JaxAcquisition(bvalues=jnp.array(bvals), gradient_directions=jnp.array(bvecs))
+
+
+def save_nifti(data, affine, path: str) -> None:
+    """Save an array as a NIfTI file.
+
+    Parameters
+    ----------
+    data : array-like
+        Image data (3-D or 4-D).
+    affine : np.ndarray
+        4x4 affine matrix.
+    path : str
+        Output file path (``.nii`` or ``.nii.gz``).
+    """
+    data_np = np.asarray(data, dtype=np.float32)
+    img = nib.Nifti1Image(data_np, affine)
+    nib.save(img, path)

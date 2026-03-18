@@ -136,6 +136,33 @@ def d_optimality_loss(
     # We want to MAXIMIZE logdet, so we MINIMIZE -logdet
     return -logdet
 
+def a_optimality_loss(
+    trainable_acq_params: Dict[str, jnp.ndarray],
+    static_acq_params: Dict[str, Any],
+    model_func: Callable,
+    target_params: Dict[str, Any],
+    sigma: float = 1.0,
+) -> float:
+    """A-optimality criterion: trace of the inverse FIM.
+
+    Minimising this is equivalent to minimising the total variance of the
+    parameter estimates (complements ``d_optimality_loss``).
+    """
+    acq_params = {**trainable_acq_params, **static_acq_params}
+
+    vecs = acq_params['gradient_directions']
+    norms = jnp.linalg.norm(vecs, axis=1, keepdims=True)
+    norms = jnp.where(norms == 0, 1.0, norms)
+    acq_params['gradient_directions'] = vecs / norms
+
+    J = get_sensitivity(model_func, target_params, acq_params)
+    fim = compute_fisher_information(J, sigma)
+    n = fim.shape[0]
+    fim_reg = fim + jnp.eye(n) * 1e-6
+    fim_inv = jnp.linalg.inv(fim_reg)
+    return jnp.trace(fim_inv)
+
+
 def optimize_protocol(
     initial_acq: JaxAcquisition,
     model_func: Callable,

@@ -1,0 +1,21 @@
+"""
+Production SBI Pipeline for dmipy-JAX.
+
+Provides a unified train -> serialize -> deploy workflow for
+simulation-based inference of diffusion MRI microstructure parameters.
+"""
+
+from dmipy_jax.pipeline.config import SBIPipelineConfig
+from dmipy_jax.pipeline.simulator import ModelSimulator
+from dmipy_jax.pipeline.train import train_sbi
+from dmipy_jax.pipeline.checkpoint import save_checkpoint, load_checkpoint
+from dmipy_jax.pipeline.deploy import SBIPredictor
+
+__all__ = [
+    "SBIPipelineConfig",
+    "ModelSimulator",
+    "train_sbi",
+    "save_checkpoint",
+    "load_checkpoint",
+    "SBIPredictor",
+]

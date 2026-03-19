@@ -52,11 +52,11 @@ def main():
 
     acq = make_multishell()
     sim = build_bingham_noddi_simulator(acq, snr=30.0)
-    config = get_bingham_noddi_config(acq, n_steps=5000)
+    config = get_bingham_noddi_config(acq, n_steps=15000)
 
     print(f"\nTraining Bingham-NODDI MDN ({config.n_steps} steps)...")
     t0 = time.time()
-    model, losses = train_sbi(config, sim, print_every=1000)
+    model, losses = train_sbi(config, sim, print_every=3000)
     print(f"Training time: {time.time() - t0:.1f} s")
     print(f"Final loss: {losses[-1]:.4f}")
 

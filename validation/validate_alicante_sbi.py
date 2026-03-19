@@ -171,14 +171,14 @@ def main():
     print("Alicante SBI Replication: DTI NPE — Full vs Fisher-Optimal vs Random")
     print("=" * 70)
 
-    N_STEPS = 5000
+    N_STEPS = 15000
 
     # 1. Full acquisition
     acq_full = make_acquisition(32, b_value=1e9, n_b0=1)
     print(f"\nFull scheme: {acq_full.bvalues.shape[0]} measurements")
 
     # 2. Fisher-optimal minimal (D-optimal gradient directions)
-    acq_fisher = optimize_minimal_acquisition(n_dirs=6, n_steps=100)
+    acq_fisher = optimize_minimal_acquisition(n_dirs=6, n_steps=500)
     print(f"Fisher-optimal minimal: {acq_fisher.bvalues.shape[0]} measurements")
 
     # 3. Random minimal (electrostatic-repulsion proxy)

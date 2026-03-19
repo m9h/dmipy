@@ -101,11 +101,24 @@ class ModelSimulator:
     def sample_and_simulate(
         self, key: PRNGKeyArray, n: int
     ) -> Tuple[Float[Array, "n theta_dim"], Float[Array, "n signal_dim"]]:
-        """Convenience: sample prior, simulate, add noise."""
+        """Convenience: sample prior, simulate, add noise.
+
+        After adding noise the signals are normalised by their mean b0
+        value (b-values < 100e6 s/m^2) so that training data matches the
+        normalisation applied at inference time in ``SBIPredictor``.
+        """
         k1, k2, k3 = random.split(key, 3)
         theta = self.prior_sampler(k1, n)
         signal = self.simulate(k2, theta)
         noisy = self.add_noise(k3, signal)
+
+        # b0-normalise to match deploy-time preprocessing (deploy.py L93-99)
+        b0_mask = self.acquisition.bvalues < 100e6
+        if jnp.any(b0_mask):
+            b0_mean = jnp.mean(noisy[:, b0_mask], axis=1, keepdims=True)
+            b0_mean = jnp.maximum(b0_mean, 1e-6)
+            noisy = noisy / b0_mean
+
         return theta, noisy
 
     # ------------------------------------------------------------------

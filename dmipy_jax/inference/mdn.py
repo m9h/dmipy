@@ -99,9 +99,10 @@ def mdn_loss(model, x, y):
     
     # Compute Gaussian log probability for each component k
     # log N(y | mu_k, sigma_k) = -0.5 * sum((y - mu_k)^2 / sigma_k^2) - sum(log sigma_k) - 0.5 * D * log(2pi)
-    # We work with log_sigma directly.
+    # We work with log_sigma directly.  Clamp to prevent numerical blowup.
+    log_sigma = jnp.clip(log_sigma, -10.0, 5.0)
     sigma = jnp.exp(log_sigma)
-    var = jnp.square(sigma)
+    var = jnp.square(sigma) + 1e-8
     
     # Mahalanobis term: (y - mu)^2 / var
     diff_sq = jnp.square(y_expanded - mu)

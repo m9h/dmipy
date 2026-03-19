@@ -53,7 +53,7 @@ python -m pytest tests/test_pipeline_simulator.py tests/test_pipeline_checkpoint
     tests/test_library_storage.py tests/test_metrics.py \
     tests/test_library_generator.py tests/test_matcher.py \
     tests/test_hybrid_init.py \
-    --noconftest --no-cov -q 2>&1 | tee -a "$LOG"
+    --override-ini="addopts=" --noconftest -q 2>&1 | tee -a "$LOG"
 
 log "Unit tests passed"
 

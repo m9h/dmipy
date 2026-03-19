@@ -62,6 +62,13 @@ def train_sbi(
 def _train_mdn(config, simulator, key, print_every):
     k_net, k_train = jax.random.split(key)
 
+    # Compute normalisation bounds from parameter ranges
+    lows = jnp.array([simulator.parameter_ranges[n][0]
+                       for n in simulator.parameter_names])
+    highs = jnp.array([simulator.parameter_ranges[n][1]
+                        for n in simulator.parameter_names])
+    spans = jnp.maximum(highs - lows, 1e-12)
+
     model = MixtureDensityNetwork(
         in_features=simulator.signal_dim,
         out_features=config.theta_dim,
@@ -71,7 +78,10 @@ def _train_mdn(config, simulator, key, print_every):
         key=k_net,
     )
 
-    optimizer = optax.adam(config.learning_rate)
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(1.0),
+        optax.adam(config.learning_rate),
+    )
     opt_state = optimizer.init(eqx.filter(model, eqx.is_array))
 
     # Batch loss: vmap the per-sample MDN NLL
@@ -80,8 +90,8 @@ def _train_mdn(config, simulator, key, print_every):
         return jnp.mean(per_sample)
 
     @eqx.filter_jit
-    def step(mdl, opt_st, x, y):
-        loss, grads = eqx.filter_value_and_grad(batch_loss)(mdl, x, y)
+    def step(mdl, opt_st, x, y_norm):
+        loss, grads = eqx.filter_value_and_grad(batch_loss)(mdl, x, y_norm)
         updates, opt_st = optimizer.update(grads, opt_st, mdl)
         mdl = eqx.apply_updates(mdl, updates)
         return mdl, opt_st, loss
@@ -93,7 +103,9 @@ def _train_mdn(config, simulator, key, print_every):
     for i in range(config.n_steps):
         curr_key, k_step = jax.random.split(curr_key)
         theta, signals = simulator.sample_and_simulate(k_step, config.batch_size)
-        model, opt_state, loss = step(model, opt_state, signals, theta)
+        # Normalise targets to [0, 1]
+        theta_norm = (theta - lows) / spans
+        model, opt_state, loss = step(model, opt_state, signals, theta_norm)
         losses.append(float(loss))
         if print_every and i % print_every == 0:
             print(f"[MDN] step {i}/{config.n_steps}  loss={loss:.4f}")
@@ -101,7 +113,25 @@ def _train_mdn(config, simulator, key, print_every):
     elapsed = time.time() - t0
     print(f"[MDN] Training done. {config.n_steps} steps in {elapsed:.1f}s "
           f"({config.n_steps / elapsed:.0f} steps/s)")
+
+    # Store normalisation info on the model for downstream use
+    model = _NormalisedMDN(model, lows, spans)
     return model, losses
+
+
+class _NormalisedMDN(eqx.Module):
+    """Wrapper that denormalises MDN outputs back to physical units."""
+    inner: MixtureDensityNetwork
+    lows: jax.Array
+    spans: jax.Array
+
+    def __call__(self, x):
+        logits_pi, mu_norm, log_sigma = self.inner(x)
+        # Denormalise means back to physical space
+        mu = mu_norm * self.spans + self.lows
+        # Scale log_sigma accordingly: sigma_phys = sigma_norm * span
+        log_sigma = log_sigma + jnp.log(self.spans)
+        return logits_pi, mu, log_sigma
 
 
 # --------------------------------------------------------------------------- #

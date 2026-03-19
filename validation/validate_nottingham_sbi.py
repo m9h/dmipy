@@ -52,26 +52,26 @@ def make_hcp_like_acquisition():
 
 
 def build_ball_2stick_simulator(acq, snr=30.0):
-    """Ball + 2 Stick model.
+    """Ball + 2 Stick model with Cartesian orientation vectors.
 
-    Parameters: [d_ball, d_stick, f1, f2, theta1, phi1, theta2, phi2]
-    (8-D posterior)
+    Parameters: [d_ball, d_stick, f1, f2, mu1x, mu1y, mu1z, mu2x, mu2y, mu2z]
+    (10-D posterior)
+
+    Orientations are unit vectors canonicalized to the z>=0 hemisphere
+    to remove antipodal ambiguity.  This gives the MDN a smooth,
+    discontinuity-free target space unlike (theta, phi) angles.
     """
     def forward_fn(params, acq):
         d_ball = params[0]
         d_stick = params[1]
         f1 = params[2]
         f2 = params[3]
-        theta1, phi1 = params[4], params[5]
-        theta2, phi2 = params[6], params[7]
         f_ball = jnp.clip(1.0 - f1 - f2, 0.0, 1.0)
 
-        mu1 = jnp.array([jnp.sin(theta1) * jnp.cos(phi1),
-                          jnp.sin(theta1) * jnp.sin(phi1),
-                          jnp.cos(theta1)])
-        mu2 = jnp.array([jnp.sin(theta2) * jnp.cos(phi2),
-                          jnp.sin(theta2) * jnp.sin(phi2),
-                          jnp.cos(theta2)])
+        mu1 = params[4:7]
+        mu1 = mu1 / jnp.maximum(jnp.linalg.norm(mu1), 1e-8)
+        mu2 = params[7:10]
+        mu2 = mu2 / jnp.maximum(jnp.linalg.norm(mu2), 1e-8)
 
         cos1 = acq.gradient_directions @ mu1
         cos2 = acq.gradient_directions @ mu2
@@ -82,34 +82,42 @@ def build_ball_2stick_simulator(acq, snr=30.0):
 
         return f1 * s1 + f2 * s2 + f_ball * s_ball
 
+    def _sample_hemisphere(key, n):
+        """Sample unit vectors on the z>=0 hemisphere."""
+        z = jax.random.normal(key, (n, 3))
+        z = z / jnp.linalg.norm(z, axis=-1, keepdims=True)
+        # Canonicalize: flip to z>=0 hemisphere
+        z = z * jnp.sign(z[:, 2:3] + 1e-8)
+        return z
+
     def prior_fn(key, n):
-        keys = jax.random.split(key, 8)
+        keys = jax.random.split(key, 6)
         d_ball = jax.random.uniform(keys[0], (n,), minval=1.0e-9, maxval=3.5e-9)
         d_stick = jax.random.uniform(keys[1], (n,), minval=0.5e-9, maxval=2.5e-9)
-        # Ordered fractions
         f1_raw = jax.random.uniform(keys[2], (n,), minval=0.1, maxval=0.8)
         f2_raw = jax.random.uniform(keys[3], (n,), minval=0.05, maxval=0.5)
         total = f1_raw + f2_raw
-        # Ensure sum <= 0.95
         scale = jnp.minimum(1.0, 0.95 / total)
         f1 = f1_raw * scale
         f2 = f2_raw * scale
-        theta1 = jax.random.uniform(keys[4], (n,), minval=0.0, maxval=jnp.pi)
-        phi1 = jax.random.uniform(keys[5], (n,), minval=-jnp.pi, maxval=jnp.pi)
-        theta2 = jax.random.uniform(keys[6], (n,), minval=0.0, maxval=jnp.pi)
-        phi2 = jax.random.uniform(keys[7], (n,), minval=-jnp.pi, maxval=jnp.pi)
-        return jnp.stack([d_ball, d_stick, f1, f2, theta1, phi1, theta2, phi2], axis=-1)
+        mu1 = _sample_hemisphere(keys[4], n)  # (n, 3)
+        mu2 = _sample_hemisphere(keys[5], n)  # (n, 3)
+        return jnp.concatenate([
+            d_ball[:, None], d_stick[:, None],
+            f1[:, None], f2[:, None],
+            mu1, mu2,
+        ], axis=-1)
 
     return ModelSimulator(
         forward_fn=forward_fn,
         parameter_names=["d_ball", "d_stick", "f1", "f2",
-                          "theta1", "phi1", "theta2", "phi2"],
+                          "mu1x", "mu1y", "mu1z", "mu2x", "mu2y", "mu2z"],
         parameter_ranges={
             "d_ball": (1.0e-9, 3.5e-9),
             "d_stick": (0.5e-9, 2.5e-9),
             "f1": (0.1, 0.8), "f2": (0.05, 0.5),
-            "theta1": (0.0, float(jnp.pi)), "phi1": (-float(jnp.pi), float(jnp.pi)),
-            "theta2": (0.0, float(jnp.pi)), "phi2": (-float(jnp.pi), float(jnp.pi)),
+            "mu1x": (-1.0, 1.0), "mu1y": (-1.0, 1.0), "mu1z": (0.0, 1.0),
+            "mu2x": (-1.0, 1.0), "mu2y": (-1.0, 1.0), "mu2z": (0.0, 1.0),
         },
         acquisition=acq,
         noise_type="rician",
@@ -118,14 +126,8 @@ def build_ball_2stick_simulator(acq, snr=30.0):
     )
 
 
-def angular_error_deg(theta_t, phi_t, theta_r, phi_r):
-    """Angle between two orientations (handles antipodal symmetry)."""
-    mu_t = np.array([np.sin(theta_t) * np.cos(phi_t),
-                      np.sin(theta_t) * np.sin(phi_t),
-                      np.cos(theta_t)])
-    mu_r = np.array([np.sin(theta_r) * np.cos(phi_r),
-                      np.sin(theta_r) * np.sin(phi_r),
-                      np.cos(theta_r)])
+def angular_error_deg_cartesian(mu_t, mu_r):
+    """Angle between two unit vectors (handles antipodal symmetry)."""
     dot = np.abs(np.dot(mu_t, mu_r))
     return np.degrees(np.arccos(np.clip(dot, 0.0, 1.0)))
 
@@ -149,13 +151,13 @@ def main():
         depth=4,
         learning_rate=5e-4,
         batch_size=512,
-        n_steps=10_000,
+        n_steps=30_000,
         snr=30.0,
     )
 
     print(f"\nTraining MDN ({config.n_steps} steps)...")
     t0 = time.time()
-    model, losses = train_sbi(config, sim, print_every=2000)
+    model, losses = train_sbi(config, sim, print_every=5000)
     print(f"Training time: {time.time() - t0:.1f} s")
 
     # Test set
@@ -181,16 +183,28 @@ def main():
         rmse = np.sqrt(np.mean((theta_np[:, i] - preds_np[:, i]) ** 2))
         print(f"  {name:>10s}: r={r:.4f}  RMSE={rmse:.2e}")
 
-    # Orientation errors
+    # Orientation errors — using Cartesian unit vectors directly
     orient_errors_1 = []
     orient_errors_2 = []
     for j in range(len(theta_np)):
-        e1 = angular_error_deg(theta_np[j, 4], theta_np[j, 5],
-                                preds_np[j, 4], preds_np[j, 5])
-        e2 = angular_error_deg(theta_np[j, 6], theta_np[j, 7],
-                                preds_np[j, 6], preds_np[j, 7])
-        orient_errors_1.append(e1)
-        orient_errors_2.append(e2)
+        mu1_true = theta_np[j, 4:7]
+        mu1_pred = preds_np[j, 4:7]
+        mu1_pred = mu1_pred / max(np.linalg.norm(mu1_pred), 1e-8)
+        mu2_true = theta_np[j, 7:10]
+        mu2_pred = preds_np[j, 7:10]
+        mu2_pred = mu2_pred / max(np.linalg.norm(mu2_pred), 1e-8)
+
+        # Try both fiber assignments (label-switching symmetry)
+        e11 = angular_error_deg_cartesian(mu1_true, mu1_pred)
+        e22 = angular_error_deg_cartesian(mu2_true, mu2_pred)
+        e12 = angular_error_deg_cartesian(mu1_true, mu2_pred)
+        e21 = angular_error_deg_cartesian(mu2_true, mu1_pred)
+        if e11 + e22 <= e12 + e21:
+            orient_errors_1.append(e11)
+            orient_errors_2.append(e22)
+        else:
+            orient_errors_1.append(e12)
+            orient_errors_2.append(e21)
 
     orient_errors_1 = np.array(orient_errors_1)
     orient_errors_2 = np.array(orient_errors_2)

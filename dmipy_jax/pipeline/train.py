@@ -143,14 +143,23 @@ def _train_flow(config, simulator, key, print_every):
 
     k_flow, k_train = jax.random.split(key)
 
-    # Adapt simulator to the (key, theta_batch)->signal interface
-    def sim_fn(k, theta):
+    # Compute normalisation bounds
+    lows = jnp.array([simulator.parameter_ranges[n][0]
+                       for n in simulator.parameter_names])
+    highs = jnp.array([simulator.parameter_ranges[n][1]
+                        for n in simulator.parameter_names])
+    spans = jnp.maximum(highs - lows, 1e-12)
+
+    # Wrap simulator to normalise theta to [0, 1]
+    def sim_fn(k, theta_norm):
+        theta = theta_norm * spans + lows
         return simulator.simulate(k, theta)
 
     def prior_fn(k, n):
-        return simulator.prior_sampler(k, n)
+        theta = simulator.prior_sampler(k, n)
+        return (theta - lows) / spans
 
-    trainer = create_trainer(
+    flow, optimizer = create_trainer(
         flow_key=k_flow,
         theta_dim=config.theta_dim,
         signal_dim=simulator.signal_dim,
@@ -161,8 +170,11 @@ def _train_flow(config, simulator, key, print_every):
         num_layers=config.depth,
     )
 
-    trained = train_loop(
-        trainer,
+    trained_flow, losses = train_loop(
+        flow,
+        optimizer,
+        simulator=sim_fn,
+        prior_sampler=prior_fn,
         key=k_train,
         num_steps=config.n_steps,
         batch_size=config.batch_size,
@@ -170,5 +182,21 @@ def _train_flow(config, simulator, key, print_every):
         print_every=print_every,
     )
 
-    # Extract the flow for downstream use
-    return trained.flow, []
+    # Wrap the flow to denormalise samples back to physical space
+    model = _NormalisedFlow(trained_flow, lows, spans)
+    return model, losses
+
+
+class _NormalisedFlow(eqx.Module):
+    """Wrapper that denormalises flow samples back to physical units."""
+    inner: eqx.Module
+    lows: jax.Array
+    spans: jax.Array
+
+    def log_prob(self, theta, condition=None):
+        theta_norm = (theta - self.lows) / self.spans
+        return self.inner.log_prob(theta_norm, condition=condition)
+
+    def sample(self, key, sample_shape=(), condition=None):
+        samples_norm = self.inner.sample(key, sample_shape, condition=condition)
+        return samples_norm * self.spans + self.lows

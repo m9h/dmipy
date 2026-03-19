@@ -16,7 +16,7 @@ import equinox as eqx
 from dmipy_jax.pipeline.config import SBIPipelineConfig
 from dmipy_jax.pipeline.checkpoint import load_checkpoint
 from dmipy_jax.inference.mdn import MixtureDensityNetwork
-from dmipy_jax.pipeline.train import _NormalisedMDN
+from dmipy_jax.pipeline.train import _NormalisedMDN, _NormalisedFlow
 
 
 class SBIPredictor:
@@ -156,8 +156,8 @@ class SBIPredictor:
             @eqx.filter_jit
             def predict(signals):
                 def single(x):
-                    key = jax.random.PRNGKey(0)
-                    samples = model.sample(key, condition=x, shape=(100,))
+                    key = jax.random.key(0)
+                    samples = model.sample(key, (100,), condition=x)
                     return jnp.mean(samples, axis=0)
                 return jax.vmap(single)(signals)
             return predict

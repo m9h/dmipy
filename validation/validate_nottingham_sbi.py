@@ -140,22 +140,41 @@ def main():
     acq = make_hcp_like_acquisition()
     sim = build_ball_2stick_simulator(acq, snr=30.0)
 
-    config = SBIPipelineConfig(
-        model_name="Ball2Stick",
-        parameter_names=sim.parameter_names,
-        parameter_ranges=sim.parameter_ranges,
-        acquisition={"bvalues": acq.bvalues.tolist()},
-        inference_mode="mdn",
-        n_components=10,
-        hidden_dim=256,
-        depth=4,
-        learning_rate=5e-4,
-        batch_size=512,
-        n_steps=30_000,
-        snr=30.0,
-    )
+    import sys
+    use_flow = "--flow" in sys.argv
 
-    print(f"\nTraining MDN ({config.n_steps} steps)...")
+    if use_flow:
+        config = SBIPipelineConfig(
+            model_name="Ball2Stick",
+            parameter_names=sim.parameter_names,
+            parameter_ranges=sim.parameter_ranges,
+            acquisition={"bvalues": acq.bvalues.tolist()},
+            inference_mode="flow",
+            hidden_dim=128,
+            depth=6,
+            learning_rate=3e-4,
+            batch_size=512,
+            n_steps=30_000,
+            snr=30.0,
+        )
+    else:
+        config = SBIPipelineConfig(
+            model_name="Ball2Stick",
+            parameter_names=sim.parameter_names,
+            parameter_ranges=sim.parameter_ranges,
+            acquisition={"bvalues": acq.bvalues.tolist()},
+            inference_mode="mdn",
+            n_components=10,
+            hidden_dim=256,
+            depth=4,
+            learning_rate=5e-4,
+            batch_size=512,
+            n_steps=30_000,
+            snr=30.0,
+        )
+
+    mode_str = "Flow (NPE)" if use_flow else "MDN"
+    print(f"\nTraining {mode_str} ({config.n_steps} steps)...")
     t0 = time.time()
     model, losses = train_sbi(config, sim, print_every=5000)
     print(f"Training time: {time.time() - t0:.1f} s")
@@ -165,13 +184,20 @@ def main():
     key_test = jax.random.PRNGKey(999)
     theta_test, signals_test = sim.sample_and_simulate(key_test, 2000)
 
-    @eqx.filter_jit
-    def predict_mean(mdl, x):
-        logits_pi, mu, log_sigma = mdl(x)
-        weights = jax.nn.softmax(logits_pi)
-        return jnp.sum(weights[:, None] * mu, axis=0)
-
-    preds = jax.vmap(predict_mean, in_axes=(None, 0))(model, signals_test)
+    if use_flow:
+        @eqx.filter_jit
+        def predict_mean_flow(mdl, x):
+            key = jax.random.key(0)
+            samples = mdl.sample(key, (200,), condition=x)
+            return jnp.mean(samples, axis=0)
+        preds = jax.vmap(predict_mean_flow, in_axes=(None, 0))(model, signals_test)
+    else:
+        @eqx.filter_jit
+        def predict_mean(mdl, x):
+            logits_pi, mu, log_sigma = mdl(x)
+            weights = jax.nn.softmax(logits_pi)
+            return jnp.sum(weights[:, None] * mu, axis=0)
+        preds = jax.vmap(predict_mean, in_axes=(None, 0))(model, signals_test)
     preds_np = np.asarray(preds)
     theta_np = np.asarray(theta_test)
 

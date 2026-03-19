@@ -185,11 +185,16 @@ def main():
     theta_test, signals_test = sim.sample_and_simulate(key_test, 2000)
 
     if use_flow:
+        # Clip samples to prior bounds and use median for robustness
+        lows = jnp.array([sim.parameter_ranges[n][0] for n in sim.parameter_names])
+        highs = jnp.array([sim.parameter_ranges[n][1] for n in sim.parameter_names])
+
         @eqx.filter_jit
         def predict_mean_flow(mdl, x):
             key = jax.random.key(0)
-            samples = mdl.sample(key, (200,), condition=x)
-            return jnp.mean(samples, axis=0)
+            samples = mdl.sample(key, (500,), condition=x)
+            samples = jnp.clip(samples, lows, highs)
+            return jnp.median(samples, axis=0)
         preds = jax.vmap(predict_mean_flow, in_axes=(None, 0))(model, signals_test)
     else:
         @eqx.filter_jit

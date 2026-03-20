@@ -16,6 +16,12 @@ from dmipy_jax.pipeline.ensemble import (
     save_ensemble,
     load_ensemble,
 )
+from dmipy_jax.pipeline.conformal import (
+    ConformalCalibrator,
+    ConformalResult,
+    calibrate_from_predictions,
+    predict_intervals_from_predictions,
+)
 
 __all__ = [
     "SBIPipelineConfig",
@@ -28,4 +34,8 @@ __all__ = [
     "EnsemblePredictor",
     "save_ensemble",
     "load_ensemble",
+    "ConformalCalibrator",
+    "ConformalResult",
+    "calibrate_from_predictions",
+    "predict_intervals_from_predictions",
 ]

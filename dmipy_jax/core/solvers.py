@@ -175,7 +175,8 @@ def solve_diffusion_sde(
     # weak=True for EulerHeun usually?
     
     drift_term = diffrax.ODETerm(drift)
-    diffusion_term = diffrax.ControlTerm(diffusion, brownian_motion)
+    # Use WeaklyDiagonalControlTerm for elementwise multiplication (broadcasting scalar diffusion)
+    diffusion_term = diffrax.WeaklyDiagonalControlTerm(diffusion, brownian_motion)
     terms = diffrax.MultiTerm(drift_term, diffusion_term)
     
     solver = diffrax.EulerHeun()

@@ -140,11 +140,98 @@ def _build_skeleton(config: SBIPipelineConfig, key: jax.Array) -> eqx.Module:
             learning_rate=config.learning_rate,
             hidden_dim=config.hidden_dim,
             num_layers=config.depth,
+            flow_type=config.flow_type,
+            knots=config.knots,
         )
         return _NormalisedFlow(flow, lows, spans)
     else:
         raise ValueError(f"Unknown inference_mode: {config.inference_mode!r}")
 
+
+def push_to_hub(
+    model: eqx.Module,
+    config: SBIPipelineConfig,
+    repo_id: str,
+    *,
+    commit_message: str = "Upload SBI model checkpoint",
+    metrics: dict | None = None,
+    private: bool = False,
+) -> str:
+    """Save a checkpoint and push it to the Hugging Face Hub.
+
+    Parameters
+    ----------
+    model : eqx.Module
+        Trained model.
+    config : SBIPipelineConfig
+        Pipeline config used for training.
+    repo_id : str
+        Hub repo id, e.g. ``"mhough/ball2stick-npe-spline-v1"``.
+    commit_message : str
+        Git commit message for the Hub upload.
+    metrics : dict, optional
+        Evaluation metrics to store in ``metrics.json``.
+    private : bool
+        Whether to create a private repo.
+
+    Returns
+    -------
+    str
+        URL of the uploaded repo.
+    """
+    import tempfile
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    api.create_repo(repo_id, exist_ok=True, private=private)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = Path(tmpdir) / "model"
+        save_checkpoint(model, config, str(base))
+
+        # Write optional metrics sidecar
+        if metrics is not None:
+            metrics_path = Path(tmpdir) / "metrics.json"
+            with open(metrics_path, "w") as f:
+                json.dump(metrics, f, indent=2)
+
+        info = api.upload_folder(
+            repo_id=repo_id,
+            folder_path=tmpdir,
+            commit_message=commit_message,
+        )
+    print(f"Pushed to https://huggingface.co/{repo_id}")
+    return f"https://huggingface.co/{repo_id}"
+
+
+def pull_from_hub(
+    repo_id: str,
+    *,
+    key: jax.Array | None = None,
+) -> Tuple[eqx.Module, SBIPipelineConfig]:
+    """Download a checkpoint from the Hugging Face Hub and load it.
+
+    Parameters
+    ----------
+    repo_id : str
+        Hub repo id, e.g. ``"mhough/ball2stick-npe-spline-v1"``.
+    key : jax.Array, optional
+        PRNG key for skeleton initialisation.
+
+    Returns
+    -------
+    model : eqx.Module
+    config : SBIPipelineConfig
+    """
+    from huggingface_hub import snapshot_download
+
+    local_dir = snapshot_download(repo_id)
+    return load_checkpoint(str(Path(local_dir) / "model"), key=key)
+
+
+# ------------------------------------------------------------------
+# Internal helpers
+# ------------------------------------------------------------------
 
 def _json_default(obj):
     """Fallback serialiser for numpy / jax arrays in config dicts."""

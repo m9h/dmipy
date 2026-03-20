@@ -60,11 +60,13 @@ class SBIPipelineConfig:
     acquisition: Dict[str, Any] = field(default_factory=dict)
 
     # Network architecture
-    inference_mode: str = "mdn"  # "mdn" or "flow"
+    inference_mode: str = "mdn"  # "mdn", "flow", or "score"
     architecture: str = "mlp"  # "mlp" or "residual"
     n_components: int = 8
     hidden_dim: int = 128
     depth: int = 3
+    flow_type: str = "affine"  # "affine" or "spline"
+    knots: int = 8  # number of knots for spline transformer
 
     # Noise
     noise_type: str = "rician"

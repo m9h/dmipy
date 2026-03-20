@@ -48,6 +48,12 @@ The Dmipy software package facilitates the **reproducible estimation of diffusio
 **Human Connectome Project Data Interface**
 Dmipy enables you to directly download any HCP subject data using your own credentials.
 
+**Rodent MRI Data Interface (FRDR/CAMRI)**
+Dmipy-JAX now supports the [FRDR C57Bl/6 Longitudinal Mouse Dataset](https://www.frdr-dfdr.ca/repo/dataset/9ea832ad-7f36-4e37-b7ac-47167c0001c1).
+- **Loader**: `dmipy_jax.io.frdr.FRDRMouseLoader`
+- **Pipeline**: Robust N4 Bias Correction + Rigid Registration (`dmipy_jax.pipelines.rodent`)
+- **Showcase**: [examples/animal/showcase_frdr_mouse.py](examples/animal/showcase_frdr_mouse.py)
+
 **Numba-Accelerated, Multi-Core processing**
 Dmipy takes heavy advantage of Python's *pathos* multi-core processing and *numba* function compilation.
 

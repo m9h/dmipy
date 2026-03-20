@@ -12,7 +12,7 @@ from dmipy_jax.data.openneuro import DEFAULT_DATA_DIR
 DS006557_BUCKET = "openneuro.org"
 DS006557_PREFIX = "ds006557"
 
-def fetch_ds006557(path: Path = None, subject: str = "sub-01", download: bool = True) -> Path:
+def fetch_ds006557(path: Path = None, subject: str = "sub-HYPE00", download: bool = True) -> Path:
     """
     Fetches the Ultra-low-field brain MRI dataset (ds006557) from OpenNeuro via S3.
     Downloads only the specified subject.
@@ -28,13 +28,10 @@ def fetch_ds006557(path: Path = None, subject: str = "sub-01", download: bool = 
     # Setup S3 client for anonymous access
     s3 = boto3.client('s3', region_name='us-east-1', config=Config(signature_version=UNSIGNED))
     
-    # Try both sub-01 and sub-001 patterns if not sure, but default calls use strict subject
-    # OpenNeuro usually uses sub-XX.
-    # Updated: ds006557 is versioned. Use version 1.0.2 path.
-    version = "1.0.2"
-    prefix = f"{DS006557_PREFIX}/versions/{version}/{subject}/"
+    # Bucket inspection showed flat structure: ds006557/sub-HYPE00/...
+    # ignoring versions/ directory for now as it wasn't seen in top-level inspection for this dataset
+    prefix = f"{DS006557_PREFIX}/{subject}/"
     
-    # Fallback to invalidating version if empty? No, typically stick to version.
     print(f"Fetching {subject} from s3://{DS006557_BUCKET}/{prefix}")
     
     paginator = s3.get_paginator('list_objects_v2')
@@ -48,13 +45,13 @@ def fetch_ds006557(path: Path = None, subject: str = "sub-01", download: bool = 
         for obj in page['Contents']:
             found_any = True
             key = obj['Key']
-            # Remove dataset prefix for local path (strip version part for cleaner local structure)
-            # key: ds006557/versions/1.0.2/sub-01/
-            # local: ds006557/sub-01/
-            rel_path = key.replace(f"{DS006557_PREFIX}/versions/{version}/", "", 1)
+            # Remove dataset prefix for local path: ds006557/sub-HYPE00/... -> sub-HYPE00/...
+            # DS006557_PREFIX is "ds006557"
+            rel_path = key.replace(f"{DS006557_PREFIX}/", "", 1)
             local_file = path / rel_path
             
             if local_file.exists():
+                # Verify size? Skip for now for speed
                 continue
                 
             print(f"Downloading {key} -> {local_file}")
@@ -62,23 +59,11 @@ def fetch_ds006557(path: Path = None, subject: str = "sub-01", download: bool = 
             s3.download_file(DS006557_BUCKET, key, str(local_file))
             
     if not found_any:
-        # Fallback to root if version fails?
-        print(f"WARNING: No objects found for version {version}. Trying root...")
-        prefix_root = f"{DS006557_PREFIX}/{subject}/"
-        pages = paginator.paginate(Bucket=DS006557_BUCKET, Prefix=prefix_root)
-        for page in pages:
-             if 'Contents' in page:
-                 found_any = True
-                 # ... download logic ...
-                 print("Found in root (not implemented fully in this snippet, relying on version)")
-                 break
-        if not found_any:
-             print(f"ERROR: Subject {subject} not found in {version} or root.")
-
-            
+         print(f"ERROR: Subject {subject} not found in root.")
+             
     return path
 
-def load_ds006557_data(path: Path = None, subject: str = "sub-01", contrast: str = "T1w"):
+def load_ds006557_data(path: Path = None, subject: str = "sub-HYPE00", contrast: str = "T1w"):
     """
     Loads ds006557 MRI data.
     
@@ -97,21 +82,28 @@ def load_ds006557_data(path: Path = None, subject: str = "sub-01", contrast: str
     # Note: Filenames might vary slightly (e.g. acq sequences), let's glob.
     subj_dir = path / subject / "anat"
     
+    # Check for sessions if direct anat doesn't exist
     if not subj_dir.exists():
-        raise FileNotFoundError(f"Subject anatomy directory not found: {subj_dir}")
+         sessions = list(path.glob("ses-*"))
+         # Note: path is dataset root by default/fetch? 
+         # fetch returns path to dataset root.
+         # So we look in path/subject/ses-*
+         subj_sessions = list((path / subject).glob("ses-*"))
+         
+         if subj_sessions:
+             # Pick first session (e.g. ses-HFC)
+             # Prefer ses-HFC (High Field Correlation?) or ses-GE?
+             # Let's sort and pick first or specific
+             subj_dir = subj_sessions[0] / "anat"
+             print(f"Found sessions, using {subj_sessions[0].name}")
+         else:
+             raise FileNotFoundError(f"Subject anatomy directory not found: {subj_dir} and no sessions found.")
+
+    if not subj_dir.exists():
+         raise FileNotFoundError(f"Subject anatomy directory not found: {subj_dir}")
         
     pattern = f"*{contrast}.nii.gz"
     files = list(subj_dir.glob(pattern))
-    
-    if not files:
-        # Try finding json to see what's available?
-        # Or maybe it's under ses-xx?
-        # Check for session directories
-        sessions = list(path.glob(f"{subject}/ses-*"))
-        if sessions:
-             # Try first session
-             subj_dir = sessions[0] / "anat"
-             files = list(subj_dir.glob(pattern))
 
     if not files:
         raise FileNotFoundError(f"No {contrast} NIfTI found in {subj_dir}")

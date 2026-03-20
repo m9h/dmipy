@@ -53,6 +53,7 @@ def train_sbi(
     *,
     key: Optional[jax.Array] = None,
     print_every: int = 500,
+    trackio_run: bool = False,
 ):
     """Train an SBI model (MDN or flow) and return the trained network.
 
@@ -66,6 +67,8 @@ def train_sbi(
         PRNG key; defaults to ``config.seed``.
     print_every : int
         Logging interval.
+    trackio_run : bool
+        If *True*, log metrics to an already-initialised Trackio run.
 
     Returns
     -------
@@ -75,12 +78,14 @@ def train_sbi(
         Per-step training losses.
     """
     if key is None:
-        key = jax.random.PRNGKey(config.seed)
+        key = jax.random.key(config.seed)
 
     if config.inference_mode == "mdn":
         return _train_mdn(config, simulator, key, print_every)
     elif config.inference_mode == "flow":
-        return _train_flow(config, simulator, key, print_every)
+        return _train_flow(config, simulator, key, print_every, trackio_run)
+    elif config.inference_mode == "score":
+        return _train_score(config, simulator, key, print_every)
     else:
         raise ValueError(f"Unknown inference_mode: {config.inference_mode!r}")
 
@@ -250,7 +255,7 @@ class _NormalisedMDN(eqx.Module):
 # Flow (NPE) training
 # --------------------------------------------------------------------------- #
 
-def _train_flow(config, simulator, key, print_every):
+def _train_flow(config, simulator, key, print_every, trackio_run=False):
     from dmipy_jax.inference.trainer import create_trainer, train_loop
 
     k_flow, k_train = jax.random.split(key)
@@ -262,10 +267,22 @@ def _train_flow(config, simulator, key, print_every):
                         for n in simulator.parameter_names])
     spans = jnp.maximum(highs - lows, 1e-12)
 
-    # Wrap simulator to normalise theta to [0, 1]
+    # b0 mask for normalisation
+    b0_mask = simulator.acquisition.bvalues < 100e6
+
+    # Wrap simulator to normalise theta to [0, 1] and apply noise + b0-norm
+    # internally so training sees the same distribution as test/deploy.
     def sim_fn(k, theta_norm):
+        k1, k2 = jax.random.split(k)
         theta = theta_norm * spans + lows
-        return simulator.simulate(k, theta)
+        signal = simulator.simulate(k1, theta)
+        noisy = simulator.add_noise(k2, signal)
+        # b0-normalise (mirrors sample_and_simulate / deploy preprocessing)
+        if jnp.any(b0_mask):
+            b0_mean = jnp.mean(noisy[:, b0_mask], axis=1, keepdims=True)
+            b0_mean = jnp.maximum(b0_mean, 1e-6)
+            noisy = noisy / b0_mean
+        return noisy
 
     def prior_fn(k, n):
         theta = simulator.prior_sampler(k, n)
@@ -283,6 +300,8 @@ def _train_flow(config, simulator, key, print_every):
         learning_rate=lr_schedule,
         hidden_dim=config.hidden_dim,
         num_layers=config.depth,
+        flow_type=config.flow_type,
+        knots=config.knots,
     )
 
     # Build a curriculum callback if enabled
@@ -291,6 +310,7 @@ def _train_flow(config, simulator, key, print_every):
         def _step_callback(i, total):
             simulator.curriculum_step = (i, total)
 
+    # noise_std=0.0 because sim_fn already applies noise internally
     trained_flow, losses = train_loop(
         flow,
         optimizer,
@@ -299,9 +319,10 @@ def _train_flow(config, simulator, key, print_every):
         key=k_train,
         num_steps=config.n_steps,
         batch_size=config.batch_size,
-        noise_std=config.noise_sigma,
+        noise_std=0.0,
         print_every=print_every,
         step_callback=_step_callback,
+        trackio_run=trackio_run,
     )
 
     # Wrap the flow to denormalise samples back to physical space
@@ -321,4 +342,106 @@ class _NormalisedFlow(eqx.Module):
 
     def sample(self, key, sample_shape=(), condition=None):
         samples_norm = self.inner.sample(key, sample_shape, condition=condition)
+        return samples_norm * self.spans + self.lows
+
+
+# --------------------------------------------------------------------------- #
+# Score-based diffusion posterior training
+# --------------------------------------------------------------------------- #
+
+def _train_score(config, simulator, key, print_every):
+    from dmipy_jax.inference.score_posterior import (
+        MicrostructureScoreNet, VPSchedule, train_score_posterior,
+    )
+
+    k_net, k_train = jax.random.split(key)
+
+    # Compute normalisation bounds
+    lows = jnp.array([simulator.parameter_ranges[n][0]
+                       for n in simulator.parameter_names])
+    highs = jnp.array([simulator.parameter_ranges[n][1]
+                        for n in simulator.parameter_names])
+    spans = jnp.maximum(highs - lows, 1e-12)
+
+    # b0 mask for normalisation
+    b0_mask = simulator.acquisition.bvalues < 100e6
+
+    # Count scalar vs vector parameters (vectors are xyz triplets)
+    # Convention: parameters ending in x,y,z that come in triplets are vectors
+    names = simulator.parameter_names
+    n_vectors = 0
+    i = 0
+    while i < len(names):
+        if (i + 2 < len(names)
+                and names[i].endswith("x")
+                and names[i + 1].endswith("y")
+                and names[i + 2].endswith("z")):
+            n_vectors += 1
+            i += 3
+        else:
+            i += 1
+    n_scalars = len(names) - n_vectors * 3
+
+    # Simulator wrapper: normalises theta and applies noise + b0-norm
+    def sim_fn(k, theta_norm):
+        k1, k2 = jax.random.split(k)
+        theta = theta_norm * spans + lows
+        signal = simulator.simulate(k1, theta)
+        noisy = simulator.add_noise(k2, signal)
+        if jnp.any(b0_mask):
+            b0_mean = jnp.mean(noisy[:, b0_mask], axis=1, keepdims=True)
+            b0_mean = jnp.maximum(b0_mean, 1e-6)
+            noisy = noisy / b0_mean
+        return noisy
+
+    def prior_fn(k, n):
+        theta = simulator.prior_sampler(k, n)
+        return (theta - lows) / spans
+
+    schedule = VPSchedule()
+    score_net = MicrostructureScoreNet(
+        k_net,
+        n_scalars=n_scalars,
+        n_vectors=n_vectors,
+        signal_dim=simulator.signal_dim,
+        hidden_scalars=config.hidden_dim,
+        hidden_vectors=config.hidden_dim // 3,
+        depth=config.depth,
+    )
+
+    trained_net, losses = train_score_posterior(
+        k_train,
+        score_net,
+        simulator_fn=sim_fn,
+        prior_fn=prior_fn,
+        schedule=schedule,
+        num_steps=config.n_steps,
+        batch_size=config.batch_size,
+        learning_rate=config.learning_rate,
+        print_every=print_every,
+    )
+
+    model = _NormalisedScore(trained_net, schedule, lows, spans,
+                             n_scalars, n_vectors)
+    return model, losses
+
+
+class _NormalisedScore(eqx.Module):
+    """Wrapper that denormalises score-based posterior samples."""
+    inner: eqx.Module
+    schedule: eqx.Module
+    lows: jax.Array
+    spans: jax.Array
+    n_scalars: int
+    n_vectors: int
+
+    def sample(self, key, sample_shape=(), condition=None):
+        from dmipy_jax.inference.score_posterior import sample_posterior
+        n_samples = sample_shape[0] if sample_shape else 1
+        samples_norm = sample_posterior(
+            key, self.inner, condition, self.schedule,
+            n_samples=n_samples,
+            n_scalars=self.n_scalars,
+            n_vectors=self.n_vectors,
+        )
         return samples_norm * self.spans + self.lows

@@ -102,10 +102,20 @@ def build_ball_2stick_simulator(acq, snr=30.0):
         f2 = f2_raw * scale
         mu1 = _sample_hemisphere(keys[4], n)  # (n, 3)
         mu2 = _sample_hemisphere(keys[5], n)  # (n, 3)
+
+        # Canonical ordering: enforce f1 >= f2 to break label-switching symmetry.
+        # When f1 < f2, swap both fractions AND their orientations.
+        swap = f1 < f2
+        f1_out = jnp.where(swap, f2, f1)
+        f2_out = jnp.where(swap, f1, f2)
+        swap3 = swap[:, None]  # broadcast to (n, 3)
+        mu1_out = jnp.where(swap3, mu2, mu1)
+        mu2_out = jnp.where(swap3, mu1, mu2)
+
         return jnp.concatenate([
             d_ball[:, None], d_stick[:, None],
-            f1[:, None], f2[:, None],
-            mu1, mu2,
+            f1_out[:, None], f2_out[:, None],
+            mu1_out, mu2_out,
         ], axis=-1)
 
     return ModelSimulator(
@@ -138,30 +148,36 @@ def main():
     print("=" * 70)
 
     acq = make_hcp_like_acquisition()
-    sim = build_ball_2stick_simulator(acq, snr=30.0)
 
     import sys
     use_flow = "--flow" in sys.argv
 
+    # Dual simulators: variable SNR for training, fixed SNR for test
+    sim_train = build_ball_2stick_simulator(acq, snr=30.0)
+    sim_train.snr_range = (10.0, 50.0)
+    sim_test = build_ball_2stick_simulator(acq, snr=30.0)
+
     if use_flow:
         config = SBIPipelineConfig(
             model_name="Ball2Stick",
-            parameter_names=sim.parameter_names,
-            parameter_ranges=sim.parameter_ranges,
+            parameter_names=sim_train.parameter_names,
+            parameter_ranges=sim_train.parameter_ranges,
             acquisition={"bvalues": acq.bvalues.tolist()},
             inference_mode="flow",
+            flow_type="spline",
+            knots=8,
             hidden_dim=128,
-            depth=6,
+            depth=10,
             learning_rate=3e-4,
             batch_size=512,
-            n_steps=30_000,
+            n_steps=200_000,
             snr=30.0,
         )
     else:
         config = SBIPipelineConfig(
             model_name="Ball2Stick",
-            parameter_names=sim.parameter_names,
-            parameter_ranges=sim.parameter_ranges,
+            parameter_names=sim_train.parameter_names,
+            parameter_ranges=sim_train.parameter_ranges,
             acquisition={"bvalues": acq.bvalues.tolist()},
             inference_mode="mdn",
             n_components=10,
@@ -173,27 +189,55 @@ def main():
             snr=30.0,
         )
 
+    # Experiment tracking
+    use_trackio = "--trackio" in sys.argv
+    if use_trackio:
+        import trackio
+        trackio.init(
+            project="nottingham-sbi",
+            config={
+                "model": config.model_name,
+                "inference_mode": config.inference_mode,
+                "flow_type": getattr(config, "flow_type", "n/a"),
+                "knots": getattr(config, "knots", 0),
+                "depth": config.depth,
+                "hidden_dim": config.hidden_dim,
+                "learning_rate": config.learning_rate,
+                "batch_size": config.batch_size,
+                "n_steps": config.n_steps,
+                "snr": config.snr,
+            },
+        )
+
     mode_str = "Flow (NPE)" if use_flow else "MDN"
     print(f"\nTraining {mode_str} ({config.n_steps} steps)...")
     t0 = time.time()
-    model, losses = train_sbi(config, sim, print_every=5000)
+    model, losses = train_sbi(config, sim_train, print_every=5000,
+                              trackio_run=use_trackio)
     print(f"Training time: {time.time() - t0:.1f} s")
 
-    # Test set
+    # Test set — use fixed-SNR simulator for evaluation
     print("\nEvaluating on 2000 test samples...")
-    key_test = jax.random.PRNGKey(999)
-    theta_test, signals_test = sim.sample_and_simulate(key_test, 2000)
+    key_test = jax.random.key(999)
+    theta_test, signals_test = sim_test.sample_and_simulate(key_test, 2000)
 
     if use_flow:
         # Clip samples to prior bounds and use median for robustness
-        lows = jnp.array([sim.parameter_ranges[n][0] for n in sim.parameter_names])
-        highs = jnp.array([sim.parameter_ranges[n][1] for n in sim.parameter_names])
+        lows = jnp.array([sim_test.parameter_ranges[n][0] for n in sim_test.parameter_names])
+        highs = jnp.array([sim_test.parameter_ranges[n][1] for n in sim_test.parameter_names])
 
         @eqx.filter_jit
         def predict_mean_flow(mdl, x):
             key = jax.random.key(0)
             samples = mdl.sample(key, (500,), condition=x)
             samples = jnp.clip(samples, lows, highs)
+            # Normalize orientation posterior samples to unit sphere before median
+            mu1_raw = samples[:, 4:7]
+            mu1_norm = mu1_raw / jnp.maximum(jnp.linalg.norm(mu1_raw, axis=-1, keepdims=True), 1e-8)
+            mu2_raw = samples[:, 7:10]
+            mu2_norm = mu2_raw / jnp.maximum(jnp.linalg.norm(mu2_raw, axis=-1, keepdims=True), 1e-8)
+            samples = samples.at[:, 4:7].set(mu1_norm)
+            samples = samples.at[:, 7:10].set(mu2_norm)
             return jnp.median(samples, axis=0)
         preds = jax.vmap(predict_mean_flow, in_axes=(None, 0))(model, signals_test)
     else:
@@ -254,6 +298,34 @@ def main():
     print(f"  d_ball correlation:     r={d_ball_r:.4f}  (target: >0.95)")
     print(f"  f1 correlation:         r={f1_r:.4f}  (target: >0.95)")
     print(f"  Fiber 1 median error:   {np.median(orient_errors_1):.1f} deg  (target: <3 deg)")
+
+    d_stick_r = np.corrcoef(theta_np[:, 1], preds_np[:, 1])[0, 1]
+    f2_r = np.corrcoef(theta_np[:, 3], preds_np[:, 3])[0, 1]
+    eval_metrics = {
+        "d_ball_r": float(d_ball_r),
+        "d_stick_r": float(d_stick_r),
+        "f1_r": float(f1_r),
+        "f2_r": float(f2_r),
+        "fiber1_median_deg": float(np.median(orient_errors_1)),
+        "fiber1_mean_deg": float(np.mean(orient_errors_1)),
+        "fiber2_median_deg": float(np.median(orient_errors_2)),
+        "fiber2_mean_deg": float(np.mean(orient_errors_2)),
+    }
+
+    if use_trackio:
+        trackio.log({f"eval/{k}": v for k, v in eval_metrics.items()})
+        trackio.finish()
+
+    # Push to Hugging Face Hub
+    push_hub = "--push-hub" in sys.argv
+    if push_hub:
+        from dmipy_jax.pipeline.checkpoint import push_to_hub
+        repo_id = "mhough/ball2stick-npe-spline-v1"
+        push_to_hub(
+            model, config, repo_id,
+            commit_message=f"Ball+2Stick NPE: fiber1={np.median(orient_errors_1):.1f}deg",
+            metrics=eval_metrics,
+        )
 
     np.savez(
         "validation/nottingham_sbi_results.npz",

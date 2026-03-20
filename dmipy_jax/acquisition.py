@@ -200,3 +200,55 @@ jax.tree_util.register_pytree_node(
     _acquisition_flatten,
     _acquisition_unflatten
 )
+
+@dataclass
+class STEAcquisitionScheme(JaxAcquisition):
+    """
+    Stimulated Echo (STE) Acquisition Scheme.
+    
+    Models the signal decay distinct to STE sequences, specifically accounting for
+    T1 relaxation during the mixing time (TM) and T2 relaxation during TE/2.
+    
+    Attributes:
+        mixing_time (Optional[Union[jnp.ndarray, float]]): The mixing time (TM) in seconds.
+    """
+    mixing_time: Optional[Union[jnp.ndarray, float]] = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.mixing_time is not None:
+            self.mixing_time = jnp.array(self.mixing_time)
+
+# Register STEAcquisitionScheme as a Pytree node
+def _ste_acquisition_flatten(acq):
+    # Children include the base fields + mixing_time
+    children = (
+        acq.bvalues,
+        acq.gradient_directions,
+        acq.delta,
+        acq.Delta,
+        acq.echo_time,
+        acq.total_readout_time,
+        acq.btensors,
+        acq.mixing_time
+    )
+    aux_data = None
+    return children, aux_data
+
+def _ste_acquisition_unflatten(aux_data, children):
+    return STEAcquisitionScheme(
+        bvalues=children[0],
+        gradient_directions=children[1],
+        delta=children[2],
+        Delta=children[3],
+        echo_time=children[4],
+        total_readout_time=children[5],
+        btensors=children[6],
+        mixing_time=children[7]
+    )
+
+jax.tree_util.register_pytree_node(
+    STEAcquisitionScheme,
+    _ste_acquisition_flatten,
+    _ste_acquisition_unflatten
+)

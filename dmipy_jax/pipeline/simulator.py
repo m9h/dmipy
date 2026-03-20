@@ -57,9 +57,9 @@ class ModelSimulator:
         self.acquisition = acquisition
         self.noise_type = noise_type
         self.sigma = 1.0 / snr
+        self.snr_range = snr_range
         self.constraints_fn = constraints_fn
         self._custom_prior = prior_sampler_fn
-        self.snr_range = snr_range
         self.curriculum_step: Optional[Tuple[int, int]] = None
 
         # Pre-compute flat bounds

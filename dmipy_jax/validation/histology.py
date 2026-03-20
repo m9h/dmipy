@@ -5,6 +5,7 @@ import tarfile
 from pathlib import Path
 import numpy as np
 import nibabel as nib
+import jax
 import jax.numpy as jnp
 import equinox as eqx
 from typing import Optional, Dict, Tuple, Any
@@ -137,52 +138,78 @@ class HistoDataset(eqx.Module):
 class HistologySimulator(eqx.Module):
     """
     Simulator that maps histological Ground Truth to dMRI signals.
+    Supports both Physically-Based (Heuristic) and Learned (MLP) mapping.
     """
-    model: Any # e.g. Cylinder, BallStick, etc.
+    model: Optional[Any] = None # e.g. Cylinder, BallStick
+    learned_model: Optional[Any] = None # e.g. MicrostructureMapper
     
-    def __init__(self, model):
+    def __init__(self, model=None, learned_model=None):
+        """
+        Args:
+            model: Physics-based dMRI model (e.g. RestrictedCylinder).
+            learned_model: Neural network model (e.g. MicrostructureMapper).
+        """
         self.model = model
+        self.learned_model = learned_model
+        
+        if self.model is None and self.learned_model is None:
+            raise ValueError("Must provide either 'model' (physics) or 'learned_model' (neural).")
         
     def __call__(self, acquisition, ground_truth: Dict[str, Any]):
         """
         Predicts signal from ground truth.
         """
-        # Map GT to model parameters
-        # This mapping depends on the specific model and GT structure.
-        # Implements a basic mapping: 
-        #   GT 'radius' -> Model 'radius' (if exists) or 'diameter'/2
-        #   GT 'density' -> Model 'volume_fraction' (partial)
+        if self.learned_model is not None:
+            return self._predict_learned(ground_truth)
+        else:
+            return self._predict_physics(acquisition, ground_truth)
+
+    def _predict_learned(self, ground_truth: Dict[str, Any]):
+        """
+        Uses the learned MLP to predict signal.
+        Expects ground_truth to be convertible to a flat input vector per voxel.
+        """
+        features_list = []
+        spatial_shape = None
         
+        if "radius" in ground_truth:
+            features_list.append(ground_truth["radius"])
+            spatial_shape = ground_truth["radius"].shape
+        if "density" in ground_truth:
+            features_list.append(ground_truth["density"])
+            if spatial_shape is None:
+                spatial_shape = ground_truth["density"].shape
+        
+        # Stack features: (*spatial_shape, N_features)
+        features = jnp.stack(features_list, axis=-1)
+        
+        # Flatten spatial dims: (product(spatial_shape), N_features)
+        features_flat = features.reshape(-1, features.shape[-1])
+        
+        # Apply MLP to every voxel
+        # learned_model takes (n_feat,) -> (n_signals,)
+        signals_flat = jax.vmap(self.learned_model)(features_flat)
+        
+        # Reshape back: (*spatial_shape, N_signals)
+        return signals_flat.reshape(*spatial_shape, -1)
+
+    def _predict_physics(self, acquisition, ground_truth: Dict[str, Any]):
+        """
+        Physically-based heuristic mapping.
+        """
         model_params = {}
         
         # Heuristic mapping
         if "radius" in ground_truth:
-            # Check if model expects radius or diameter
-            # dmipy Cylinder usually takes 'diameter' or 'radius'? 
-            # Standard DMIPY uses 'diameter' often, but let's assume 'radius' for standard Cylinder 
-            # or check the model definition.
-            # safe bet: pass it if matching name.
             model_params["radius"] = ground_truth["radius"]
-            model_params["diameter"] = ground_truth["radius"] * 2 # Cover both bases?
+            # Some models use diameter
+            model_params["diameter"] = ground_truth["radius"] * 2 
             
         if "density" in ground_truth:
-            # Often maps to partial volume or f_intra
             model_params["volume_fraction"] = ground_truth["density"]
             model_params["f_intra"] = ground_truth["density"]
             
-        # Add other default params if needed by model (e.g. diffusion constants)
-        # These might be fixed or part of GT.
-        # For now, let's assume the model has defaults or we inject some base values.
-        # We can also accept 'extra_params' in __call__ if needed.
-        
-        # Filter params to what the model accepts to avoid errors?
-        # Equinox/JAX models might just warn or ignore.
-        
         # Call model
-        # The model likely simulates signal for a set of parameters.
-        # We need to broadcast?
-        # The model itself should handle parameter maps if it's designed for it (dmipy-jax usually supports vmap).
-        
         return self.model(acquisition, **model_params)
 
 

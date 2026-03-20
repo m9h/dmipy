@@ -23,14 +23,35 @@ def test_bloch_simulation():
     pos = jnp.array([0.0, 0.0, 0.0])
     
     t_end = 0.05 # 50ms
-    sol = simulator(
-        (0.0, t_end),
-        m_init,
-        zero_gradient,
-        pos,
-        dt0=1e-4
-    )
+    # Wrap the simulation in JIT for performance check
+    # We explicitly JIT the functional part
+    @jax.jit
+    def run_sim(m_init, pos):
+        return simulator(
+            (0.0, t_end),
+            m_init,
+            zero_gradient,
+            pos,
+            dt0=1e-4
+        )
+
+    # Warmup
+    print("Warming up JAX...")
+    _ = run_sim(m_init, pos).ys[-1]
     
+    # Timing
+    print("Benchmarking JAX...")
+    import time
+    start = time.perf_counter()
+    n_loops = 100
+    for _ in range(n_loops):
+        _ = run_sim(m_init, pos).ys[-1].block_until_ready()
+    end = time.perf_counter()
+    
+    avg_time = (end - start) / n_loops
+    print(f"Average Time per run: {avg_time*1000:.4f} ms")
+    
+    sol = run_sim(m_init, pos)
     m_final = sol.ys[-1]
     
     # Check Analytical Solution for T2 decay

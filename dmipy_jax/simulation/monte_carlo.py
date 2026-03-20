@@ -33,7 +33,7 @@ def reflect(position, old_position, sdf_func):
     
     return reflection
 
-def step_particles(state, input_data, sdf_func, D, dt, gamma=2.6751525e8):
+def step_particles(state, input_data, sdf_func, D, dt, confinement='inside', gamma=2.6751525e8):
     """
     Single time-step function for jax.lax.scan.
     
@@ -43,6 +43,7 @@ def step_particles(state, input_data, sdf_func, D, dt, gamma=2.6751525e8):
         sdf_func: function(position) -> distance
         D: Diffusion coefficient
         dt: Time step duration
+        confinement: 'inside' (restricted) or 'outside' (hindered).
         gamma: Gyromagnetic ratio (default: Proton)
         
     Returns:
@@ -52,28 +53,27 @@ def step_particles(state, input_data, sdf_func, D, dt, gamma=2.6751525e8):
     positions, phase, key = state
     g_t = input_data # Gradient vector at current time step (3,)
     
-    # Split key for random generation
     key, subkey = jax.random.split(key)
     
-    # 1. Brownian Step: dX = sqrt(2*D*dt) * N(0, 1)
+    # 1. Brownian Step
     noise = jax.random.normal(subkey, shape=positions.shape)
     step = jnp.sqrt(2 * D * dt) * noise
     proposed_positions = positions + step
     
     # 2. Check collisions and Reflect
-    # We vectorise the SDF check and reflection logic over all particles
-    
-    # Define a single particle check/reflect function
     def check_and_reflect(pos, old_pos):
         dist = sdf_func(pos)
-        # If dist > 0, we are outside (assuming SDF > 0 is outside/wall)
-        # We use jax.lax.cond to conditionally reflect
         
-        # NOTE: This assumes sdf_func defines "inside" as <= 0.
-        is_outside = dist > 0
-        
+        # Logic: 
+        # inside: valid if <= 0. Invalid if > 0.
+        # outside: valid if > 0. Invalid if <= 0.
+        if confinement == 'inside':
+             is_invalid = dist > 0
+        else:
+             is_invalid = dist <= 0
+             
         return jax.lax.cond(
-            is_outside,
+            is_invalid,
             lambda p, op: reflect(p, op, sdf_func), # True branch (reflect)
             lambda p, op: p,                        # False branch (keep)
             pos, old_pos
@@ -82,15 +82,13 @@ def step_particles(state, input_data, sdf_func, D, dt, gamma=2.6751525e8):
     new_positions = vmap(check_and_reflect)(proposed_positions, positions)
     
     # 3. Accumulate Phase
-    # d_phase = gamma * (g_t . x) * dt
-    # g_t is (3,), x is (N, 3). dot product over last axis.
     phase_increment = gamma * jnp.dot(new_positions, g_t) * dt
     new_phase = phase + phase_increment
     
     return (new_positions, new_phase, key), None
 
 
-def simulate_ground_truth(geometry_sdf, initialization_func, gamma=2.6751525e8):
+def simulate_ground_truth(geometry_sdf, initialization_func, gamma=2.6751525e8, confinement='inside'):
     """
     Creates a simulation function for a specific geometry.
     
@@ -99,27 +97,17 @@ def simulate_ground_truth(geometry_sdf, initialization_func, gamma=2.6751525e8):
                       Convention: <= 0 is INSIDE (fluid), > 0 is OUTSIDE (wall).
         initialization_func: Function taking (key, n_particles) returning (n, 3) initial positions.
         gamma: Gyromagnetic ratio (Hz/T).
+        confinement: 'inside' or 'outside'.
         
     Returns:
         simulate: Function(gradient_waveform, D, dt, N_particles, key) -> Signal
     """
     
     # JIT-compile the scanner for this geometry
-    # N_particles (arg 3) must be static because it determines array shapes.
     @partial(jit, static_argnums=(3,))
     def simulate(gradient_waveform, D, dt, N_particles, key):
         """
         Run the simulation.
-        
-        Args:
-            gradient_waveform: (N_steps, 3) array of gradients [T/m].
-            D: Diffusion coefficient [m^2/s].
-            dt: Time step [s].
-            N_particles: Number of walkers.
-            key: JAX PRNGKey.
-            
-        Returns:
-            Signal: Complex signal attenuation (scalar).
         """
         # 1. Initialize Particles
         key, subkey = jax.random.split(key)
@@ -129,22 +117,86 @@ def simulate_ground_truth(geometry_sdf, initialization_func, gamma=2.6751525e8):
         init_state = (initial_positions, initial_phase, key)
         
         # 2. Run Scan Loop
-        # Partial application of the step function with fixed params
-        step_fn = partial(step_particles, sdf_func=geometry_sdf, D=D, dt=dt, gamma=gamma)
+        step_fn = partial(step_particles, sdf_func=geometry_sdf, D=D, dt=dt, confinement=confinement, gamma=gamma)
         
         final_state, _ = jax.lax.scan(step_fn, init_state, gradient_waveform)
         
         # 3. Compute Signal
-        # Signal = | sum(exp(i * phase)) | / N
         final_phases = final_state[1] # (N_particles,)
-        
-        # This is the complex signal
         ensemble_signal = jnp.mean(jnp.exp(1j * final_phases))
         
         return jnp.abs(ensemble_signal)
 
     return simulate
 
+
+def step_particles_trajectory(state, input_data, sdf_func, D, dt, confinement='inside', gamma=2.6751525e8):
+    """
+    Same as step_particles but returns positions for trajectory recording.
+    """
+    positions, phase, key = state
+    g_t = input_data # Gradient vector at current time step (3,)
+    
+    key, subkey = jax.random.split(key)
+    
+    # 1. Brownian Step
+    noise = jax.random.normal(subkey, shape=positions.shape)
+    step = jnp.sqrt(2 * D * dt) * noise
+    proposed_positions = positions + step
+    
+    # 2. Check collisions and Reflect
+    def check_and_reflect(pos, old_pos):
+        dist = sdf_func(pos)
+        
+        if confinement == 'inside':
+             is_invalid = dist > 0
+        else:
+             is_invalid = dist <= 0
+             
+        return jax.lax.cond(
+            is_invalid,
+            lambda p, op: reflect(p, op, sdf_func),
+            lambda p, op: p,
+            pos, old_pos
+        )
+
+    new_positions = vmap(check_and_reflect)(proposed_positions, positions)
+    
+    # 3. Accumulate Phase
+    phase_increment = gamma * jnp.dot(new_positions, g_t) * dt
+    new_phase = phase + phase_increment
+    
+    # Return new_positions as the scanned output
+    return (new_positions, new_phase, key), new_positions
+
+def simulate_trajectories(geometry_sdf, initialization_func, gamma=2.6751525e8, confinement='inside'):
+    """
+    Creates a simulation function that returns TRAJECTORIES.
+    """
+    
+    @partial(jit, static_argnums=(2, 3))
+    def simulate(D, dt, N_particles, N_steps, key):
+        """
+        Run simulation and return trajectories.
+        """
+        # 1. Initialize
+        key, subkey = jax.random.split(key)
+        initial_positions = initialization_func(subkey, N_particles)
+        initial_phase = jnp.zeros(N_particles)
+        
+        init_state = (initial_positions, initial_phase, key)
+        
+        # Dummy gradient (zeros) as we just want diffusion trajectories
+        dummy_gradient = jnp.zeros((N_steps, 3))
+        
+        # 2. Run Scan
+        step_fn = partial(step_particles_trajectory, sdf_func=geometry_sdf, D=D, dt=dt, confinement=confinement, gamma=gamma)
+        
+        final_state, trajectories = jax.lax.scan(step_fn, init_state, dummy_gradient)
+        
+        return initial_positions, trajectories
+        
+    return simulate
 
 # --- Helper SDFs ---
 

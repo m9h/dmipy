@@ -16,6 +16,7 @@ import equinox as eqx
 
 from dmipy_jax.pipeline.config import SBIPipelineConfig
 from dmipy_jax.inference.mdn import MixtureDensityNetwork
+from dmipy_jax.pipeline.train import _NormalisedMDN, _NormalisedFlow
 
 
 def save_checkpoint(
@@ -91,10 +92,22 @@ def load_checkpoint(
 # ------------------------------------------------------------------
 
 def _build_skeleton(config: SBIPipelineConfig, key: jax.Array) -> eqx.Module:
-    """Create an uninitialised model with the right structure."""
+    """Create an uninitialised model with the right structure.
+
+    The skeleton must match the structure returned by ``train_sbi``, which
+    wraps the raw network in a normalisation layer (``_NormalisedMDN`` or
+    ``_NormalisedFlow``).
+    """
+    import jax.numpy as jnp
+
+    signal_dim = len(config.acquisition.get("bvalues", [0] * 32))
+
+    # Compute dummy normalisation bounds (actual values are in the checkpoint)
+    lows = jnp.zeros(config.theta_dim)
+    spans = jnp.ones(config.theta_dim)
+
     if config.inference_mode == "mdn":
-        signal_dim = len(config.acquisition.get("bvalues", [0] * 32))
-        return MixtureDensityNetwork(
+        inner = MixtureDensityNetwork(
             in_features=signal_dim,
             out_features=config.theta_dim,
             num_components=config.n_components,
@@ -102,21 +115,20 @@ def _build_skeleton(config: SBIPipelineConfig, key: jax.Array) -> eqx.Module:
             depth=config.depth,
             key=key,
         )
+        return _NormalisedMDN(inner, lows, spans)
     elif config.inference_mode == "flow":
         from dmipy_jax.inference.trainer import create_trainer
-        signal_dim = len(config.acquisition.get("bvalues", [0] * 32))
-        # Build a dummy trainer to extract the flow skeleton
-        trainer = create_trainer(
+        flow, _ = create_trainer(
             flow_key=key,
             theta_dim=config.theta_dim,
             signal_dim=signal_dim,
-            simulator=lambda k, t: t,  # dummy
-            prior_sampler=lambda k, n: jax.numpy.zeros((n, config.theta_dim)),
+            simulator=lambda k, t: t,
+            prior_sampler=lambda k, n: jnp.zeros((n, config.theta_dim)),
             learning_rate=config.learning_rate,
             hidden_dim=config.hidden_dim,
             num_layers=config.depth,
         )
-        return trainer.flow
+        return _NormalisedFlow(flow, lows, spans)
     else:
         raise ValueError(f"Unknown inference_mode: {config.inference_mode!r}")
 

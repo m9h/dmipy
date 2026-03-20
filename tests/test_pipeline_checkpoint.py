@@ -11,17 +11,18 @@ import pytest
 
 from dmipy_jax.pipeline.config import SBIPipelineConfig
 from dmipy_jax.pipeline.checkpoint import save_checkpoint, load_checkpoint
+from dmipy_jax.pipeline.train import _NormalisedMDN
 from dmipy_jax.inference.mdn import MixtureDensityNetwork
 
 
 class TestCheckpointRoundTrip:
 
     def test_mdn_roundtrip(self):
-        """Save and load an MDN, verify predictions match."""
+        """Save and load a _NormalisedMDN, verify predictions match."""
         key = jax.random.PRNGKey(42)
 
-        # Build an MDN
-        model = MixtureDensityNetwork(
+        # Build a _NormalisedMDN (matches what train_sbi returns)
+        inner = MixtureDensityNetwork(
             in_features=32,
             out_features=2,
             num_components=4,
@@ -29,6 +30,9 @@ class TestCheckpointRoundTrip:
             depth=2,
             key=key,
         )
+        lows = jnp.array([0.0, 0.1])
+        spans = jnp.array([1.0, 2.9])
+        model = _NormalisedMDN(inner, lows, spans)
 
         config = SBIPipelineConfig(
             model_name="TestDTI",
@@ -58,6 +62,9 @@ class TestCheckpointRoundTrip:
             # Verify config
             assert loaded_config.model_name == "TestDTI"
             assert loaded_config.parameter_names == ["FA", "MD"]
+
+            # Verify it's a _NormalisedMDN
+            assert isinstance(loaded_model, _NormalisedMDN)
 
             # Verify predictions match
             loaded_out = jax.vmap(loaded_model)(x)

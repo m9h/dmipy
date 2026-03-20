@@ -15,7 +15,7 @@ import equinox as eqx
 
 from dmipy_jax.pipeline.config import SBIPipelineConfig
 from dmipy_jax.pipeline.checkpoint import load_checkpoint
-from dmipy_jax.inference.mdn import MixtureDensityNetwork
+from dmipy_jax.inference.mdn import MixtureDensityNetwork, ResidualMDN
 from dmipy_jax.pipeline.train import _NormalisedMDN, _NormalisedFlow
 
 
@@ -142,7 +142,7 @@ class SBIPredictor:
         """Return a jitted function mapping (batch, signal_dim) -> (batch, theta_dim)."""
         model = self.model
 
-        if isinstance(model, (MixtureDensityNetwork, _NormalisedMDN)):
+        if isinstance(model, (MixtureDensityNetwork, ResidualMDN, _NormalisedMDN)):
             @eqx.filter_jit
             def predict(signals):
                 def single(x):

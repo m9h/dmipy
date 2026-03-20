@@ -10,6 +10,12 @@ from dmipy_jax.pipeline.simulator import ModelSimulator
 from dmipy_jax.pipeline.train import train_sbi
 from dmipy_jax.pipeline.checkpoint import save_checkpoint, load_checkpoint
 from dmipy_jax.pipeline.deploy import SBIPredictor
+from dmipy_jax.pipeline.ensemble import (
+    train_ensemble,
+    EnsemblePredictor,
+    save_ensemble,
+    load_ensemble,
+)
 
 __all__ = [
     "SBIPipelineConfig",
@@ -18,4 +24,8 @@ __all__ = [
     "save_checkpoint",
     "load_checkpoint",
     "SBIPredictor",
+    "train_ensemble",
+    "EnsemblePredictor",
+    "save_ensemble",
+    "load_ensemble",
 ]

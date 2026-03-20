@@ -99,15 +99,27 @@ def _train_mdn(config, simulator, key, print_every):
                         for n in simulator.parameter_names])
     spans = jnp.maximum(highs - lows, 1e-12)
 
-    model = MixtureDensityNetwork(
-        in_features=simulator.signal_dim,
-        out_features=config.theta_dim,
-        num_components=config.n_components,
-        width_size=config.hidden_dim,
-        depth=config.depth,
-        key=k_net,
-        activation=_get_activation(config.activation),
-    )
+    if config.architecture == "residual":
+        from dmipy_jax.inference.mdn import ResidualMDN
+        model = ResidualMDN(
+            in_features=simulator.signal_dim,
+            out_features=config.theta_dim,
+            num_components=config.n_components,
+            width_size=config.hidden_dim,
+            depth=config.depth,
+            key=k_net,
+            activation=_get_activation(config.activation),
+        )
+    else:
+        model = MixtureDensityNetwork(
+            in_features=simulator.signal_dim,
+            out_features=config.theta_dim,
+            num_components=config.n_components,
+            width_size=config.hidden_dim,
+            depth=config.depth,
+            key=k_net,
+            activation=_get_activation(config.activation),
+        )
 
     # LR schedule
     lr_schedule = _build_lr_schedule(config)
@@ -221,7 +233,7 @@ def _train_mdn(config, simulator, key, print_every):
 
 class _NormalisedMDN(eqx.Module):
     """Wrapper that denormalises MDN outputs back to physical units."""
-    inner: MixtureDensityNetwork
+    inner: eqx.Module
     lows: jax.Array
     spans: jax.Array
 

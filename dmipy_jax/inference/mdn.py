@@ -81,6 +81,68 @@ class MixtureDensityNetwork(eqx.Module):
         
         return logits_pi, mu, log_sigma
 
+class ResidualBlock(eqx.Module):
+    """Single residual block: LayerNorm -> Linear -> activation -> Linear -> add."""
+    norm: eqx.nn.LayerNorm
+    linear1: eqx.nn.Linear
+    linear2: eqx.nn.Linear
+    activation: Callable
+
+    def __init__(self, width, key, activation=jax.nn.gelu):
+        k1, k2 = jr.split(key)
+        self.norm = eqx.nn.LayerNorm(width)
+        self.linear1 = eqx.nn.Linear(width, width, key=k1)
+        self.linear2 = eqx.nn.Linear(width, width, key=k2)
+        self.activation = activation
+
+    def __call__(self, x):
+        h = self.norm(x)
+        h = self.activation(self.linear1(h))
+        h = self.linear2(h)
+        return x + h
+
+
+class ResidualMDN(eqx.Module):
+    """Mixture Density Network with residual blocks and layer normalization.
+
+    Drop-in replacement for MixtureDensityNetwork with better gradient flow
+    for deeper networks (depth >= 3).
+    """
+    input_proj: eqx.nn.Linear
+    blocks: list
+    final_norm: eqx.nn.LayerNorm
+    pi_head: eqx.nn.Linear
+    mu_head: eqx.nn.Linear
+    sigma_head: eqx.nn.Linear
+    num_components: int
+    out_features: int
+
+    def __init__(self, in_features, out_features, num_components, width_size,
+                 depth, key, activation=jax.nn.gelu):
+        keys = jr.split(key, depth + 4)
+        self.num_components = num_components
+        self.out_features = out_features
+
+        self.input_proj = eqx.nn.Linear(in_features, width_size, key=keys[0])
+        self.blocks = [ResidualBlock(width_size, keys[i + 1], activation)
+                       for i in range(depth)]
+        self.final_norm = eqx.nn.LayerNorm(width_size)
+        self.pi_head = eqx.nn.Linear(width_size, num_components, key=keys[-3])
+        self.mu_head = eqx.nn.Linear(width_size, num_components * out_features, key=keys[-2])
+        self.sigma_head = eqx.nn.Linear(width_size, num_components * out_features, key=keys[-1])
+
+    def __call__(self, x):
+        h = self.input_proj(x)
+        for block in self.blocks:
+            h = block(h)
+        h = self.final_norm(h)
+
+        logits_pi = self.pi_head(h)
+        mu = jnp.reshape(self.mu_head(h), (self.num_components, self.out_features))
+        log_sigma = jnp.reshape(self.sigma_head(h), (self.num_components, self.out_features))
+        return logits_pi, mu, log_sigma
+
+
 def mdn_loss(model, x, y):
     """
     Computes Negative Log Likelihood (NLL) for MDN.

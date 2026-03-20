@@ -107,15 +107,27 @@ def _build_skeleton(config: SBIPipelineConfig, key: jax.Array) -> eqx.Module:
     spans = jnp.ones(config.theta_dim)
 
     if config.inference_mode == "mdn":
-        inner = MixtureDensityNetwork(
-            in_features=signal_dim,
-            out_features=config.theta_dim,
-            num_components=config.n_components,
-            width_size=config.hidden_dim,
-            depth=config.depth,
-            key=key,
-            activation=_get_activation(config.activation),
-        )
+        if getattr(config, "architecture", "mlp") == "residual":
+            from dmipy_jax.inference.mdn import ResidualMDN
+            inner = ResidualMDN(
+                in_features=signal_dim,
+                out_features=config.theta_dim,
+                num_components=config.n_components,
+                width_size=config.hidden_dim,
+                depth=config.depth,
+                key=key,
+                activation=_get_activation(config.activation),
+            )
+        else:
+            inner = MixtureDensityNetwork(
+                in_features=signal_dim,
+                out_features=config.theta_dim,
+                num_components=config.n_components,
+                width_size=config.hidden_dim,
+                depth=config.depth,
+                key=key,
+                activation=_get_activation(config.activation),
+            )
         return _NormalisedMDN(inner, lows, spans)
     elif config.inference_mode == "flow":
         from dmipy_jax.inference.trainer import create_trainer

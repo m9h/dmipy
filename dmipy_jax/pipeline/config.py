@@ -61,6 +61,7 @@ class SBIPipelineConfig:
 
     # Network architecture
     inference_mode: str = "mdn"  # "mdn" or "flow"
+    architecture: str = "mlp"  # "mlp" or "residual"
     n_components: int = 8
     hidden_dim: int = 128
     depth: int = 3

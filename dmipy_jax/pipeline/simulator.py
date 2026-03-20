@@ -49,6 +49,7 @@ class ModelSimulator:
         snr: float = 30.0,
         constraints_fn: Optional[Callable] = None,
         prior_sampler_fn: Optional[Callable] = None,
+        snr_range: Optional[Tuple[float, float]] = None,
     ):
         self.forward_fn = forward_fn
         self.parameter_names = list(parameter_names)
@@ -58,6 +59,8 @@ class ModelSimulator:
         self.sigma = 1.0 / snr
         self.constraints_fn = constraints_fn
         self._custom_prior = prior_sampler_fn
+        self.snr_range = snr_range
+        self.curriculum_step: Optional[Tuple[int, int]] = None
 
         # Pre-compute flat bounds
         self._lows = jnp.array([self.parameter_ranges[n][0] for n in self.parameter_names])
@@ -132,12 +135,32 @@ class ModelSimulator:
         u = random.uniform(key, (n, self.theta_dim))
         return self._lows + u * (self._highs - self._lows)
 
+    def _get_sigma(self, key: PRNGKeyArray, n: int):
+        """Return per-sample sigma: shape ``(n, 1)`` when multi-SNR is active,
+        scalar otherwise.  Safe inside ``jax.jit`` because branching is on
+        plain Python attributes (traced as compile-time constants)."""
+        if self.snr_range is not None:
+            low_snr, high_snr = self.snr_range
+            if self.curriculum_step is not None:
+                step, total = self.curriculum_step
+                progress = min(step / max(total, 1), 1.0)
+                # Start with only high SNR, gradually include low SNR
+                current_low = high_snr - progress * (high_snr - low_snr)
+            else:
+                current_low = low_snr
+            snr_samples = random.uniform(key, (n, 1), minval=current_low, maxval=high_snr)
+            return 1.0 / snr_samples
+        return self.sigma
+
     def _rician_noise(self, key: PRNGKeyArray, signal: Float[Array, "n signal_dim"]) -> Float[Array, "n signal_dim"]:
-        k1, k2 = random.split(key)
-        n1 = random.normal(k1, signal.shape) * self.sigma
-        n2 = random.normal(k2, signal.shape) * self.sigma
+        k1, k2, k3 = random.split(key, 3)
+        sigma = self._get_sigma(k3, signal.shape[0])
+        n1 = random.normal(k1, signal.shape) * sigma
+        n2 = random.normal(k2, signal.shape) * sigma
         return jnp.sqrt((signal + n1) ** 2 + n2 ** 2)
 
     def _gaussian_noise(self, key: PRNGKeyArray, signal: Float[Array, "n signal_dim"]) -> Float[Array, "n signal_dim"]:
-        noise = random.normal(key, signal.shape) * self.sigma
+        k1, k2 = random.split(key)
+        sigma = self._get_sigma(k2, signal.shape[0])
+        noise = random.normal(k1, signal.shape) * sigma
         return signal + noise

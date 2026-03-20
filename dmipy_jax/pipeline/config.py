@@ -68,11 +68,28 @@ class SBIPipelineConfig:
     # Noise
     noise_type: str = "rician"
     snr: float = 30.0
+    snr_range: Optional[Tuple[float, float]] = None  # e.g. (5, 80); if set, overrides fixed snr
+    curriculum_noise: bool = False  # if True, start with high SNR and linearly decrease to snr_range[0]
 
     # Training hyper-parameters
     learning_rate: float = 1e-3
     batch_size: int = 256
     n_steps: int = 5000
+
+    # LR scheduling
+    lr_schedule: str = "cosine"  # "constant", "cosine", "warmup_cosine"
+    warmup_steps: int = 500
+
+    # EMA
+    use_ema: bool = True
+    ema_decay: float = 0.999
+
+    # Architecture
+    activation: str = "gelu"  # "relu", "gelu", "silu"
+
+    # Validation / early stopping
+    val_fraction: float = 0.1  # fraction of each batch used for validation tracking
+    patience: int = 0  # 0 = disabled; stop if val loss hasn't improved in this many steps
 
     # Checkpointing
     checkpoint_path: Optional[str] = None

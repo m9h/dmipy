@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 
 import jax
@@ -6,7 +8,7 @@ import equinox as eqx
 import optax
 import flowjax.distributions as dist
 import flowjax.flows as flows
-from typing import Callable, Any, Tuple
+from typing import Callable, Any, Tuple, Union
 from jaxtyping import Array, Float, PRNGKeyArray
 
 
@@ -16,11 +18,18 @@ def create_trainer(
     signal_dim: int,
     simulator: Callable,
     prior_sampler: Callable,
-    learning_rate: float = 1e-4,
+    learning_rate: Union[float, optax.Schedule] = 1e-4,
     hidden_dim: int = 64,
     num_layers: int = 4,
 ) -> Tuple[Any, optax.GradientTransformation]:
-    """Create a conditional Neural Spline Flow and optimizer."""
+    """Create a conditional Neural Spline Flow and optimizer.
+
+    Parameters
+    ----------
+    learning_rate : float or optax.Schedule
+        Either a constant learning rate or an optax schedule object
+        (e.g. from ``optax.cosine_decay_schedule``).
+    """
     base_dist = dist.StandardNormal((theta_dim,))
     flow = flows.masked_autoregressive_flow(
         key=flow_key,
@@ -48,6 +57,7 @@ def train_loop(
     batch_size: int,
     noise_std: float = 0.0,
     print_every: int = 100,
+    step_callback: Callable = None,
 ):
     """Train a conditional flow via maximum-likelihood on simulated data."""
     opt_state = optimizer.init(eqx.filter(flow, eqx.is_inexact_array))
@@ -71,6 +81,8 @@ def train_loop(
     t0 = time.time()
 
     for i in range(num_steps):
+        if step_callback is not None:
+            step_callback(i, num_steps)
         k_step, curr_key = jax.random.split(curr_key)
         k1, k2, k3 = jax.random.split(k_step, 3)
 

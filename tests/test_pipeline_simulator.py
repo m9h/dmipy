@@ -14,7 +14,7 @@ from dmipy_jax.pipeline.simulator import ModelSimulator
 # Fixtures
 # --------------------------------------------------------------------------- #
 
-def _make_ball_simulator(snr=30.0, noise_type="rician"):
+def _make_ball_simulator(snr=30.0, noise_type="rician", snr_range=None):
     """Simple isotropic Ball model simulator for testing."""
     n_meas = 32
     key = jax.random.PRNGKey(0)
@@ -34,6 +34,7 @@ def _make_ball_simulator(snr=30.0, noise_type="rician"):
         acquisition=acq,
         noise_type=noise_type,
         snr=snr,
+        snr_range=snr_range,
     )
 
 
@@ -133,3 +134,46 @@ class TestConstraintCallback:
         theta = sim.prior_sampler(key, 1000)
         expected_d_perp = d_par * (1.0 - theta[:, 0])
         assert jnp.allclose(theta[:, 1], expected_d_perp, atol=1e-15)
+
+
+class TestMultiSNR:
+
+    def test_multi_snr_noise_variance(self):
+        """Noise variance should fall between 1/50^2 and 1/10^2 for snr_range=(10, 50)."""
+        sim = _make_ball_simulator(noise_type="gaussian", snr_range=(10, 50))
+        key = jax.random.PRNGKey(42)
+        # Uniform signal of 1.0 so noise = noisy - clean
+        clean = jnp.ones((100_000, 32))
+        noisy = sim.add_noise(key, clean)
+        noise = noisy - clean
+        # Per-sample variance (across measurements), then overall mean
+        per_sample_var = jnp.var(noise, axis=1)
+        mean_var = jnp.mean(per_sample_var)
+        # Expected variance bounds: sigma^2 = 1/snr^2
+        # snr=50 -> sigma^2 = 1/2500 = 0.0004
+        # snr=10 -> sigma^2 = 1/100  = 0.01
+        # Mean of uniform over [1/50^2, 1/10^2] ~ 0.0052
+        assert mean_var > 1.0 / 50**2, f"Variance {mean_var} too low"
+        assert mean_var < 1.0 / 10**2, f"Variance {mean_var} too high"
+
+    def test_curriculum_noise_progression(self):
+        """Early curriculum steps (high SNR) should produce less noise than late steps (low SNR)."""
+        sim = _make_ball_simulator(noise_type="gaussian", snr_range=(10, 50))
+        clean = jnp.ones((50_000, 32))
+
+        # Early step: curriculum_step = (0, 100) -> only high SNR
+        sim.curriculum_step = (0, 100)
+        key_early = jax.random.PRNGKey(100)
+        noisy_early = sim.add_noise(key_early, clean)
+        var_early = jnp.mean(jnp.var(noisy_early - clean, axis=1))
+
+        # Late step: curriculum_step = (100, 100) -> full range down to low SNR
+        sim.curriculum_step = (100, 100)
+        key_late = jax.random.PRNGKey(200)
+        noisy_late = sim.add_noise(key_late, clean)
+        var_late = jnp.mean(jnp.var(noisy_late - clean, axis=1))
+
+        # Late steps include low SNR (high noise), so variance should be larger
+        assert var_late > var_early, (
+            f"Late variance ({var_late:.6f}) should exceed early variance ({var_early:.6f})"
+        )

@@ -42,6 +42,7 @@ class TestCheckpointRoundTrip:
             hidden_dim=64,
             depth=2,
             acquisition={"bvalues": [0.0] * 32},
+            activation="relu",  # match MixtureDensityNetwork default
         )
 
         # Generate a test input

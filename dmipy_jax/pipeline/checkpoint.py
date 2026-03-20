@@ -16,7 +16,7 @@ import equinox as eqx
 
 from dmipy_jax.pipeline.config import SBIPipelineConfig
 from dmipy_jax.inference.mdn import MixtureDensityNetwork
-from dmipy_jax.pipeline.train import _NormalisedMDN, _NormalisedFlow
+from dmipy_jax.pipeline.train import _NormalisedMDN, _NormalisedFlow, _get_activation
 
 
 def save_checkpoint(
@@ -114,6 +114,7 @@ def _build_skeleton(config: SBIPipelineConfig, key: jax.Array) -> eqx.Module:
             width_size=config.hidden_dim,
             depth=config.depth,
             key=key,
+            activation=_get_activation(config.activation),
         )
         return _NormalisedMDN(inner, lows, spans)
     elif config.inference_mode == "flow":

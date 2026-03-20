@@ -17,6 +17,36 @@ from dmipy_jax.pipeline.simulator import ModelSimulator
 from dmipy_jax.inference.mdn import MixtureDensityNetwork, mdn_loss
 
 
+# --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
+
+def _get_activation(name: str):
+    """Return a JAX activation function by name."""
+    return {"relu": jax.nn.relu, "gelu": jax.nn.gelu, "silu": jax.nn.silu}.get(
+        name, jax.nn.gelu
+    )
+
+
+def _build_lr_schedule(config: SBIPipelineConfig):
+    """Return an optax learning-rate schedule (or scalar) from config."""
+    if config.lr_schedule == "constant":
+        return config.learning_rate
+    elif config.lr_schedule == "cosine":
+        return optax.cosine_decay_schedule(
+            init_value=config.learning_rate, decay_steps=config.n_steps
+        )
+    elif config.lr_schedule == "warmup_cosine":
+        return optax.warmup_cosine_decay_schedule(
+            init_value=0.0,
+            peak_value=config.learning_rate,
+            warmup_steps=config.warmup_steps,
+            decay_steps=config.n_steps,
+        )
+    else:
+        raise ValueError(f"Unknown lr_schedule: {config.lr_schedule!r}")
+
+
 def train_sbi(
     config: SBIPipelineConfig,
     simulator: ModelSimulator,
@@ -76,13 +106,20 @@ def _train_mdn(config, simulator, key, print_every):
         width_size=config.hidden_dim,
         depth=config.depth,
         key=k_net,
+        activation=_get_activation(config.activation),
     )
 
+    # LR schedule
+    lr_schedule = _build_lr_schedule(config)
     optimizer = optax.chain(
         optax.clip_by_global_norm(1.0),
-        optax.adam(config.learning_rate),
+        optax.adam(lr_schedule),
     )
     opt_state = optimizer.init(eqx.filter(model, eqx.is_array))
+
+    # EMA initialisation — deep copy of initial model
+    if config.use_ema:
+        ema_model = jax.tree.map(lambda x: x, model)
 
     # Batch loss: vmap the per-sample MDN NLL
     def batch_loss(mdl, x_batch, y_batch):
@@ -96,27 +133,90 @@ def _train_mdn(config, simulator, key, print_every):
         mdl = eqx.apply_updates(mdl, updates)
         return mdl, opt_st, loss
 
+    @eqx.filter_jit
+    def compute_val_loss(mdl, x, y_norm):
+        return batch_loss(mdl, x, y_norm)
+
     losses = []
+    val_losses = []
+    best_val_loss = float("inf")
+    best_val_step = 0
+    steps_without_improvement = 0
     curr_key = k_train
     t0 = time.time()
 
     for i in range(config.n_steps):
+        if config.curriculum_noise and simulator.snr_range is not None:
+            simulator.curriculum_step = (i, config.n_steps)
         curr_key, k_step = jax.random.split(curr_key)
         theta, signals = simulator.sample_and_simulate(k_step, config.batch_size)
         # Normalise targets to [0, 1]
         theta_norm = (theta - lows) / spans
-        model, opt_state, loss = step(model, opt_state, signals, theta_norm)
-        losses.append(float(loss))
+
+        # Split batch into train / validation portions
+        n_total = theta_norm.shape[0]
+        n_val = max(1, int(n_total * config.val_fraction))
+        n_train = n_total - n_val
+
+        x_train, x_val = signals[:n_train], signals[n_train:]
+        y_train, y_val = theta_norm[:n_train], theta_norm[n_train:]
+
+        model, opt_state, train_loss = step(model, opt_state, x_train, y_train)
+        val_loss = compute_val_loss(model, x_val, y_val)
+
+        losses.append(float(train_loss))
+        val_losses.append(float(val_loss))
+
+        # EMA update — only average array leaves, keep static fields as-is
+        if config.use_ema:
+            decay = config.ema_decay
+            ema_model = jax.tree.map(
+                lambda e, m: decay * e + (1 - decay) * m
+                if eqx.is_array(e)
+                else m,
+                ema_model,
+                model,
+            )
+
+        # Early stopping tracking
+        if float(val_loss) < best_val_loss:
+            best_val_loss = float(val_loss)
+            best_val_step = i
+            steps_without_improvement = 0
+        else:
+            steps_without_improvement += 1
+
         if print_every and i % print_every == 0:
-            print(f"[MDN] step {i}/{config.n_steps}  loss={loss:.4f}")
+            # Resolve current learning rate for logging
+            if callable(lr_schedule):
+                current_lr = float(lr_schedule(i))
+            else:
+                current_lr = float(lr_schedule)
+            print(
+                f"[MDN] step {i}/{config.n_steps}  "
+                f"train={train_loss:.4f}  val={val_loss:.4f}  "
+                f"lr={current_lr:.2e}"
+            )
+
+        if config.patience > 0 and steps_without_improvement >= config.patience:
+            print(
+                f"[MDN] Early stopping at step {i}: no val improvement "
+                f"for {config.patience} steps (best={best_val_loss:.4f} "
+                f"at step {best_val_step})"
+            )
+            break
 
     elapsed = time.time() - t0
-    print(f"[MDN] Training done. {config.n_steps} steps in {elapsed:.1f}s "
-          f"({config.n_steps / elapsed:.0f} steps/s)")
+    actual_steps = len(losses)
+    print(f"[MDN] Training done. {actual_steps} steps in {elapsed:.1f}s "
+          f"({actual_steps / elapsed:.0f} steps/s)")
+
+    # Use EMA model if enabled, otherwise latest model
+    final_model = ema_model if config.use_ema else model
 
     # Store normalisation info on the model for downstream use
-    model = _NormalisedMDN(model, lows, spans)
-    return model, losses
+    final_model = _NormalisedMDN(final_model, lows, spans)
+    return final_model, losses
 
 
 class _NormalisedMDN(eqx.Module):
@@ -159,16 +259,25 @@ def _train_flow(config, simulator, key, print_every):
         theta = simulator.prior_sampler(k, n)
         return (theta - lows) / spans
 
+    # Build the LR schedule and pass it through to create_trainer
+    lr_schedule = _build_lr_schedule(config)
+
     flow, optimizer = create_trainer(
         flow_key=k_flow,
         theta_dim=config.theta_dim,
         signal_dim=simulator.signal_dim,
         simulator=sim_fn,
         prior_sampler=prior_fn,
-        learning_rate=config.learning_rate,
+        learning_rate=lr_schedule,
         hidden_dim=config.hidden_dim,
         num_layers=config.depth,
     )
+
+    # Build a curriculum callback if enabled
+    _step_callback = None
+    if config.curriculum_noise and simulator.snr_range is not None:
+        def _step_callback(i, total):
+            simulator.curriculum_step = (i, total)
 
     trained_flow, losses = train_loop(
         flow,
@@ -180,6 +289,7 @@ def _train_flow(config, simulator, key, print_every):
         batch_size=config.batch_size,
         noise_std=config.noise_sigma,
         print_every=print_every,
+        step_callback=_step_callback,
     )
 
     # Wrap the flow to denormalise samples back to physical space

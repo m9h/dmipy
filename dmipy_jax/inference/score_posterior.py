@@ -369,12 +369,23 @@ def train_score_posterior(
 
 
 # ------------------------------------------------------------------ #
-# Sampling (reverse SDE — Euler-Maruyama)
+# Sampling — three strategies
 # ------------------------------------------------------------------ #
+
+def _normalise_orientations(theta, n_scalars, n_vectors):
+    """Project orientation components back to unit sphere."""
+    for v in range(n_vectors):
+        start = n_scalars + v * 3
+        end = start + 3
+        vec = theta[:, start:end]
+        vec = vec / jnp.maximum(jnp.linalg.norm(vec, axis=-1, keepdims=True), 1e-8)
+        theta = theta.at[:, start:end].set(vec)
+    return theta
+
 
 def sample_posterior(
     key: PRNGKeyArray,
-    score_net: MicrostructureScoreNet,
+    score_net,
     signal: Float[Array, "signal_dim"],
     schedule: VPSchedule,
     *,
@@ -382,22 +393,89 @@ def sample_posterior(
     n_steps: int = 200,
     n_scalars: int = 4,
     n_vectors: int = 2,
+    method: str = "ddpm",
 ) -> Float[Array, "n_samples param_dim"]:
-    """Draw posterior samples via reverse-SDE integration.
+    """Draw posterior samples.
 
     Parameters
     ----------
-    signal : array (signal_dim,)
-        Conditioning dMRI signal for a single voxel.
-    n_samples : int
-        Number of posterior samples to draw.
-    n_steps : int
-        Number of reverse-SDE discretisation steps.
-
-    Returns
-    -------
-    samples : array (n_samples, param_dim)
+    method : str
+        ``"ddpm"`` (default, most stable), ``"sde"`` (Euler-Maruyama),
+        or ``"ode"`` (probability flow ODE, deterministic).
     """
+    if method == "ddpm":
+        return _sample_ddpm(key, score_net, signal, schedule,
+                            n_samples, n_steps, n_scalars, n_vectors)
+    elif method == "sde":
+        return _sample_sde(key, score_net, signal, schedule,
+                           n_samples, n_steps, n_scalars, n_vectors)
+    elif method == "ode":
+        return _sample_ode(key, score_net, signal, schedule,
+                           n_samples, n_steps, n_scalars, n_vectors)
+    else:
+        raise ValueError(f"Unknown sampling method: {method!r}")
+
+
+def _sample_ddpm(key, score_net, signal, schedule,
+                 n_samples, n_steps, n_scalars, n_vectors):
+    """DDPM discrete sampling — the most stable approach.
+
+    Uses the discrete DDPM update rule which avoids SDE discretisation
+    errors and is much more robust than Euler-Maruyama.
+    """
+    param_dim = n_scalars + n_vectors * 3
+
+    # Discrete time steps from T to 0
+    timesteps = jnp.linspace(1.0, 1e-4, n_steps)
+
+    def ddpm_step(carry, idx):
+        theta_t, key = carry
+        t = timesteps[idx]
+        # Next timestep (or 0 at the end)
+        t_prev = jnp.where(idx < n_steps - 1, timesteps[idx + 1], 0.0)
+
+        alpha_t = schedule.alpha_bar(t)
+        alpha_prev = schedule.alpha_bar(t_prev)
+
+        # Predict noise
+        eps_pred = jax.vmap(score_net, in_axes=(0, None, None))(
+            theta_t, t, signal
+        )
+
+        # DDPM posterior mean: μ = (1/√α_t)(x_t - (1-α_t)/√(1-α_t) · ε)
+        sqrt_alpha_t = jnp.sqrt(alpha_t)
+        sqrt_one_minus_alpha_t = jnp.sqrt(1.0 - alpha_t)
+        pred_x0 = (theta_t - sqrt_one_minus_alpha_t * eps_pred) / jnp.maximum(sqrt_alpha_t, 1e-8)
+
+        # Posterior variance
+        beta_t = 1.0 - alpha_t / jnp.maximum(alpha_prev, 1e-8)
+        sigma_t = jnp.sqrt(jnp.clip(beta_t, 0.0, 1.0))
+
+        # x_{t-1} = √α_{t-1} · pred_x0 + √(1-α_{t-1}) · direction + σ · noise
+        sqrt_alpha_prev = jnp.sqrt(alpha_prev)
+        sqrt_one_minus_alpha_prev = jnp.sqrt(jnp.clip(1.0 - alpha_prev, 0.0, 1.0))
+
+        # Interpolate between predicted x0 and noise direction
+        mean = sqrt_alpha_prev * pred_x0 + sqrt_one_minus_alpha_prev * eps_pred
+
+        key, k_noise = jax.random.split(key)
+        noise = jax.random.normal(k_noise, theta_t.shape)
+        # No noise at final step
+        noise = jnp.where(idx < n_steps - 1, noise, 0.0)
+
+        theta_prev = mean + sigma_t * noise
+        return (theta_prev, key), None
+
+    k_init, k_loop = jax.random.split(key)
+    theta_T = jax.random.normal(k_init, (n_samples, param_dim))
+
+    (theta_0, _), _ = jax.lax.scan(ddpm_step, (theta_T, k_loop), jnp.arange(n_steps))
+    return _normalise_orientations(theta_0, n_scalars, n_vectors)
+
+
+def _sample_sde(key, score_net, signal, schedule,
+                n_samples, n_steps, n_scalars, n_vectors):
+    """Reverse SDE via Euler-Maruyama (original method)."""
     param_dim = n_scalars + n_vectors * 3
     dt = 1.0 / n_steps
 
@@ -405,38 +483,48 @@ def sample_posterior(
         theta_t, key = carry
         t = 1.0 - step_idx * dt
 
-        # Score = -eps_pred / noise_rate
         _, noise_rate = schedule.noise_and_signal(t)
         eps_pred = jax.vmap(score_net, in_axes=(0, None, None))(
             theta_t, t, signal
         )
         score = -eps_pred / jnp.maximum(noise_rate, 1e-6)
 
-        # Reverse SDE: dθ = [f(θ,t) - g²(t)·score] dt + g(t) dW
         beta_t = schedule.beta(t)
         drift = -0.5 * beta_t * theta_t - beta_t * score
         diffusion = jnp.sqrt(beta_t)
 
         key, k_noise = jax.random.split(key)
         noise = jax.random.normal(k_noise, theta_t.shape)
-
-        # Euler-Maruyama update
         theta_t = theta_t + drift * dt + diffusion * jnp.sqrt(dt) * noise
         return (theta_t, key), None
 
-    # Start from Gaussian noise
     k_init, k_loop = jax.random.split(key)
     theta_T = jax.random.normal(k_init, (n_samples, param_dim))
 
-    step_indices = jnp.arange(n_steps)
-    (theta_0, _), _ = jax.lax.scan(reverse_step, (theta_T, k_loop), step_indices)
+    (theta_0, _), _ = jax.lax.scan(reverse_step, (theta_T, k_loop), jnp.arange(n_steps))
+    return _normalise_orientations(theta_0, n_scalars, n_vectors)
 
-    # Normalise orientation vectors back to unit sphere
-    for v in range(n_vectors):
-        start = n_scalars + v * 3
-        end = start + 3
-        vec = theta_0[:, start:end]
-        vec = vec / jnp.maximum(jnp.linalg.norm(vec, axis=-1, keepdims=True), 1e-8)
-        theta_0 = theta_0.at[:, start:end].set(vec)
 
-    return theta_0
+def _sample_ode(key, score_net, signal, schedule,
+                n_samples, n_steps, n_scalars, n_vectors):
+    """Probability flow ODE — deterministic, no stochasticity."""
+    param_dim = n_scalars + n_vectors * 3
+    dt = 1.0 / n_steps
+
+    def ode_step(theta_t, step_idx):
+        t = 1.0 - step_idx * dt
+
+        _, noise_rate = schedule.noise_and_signal(t)
+        eps_pred = jax.vmap(score_net, in_axes=(0, None, None))(
+            theta_t, t, signal
+        )
+        score = -eps_pred / jnp.maximum(noise_rate, 1e-6)
+
+        beta_t = schedule.beta(t)
+        drift = -0.5 * beta_t * (theta_t + score)
+        theta_t = theta_t + drift * dt
+        return theta_t, None
+
+    theta_T = jax.random.normal(key, (n_samples, param_dim))
+    theta_0, _ = jax.lax.scan(ode_step, theta_T, jnp.arange(n_steps))
+    return _normalise_orientations(theta_0, n_scalars, n_vectors)

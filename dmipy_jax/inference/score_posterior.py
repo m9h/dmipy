@@ -285,7 +285,7 @@ class MLPScoreNet(eqx.Module):
 
 def train_score_posterior(
     key: PRNGKeyArray,
-    score_net: MicrostructureScoreNet,
+    score_net,
     *,
     simulator_fn: Callable,
     prior_fn: Callable,
@@ -294,12 +294,13 @@ def train_score_posterior(
     batch_size: int = 512,
     learning_rate: float = 3e-4,
     print_every: int = 1000,
+    prediction: str = "eps",
 ):
     """Train the score network via denoising score matching.
 
     Parameters
     ----------
-    score_net : MicrostructureScoreNet
+    score_net : MicrostructureScoreNet or MLPScoreNet
         Untrained score network.
     simulator_fn : callable
         ``(key, theta) -> signal``  — forward model + noise + b0-norm.
@@ -307,10 +308,13 @@ def train_score_posterior(
         ``(key, n) -> theta``  — prior sampler.
     schedule : VPSchedule
         Noise schedule.
+    prediction : str
+        ``"eps"`` (predict noise, default) or ``"v"`` (v-prediction,
+        better at low noise levels for fine-grained features).
 
     Returns
     -------
-    score_net : MicrostructureScoreNet
+    score_net
         Trained network.
     losses : list of float
     """
@@ -329,9 +333,14 @@ def train_score_posterior(
             sig_rate, noise_rate = schedule.noise_and_signal(t)
             # Noisy parameters: θ_t = α(t)·θ + σ(t)·ε
             theta_t = sig_rate[:, None] * theta + noise_rate[:, None] * eps
-            # Predict noise
-            eps_pred = jax.vmap(net)(theta_t, t, signal)
-            return jnp.mean((eps_pred - eps) ** 2)
+            # Network prediction
+            pred = jax.vmap(net)(theta_t, t, signal)
+            if prediction == "v":
+                # v-prediction: v = α·ε - σ·θ (better gradient signal at low noise)
+                target = sig_rate[:, None] * eps - noise_rate[:, None] * theta
+            else:
+                target = eps
+            return jnp.mean((pred - target) ** 2)
 
         loss, grads = eqx.filter_value_and_grad(loss_fn)(net)
         grads_f = eqx.filter(grads, eqx.is_inexact_array)
@@ -394,6 +403,7 @@ def sample_posterior(
     n_scalars: int = 4,
     n_vectors: int = 2,
     method: str = "ddpm",
+    prediction: str = "eps",
 ) -> Float[Array, "n_samples param_dim"]:
     """Draw posterior samples.
 
@@ -402,10 +412,12 @@ def sample_posterior(
     method : str
         ``"ddpm"`` (default, most stable), ``"sde"`` (Euler-Maruyama),
         or ``"ode"`` (probability flow ODE, deterministic).
+    prediction : str
+        ``"eps"`` or ``"v"`` — must match training.
     """
     if method == "ddpm":
         return _sample_ddpm(key, score_net, signal, schedule,
-                            n_samples, n_steps, n_scalars, n_vectors)
+                            n_samples, n_steps, n_scalars, n_vectors, prediction)
     elif method == "sde":
         return _sample_sde(key, score_net, signal, schedule,
                            n_samples, n_steps, n_scalars, n_vectors)
@@ -417,11 +429,11 @@ def sample_posterior(
 
 
 def _sample_ddpm(key, score_net, signal, schedule,
-                 n_samples, n_steps, n_scalars, n_vectors):
+                 n_samples, n_steps, n_scalars, n_vectors,
+                 prediction="eps"):
     """DDPM discrete sampling — the most stable approach.
 
-    Uses the discrete DDPM update rule which avoids SDE discretisation
-    errors and is much more robust than Euler-Maruyama.
+    Supports both eps-prediction and v-prediction parameterisations.
     """
     param_dim = n_scalars + n_vectors * 3
 
@@ -431,36 +443,40 @@ def _sample_ddpm(key, score_net, signal, schedule,
     def ddpm_step(carry, idx):
         theta_t, key = carry
         t = timesteps[idx]
-        # Next timestep (or 0 at the end)
         t_prev = jnp.where(idx < n_steps - 1, timesteps[idx + 1], 0.0)
 
         alpha_t = schedule.alpha_bar(t)
         alpha_prev = schedule.alpha_bar(t_prev)
+        sqrt_alpha_t = jnp.sqrt(alpha_t)
+        sqrt_one_minus_alpha_t = jnp.sqrt(jnp.clip(1.0 - alpha_t, 0.0))
 
-        # Predict noise
-        eps_pred = jax.vmap(score_net, in_axes=(0, None, None))(
+        # Network prediction
+        net_out = jax.vmap(score_net, in_axes=(0, None, None))(
             theta_t, t, signal
         )
 
-        # DDPM posterior mean: μ = (1/√α_t)(x_t - (1-α_t)/√(1-α_t) · ε)
-        sqrt_alpha_t = jnp.sqrt(alpha_t)
-        sqrt_one_minus_alpha_t = jnp.sqrt(1.0 - alpha_t)
-        pred_x0 = (theta_t - sqrt_one_minus_alpha_t * eps_pred) / jnp.maximum(sqrt_alpha_t, 1e-8)
+        # Convert to predicted x0 depending on parameterisation
+        if prediction == "v":
+            # v = α·ε - σ·x0  →  x0 = (α·x_t - σ·v) / (α² + σ²) = α·x_t - σ·v
+            # More precisely: x_t = α·x0 + σ·ε, v = α·ε - σ·x0
+            # → x0 = α·x_t - σ·v
+            pred_x0 = sqrt_alpha_t * theta_t - sqrt_one_minus_alpha_t * net_out
+            eps_pred = (theta_t - sqrt_alpha_t * pred_x0) / jnp.maximum(sqrt_one_minus_alpha_t, 1e-8)
+        else:
+            eps_pred = net_out
+            pred_x0 = (theta_t - sqrt_one_minus_alpha_t * eps_pred) / jnp.maximum(sqrt_alpha_t, 1e-8)
 
         # Posterior variance
         beta_t = 1.0 - alpha_t / jnp.maximum(alpha_prev, 1e-8)
         sigma_t = jnp.sqrt(jnp.clip(beta_t, 0.0, 1.0))
 
-        # x_{t-1} = √α_{t-1} · pred_x0 + √(1-α_{t-1}) · direction + σ · noise
         sqrt_alpha_prev = jnp.sqrt(alpha_prev)
-        sqrt_one_minus_alpha_prev = jnp.sqrt(jnp.clip(1.0 - alpha_prev, 0.0, 1.0))
+        sqrt_one_minus_alpha_prev = jnp.sqrt(jnp.clip(1.0 - alpha_prev, 0.0))
 
-        # Interpolate between predicted x0 and noise direction
         mean = sqrt_alpha_prev * pred_x0 + sqrt_one_minus_alpha_prev * eps_pred
 
         key, k_noise = jax.random.split(key)
         noise = jax.random.normal(k_noise, theta_t.shape)
-        # No noise at final step
         noise = jnp.where(idx < n_steps - 1, noise, 0.0)
 
         theta_prev = mean + sigma_t * noise

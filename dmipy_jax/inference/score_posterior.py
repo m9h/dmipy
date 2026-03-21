@@ -197,6 +197,89 @@ class MicrostructureScoreNet(eqx.Module):
 
 
 # ------------------------------------------------------------------ #
+# MLP score network (no equivariance — plain residual MLP)
+# ------------------------------------------------------------------ #
+
+class MLPScoreNet(eqx.Module):
+    """Plain MLP score network with residual connections and FiLM conditioning.
+
+    This serves as the baseline to prove the denoising score matching
+    objective works before adding equivariance back in.
+    """
+    layers: list
+    signal_encoder: eqx.nn.MLP
+    time_encoder: eqx.nn.MLP
+    cond_proj: list  # per-layer FiLM: (gamma_linear, beta_linear)
+    output_layer: eqx.nn.Linear
+
+    def __init__(
+        self,
+        key: PRNGKeyArray,
+        *,
+        param_dim: int = 10,
+        signal_dim: int = 90,
+        hidden_dim: int = 256,
+        depth: int = 6,
+        cond_dim: int = 128,
+    ):
+        keys = jax.random.split(key, depth + 5)
+
+        # Conditioning encoders
+        self.signal_encoder = eqx.nn.MLP(
+            in_size=signal_dim, out_size=cond_dim, width_size=cond_dim,
+            depth=2, activation=jax.nn.gelu, key=keys[0],
+        )
+        self.time_encoder = eqx.nn.MLP(
+            in_size=1, out_size=cond_dim, width_size=cond_dim // 2,
+            depth=2, activation=jax.nn.silu, key=keys[1],
+        )
+
+        # Input projection: param_dim → hidden_dim
+        self.layers = [eqx.nn.Linear(param_dim, hidden_dim, key=keys[2])]
+        self.cond_proj = []
+
+        # Hidden layers with FiLM conditioning
+        for i in range(depth - 1):
+            ki = keys[3 + i]
+            k_l, k_g, k_b = jax.random.split(ki, 3)
+            self.layers.append(eqx.nn.Linear(hidden_dim, hidden_dim, key=k_l))
+            self.cond_proj.append((
+                eqx.nn.Linear(cond_dim * 2, hidden_dim, key=k_g),
+                eqx.nn.Linear(cond_dim * 2, hidden_dim, key=k_b),
+            ))
+
+        # Output projection
+        self.output_layer = eqx.nn.Linear(hidden_dim, param_dim, key=keys[-1])
+
+    def __call__(
+        self,
+        theta_t: Float[Array, "param_dim"],
+        t: Float[Array, ""],
+        signal: Float[Array, "signal_dim"],
+    ) -> Float[Array, "param_dim"]:
+        """Predict noise ε."""
+        sig_emb = self.signal_encoder(signal)
+        t_emb = self.time_encoder(jnp.atleast_1d(t))
+        cond = jnp.concatenate([sig_emb, t_emb])
+
+        # Input projection
+        h = self.layers[0](theta_t)
+        h = jax.nn.gelu(h)
+
+        # Residual blocks with FiLM
+        for layer, (gamma_proj, beta_proj) in zip(self.layers[1:], self.cond_proj):
+            h_in = h
+            gamma = gamma_proj(cond)
+            beta = beta_proj(cond)
+            h = layer(h)
+            h = h * (1.0 + gamma) + beta  # FiLM
+            h = jax.nn.gelu(h)
+            h = h + h_in  # residual
+
+        return self.output_layer(h)
+
+
+# ------------------------------------------------------------------ #
 # Training
 # ------------------------------------------------------------------ #
 

@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Baseline experiment: MLP score-based posterior for Ball + 2-Stick.
+"""Baseline experiment: Spline NPE (flow-based) posterior for Ball + 2-Stick.
 
 This is the root experiment for agentsciml evolutionary search.
-It trains a plain MLP denoising score network and evaluates fiber
-orientation error on synthetic HCP-like data.
+It trains a masked autoregressive flow with rational-quadratic spline
+transforms (via FlowJAX) and evaluates fiber orientation error on
+synthetic HCP-like data.
+
+Architecture from the 3.2-degree result:
+  - FlowJAX masked_autoregressive_flow with RQS transformer
+  - 10 flow layers, hidden_dim=128, 8 spline knots
+  - Trained on normalised [0,1] parameters with b0-normalised signals
+  - Posterior: 500 samples -> clip -> unit-normalise orientations -> median
 """
 
 import time
@@ -26,26 +33,21 @@ from prepare import (
 
 
 def run_experiment(
-    hidden_dim: int = 256,
-    depth: int = 6,
-    cond_dim: int = 128,
+    hidden_dim: int = 128,
+    num_layers: int = 10,
+    knots: int = 8,
     learning_rate: float = 3e-4,
     batch_size: int = 512,
-    n_steps: int = 5_000,
-    beta_min: float = 0.1,
-    beta_max: float = 20.0,
+    n_steps: int = 50_000,
     n_eval: int = 500,
-    n_posterior_samples: int = 200,
-    n_sde_steps: int = 100,
+    n_posterior_samples: int = 500,
     seed: int = 0,
 ):
-    """Train an MLP score network and evaluate fiber orientation error."""
-    from dmipy_jax.inference.score_posterior import (
-        MLPScoreNet, VPSchedule, train_score_posterior, sample_posterior,
-    )
+    """Train a spline NPE flow and evaluate fiber orientation error."""
+    from dmipy_jax.inference.trainer import create_trainer, train_loop
 
     key = jax.random.key(seed)
-    k_net, k_train, k_eval = jax.random.split(key, 3)
+    k_flow, k_train, k_eval = jax.random.split(key, 3)
 
     # Build acquisition and simulators
     acq = make_hcp_acquisition()
@@ -75,24 +77,31 @@ def run_experiment(
         theta = sim_train.prior_sampler(k, n)
         return (theta - lows) / spans
 
-    # Build network and schedule
-    score_net = MLPScoreNet(
-        k_net,
-        param_dim=sim_train.theta_dim,
+    # Build flow and optimizer
+    flow, optimizer = create_trainer(
+        flow_key=k_flow,
+        theta_dim=sim_train.theta_dim,
         signal_dim=sim_train.signal_dim,
+        simulator=sim_fn,
+        prior_sampler=prior_fn,
+        learning_rate=learning_rate,
         hidden_dim=hidden_dim,
-        depth=depth,
-        cond_dim=cond_dim,
+        num_layers=num_layers,
+        flow_type="spline",
+        knots=knots,
     )
-    schedule = VPSchedule(beta_min=beta_min, beta_max=beta_max)
 
     # Train
     t0 = time.time()
-    score_net, losses = train_score_posterior(
-        k_train, score_net,
-        simulator_fn=sim_fn, prior_fn=prior_fn, schedule=schedule,
-        num_steps=n_steps, batch_size=batch_size,
-        learning_rate=learning_rate,
+    flow, losses = train_loop(
+        flow,
+        optimizer,
+        simulator=sim_fn,
+        prior_sampler=prior_fn,
+        key=k_train,
+        num_steps=n_steps,
+        batch_size=batch_size,
+        noise_std=0.0,
         print_every=max(1, n_steps // 5),
     )
     train_time = time.time() - t0
@@ -101,14 +110,13 @@ def run_experiment(
     theta_test, signals_test = sim_test.sample_and_simulate(k_eval, n_eval)
 
     @eqx.filter_jit
-    def predict(net, sched, x):
-        samples_norm = sample_posterior(
-            jax.random.key(0), net, x, sched,
-            n_samples=n_posterior_samples, n_steps=n_sde_steps,
-            n_scalars=4, n_vectors=2,
+    def predict(flow_model, x):
+        samples_norm = flow_model.sample(
+            jax.random.key(0), (n_posterior_samples,), condition=x,
         )
         samples = samples_norm * spans + lows
         samples = jnp.clip(samples, lows, highs)
+        # Normalise orientation vectors to unit sphere
         mu1 = samples[:, 4:7]
         mu1 = mu1 / jnp.maximum(jnp.linalg.norm(mu1, axis=-1, keepdims=True), 1e-8)
         mu2 = samples[:, 7:10]
@@ -116,9 +124,7 @@ def run_experiment(
         samples = samples.at[:, 4:7].set(mu1).at[:, 7:10].set(mu2)
         return jnp.median(samples, axis=0)
 
-    preds = jax.vmap(predict, in_axes=(None, None, 0))(
-        score_net, schedule, signals_test
-    )
+    preds = jax.vmap(predict, in_axes=(None, 0))(flow, signals_test)
     preds_np = np.asarray(preds)
     theta_np = np.asarray(theta_test)
 
@@ -128,7 +134,7 @@ def run_experiment(
     result = ExperimentResult(
         commit=get_commit_hash(),
         model_name="Ball2Stick",
-        architecture=f"MLPScore_h{hidden_dim}_d{depth}",
+        architecture=f"SplineNPE_L{num_layers}_h{hidden_dim}_K{knots}",
         dataset="synthetic_hcp",
         fiber1_median_deg=float(np.median(errors1)),
         fiber1_mean_deg=float(np.mean(errors1)),

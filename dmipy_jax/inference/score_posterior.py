@@ -280,6 +280,149 @@ class MLPScoreNet(eqx.Module):
 
 
 # ------------------------------------------------------------------ #
+# MLP + equivariant orientation head
+# ------------------------------------------------------------------ #
+
+class EquivariantVectorHead(eqx.Module):
+    """Predicts noise for orientation vectors in a local frame.
+
+    For each noisy orientation vector v_t, decomposes the noise prediction
+    into radial (along v_t) and tangential (perpendicular to v_t) components.
+    This ensures: if input orientations rotate by R, predicted noise rotates
+    by R — equivariance by construction.
+
+    The head predicts 3 scalar coefficients per vector:
+    ε = α·ê_r + β·ê_1 + γ·ê_2
+    where (ê_r, ê_1, ê_2) is an orthonormal frame built from v_t.
+    """
+    coeff_net: eqx.nn.Linear  # hidden_dim → 3 * n_vectors
+
+    def __init__(self, hidden_dim: int, n_vectors: int, key: PRNGKeyArray):
+        self.coeff_net = eqx.nn.Linear(hidden_dim, 3 * n_vectors, key=key)
+
+    def __call__(
+        self,
+        h: Float[Array, "hidden_dim"],
+        vectors_t: list,  # list of (3,) noisy orientation vectors
+    ) -> Float[Array, "n_vectors*3"]:
+        coeffs = self.coeff_net(h)  # (3 * n_vectors,)
+        outputs = []
+
+        for i, v_t in enumerate(vectors_t):
+            alpha, beta, gamma = coeffs[3 * i], coeffs[3 * i + 1], coeffs[3 * i + 2]
+
+            # Build local orthonormal frame from v_t
+            e_r = v_t / jnp.maximum(jnp.linalg.norm(v_t), 1e-8)
+
+            # Tangent vectors via Gram-Schmidt with a reference
+            ref = jnp.where(jnp.abs(e_r[0]) < 0.9,
+                            jnp.array([1.0, 0.0, 0.0]),
+                            jnp.array([0.0, 1.0, 0.0]))
+            e_1 = ref - jnp.dot(ref, e_r) * e_r
+            e_1 = e_1 / jnp.maximum(jnp.linalg.norm(e_1), 1e-8)
+            e_2 = jnp.cross(e_r, e_1)
+
+            # Noise in local frame → global frame
+            eps_v = alpha * e_r + beta * e_1 + gamma * e_2
+            outputs.append(eps_v)
+
+        return jnp.concatenate(outputs)
+
+
+class MLPScoreNetEquivariant(eqx.Module):
+    """MLP score network with equivariant orientation output head.
+
+    Architecture:
+    - MLP backbone with FiLM conditioning (same as MLPScoreNet)
+    - Scalar head: Linear(h → n_scalars) for diffusivities/fractions
+    - Equivariant vector head: predicts orientation noise in local frame
+
+    The backbone is NOT equivariant (it sees flattened inputs).
+    Only the output is structured: scalar params get a plain linear head,
+    orientation params get a geometry-aware head that decomposes noise
+    into radial + tangential components relative to each noisy orientation.
+    """
+
+    layers: list
+    signal_encoder: eqx.nn.MLP
+    time_encoder: eqx.nn.MLP
+    cond_proj: list
+    scalar_head: eqx.nn.Linear
+    vector_head: EquivariantVectorHead
+    n_scalars: int
+    n_vectors: int
+
+    def __init__(
+        self,
+        key: PRNGKeyArray,
+        *,
+        n_scalars: int = 4,
+        n_vectors: int = 2,
+        signal_dim: int = 90,
+        hidden_dim: int = 512,
+        depth: int = 6,
+        cond_dim: int = 128,
+    ):
+        self.n_scalars = n_scalars
+        self.n_vectors = n_vectors
+        param_dim = n_scalars + n_vectors * 3
+
+        keys = jax.random.split(key, depth + 6)
+
+        self.signal_encoder = eqx.nn.MLP(
+            in_size=signal_dim, out_size=cond_dim, width_size=cond_dim,
+            depth=2, activation=jax.nn.gelu, key=keys[0],
+        )
+        self.time_encoder = eqx.nn.MLP(
+            in_size=1, out_size=cond_dim, width_size=cond_dim // 2,
+            depth=2, activation=jax.nn.silu, key=keys[1],
+        )
+
+        self.layers = [eqx.nn.Linear(param_dim, hidden_dim, key=keys[2])]
+        self.cond_proj = []
+
+        for i in range(depth - 1):
+            ki = keys[3 + i]
+            k_l, k_g, k_b = jax.random.split(ki, 3)
+            self.layers.append(eqx.nn.Linear(hidden_dim, hidden_dim, key=k_l))
+            self.cond_proj.append((
+                eqx.nn.Linear(cond_dim * 2, hidden_dim, key=k_g),
+                eqx.nn.Linear(cond_dim * 2, hidden_dim, key=k_b),
+            ))
+
+        # Split output heads
+        self.scalar_head = eqx.nn.Linear(hidden_dim, n_scalars, key=keys[-2])
+        self.vector_head = EquivariantVectorHead(hidden_dim, n_vectors, key=keys[-1])
+
+    def __call__(self, theta_t, t, signal):
+        sig_emb = self.signal_encoder(signal)
+        t_emb = self.time_encoder(jnp.atleast_1d(t))
+        cond = jnp.concatenate([sig_emb, t_emb])
+
+        h = self.layers[0](theta_t)
+        h = jax.nn.gelu(h)
+
+        for layer, (gamma_proj, beta_proj) in zip(self.layers[1:], self.cond_proj):
+            h_in = h
+            gamma = gamma_proj(cond)
+            beta = beta_proj(cond)
+            h = layer(h)
+            h = h * (1.0 + gamma) + beta
+            h = jax.nn.gelu(h)
+            h = h + h_in
+
+        # Scalar noise prediction (plain linear)
+        eps_scalar = self.scalar_head(h)
+
+        # Orientation noise prediction (equivariant local frame)
+        vectors_t = [theta_t[self.n_scalars + i * 3: self.n_scalars + (i + 1) * 3]
+                     for i in range(self.n_vectors)]
+        eps_vector = self.vector_head(h, vectors_t)
+
+        return jnp.concatenate([eps_scalar, eps_vector])
+
+
+# ------------------------------------------------------------------ #
 # Training
 # ------------------------------------------------------------------ #
 

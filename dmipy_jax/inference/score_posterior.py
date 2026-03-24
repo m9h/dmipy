@@ -283,6 +283,138 @@ class MLPScoreNet(eqx.Module):
 # MLP + equivariant orientation head
 # ------------------------------------------------------------------ #
 
+# ------------------------------------------------------------------ #
+# Spherical coordinate helpers
+# ------------------------------------------------------------------ #
+
+def cartesian_to_spherical(mu: Float[Array, "3"]) -> Tuple[Float[Array, ""], Float[Array, ""]]:
+    """Convert a unit vector (x,y,z) to spherical coords (theta, phi).
+
+    Returns
+    -------
+    theta : float in [0, pi/2]  (hemisphere, z >= 0)
+    phi   : float in [0, pi)    (antipodal symmetry)
+    """
+    # Canonicalize to z >= 0 hemisphere
+    mu = jnp.where(mu[2] < 0, -mu, mu)
+    x, y, z = mu[0], mu[1], mu[2]
+    r = jnp.maximum(jnp.linalg.norm(mu), 1e-8)
+    theta = jnp.arccos(jnp.clip(z / r, -1.0, 1.0))  # [0, pi/2]
+    phi = jnp.arctan2(y, x) % jnp.pi              # [0, pi)
+    return theta, phi
+
+
+def spherical_to_cartesian(
+    theta: Float[Array, ""], phi: Float[Array, ""]
+) -> Float[Array, "3"]:
+    """Convert spherical (theta, phi) to Cartesian unit vector.
+
+    Parameters
+    ----------
+    theta : polar angle in [0, pi/2]
+    phi   : azimuthal angle in [0, pi)
+    """
+    return jnp.array([
+        jnp.sin(theta) * jnp.cos(phi),
+        jnp.sin(theta) * jnp.sin(phi),
+        jnp.cos(theta),
+    ])
+
+
+def cartesian_to_spherical_batch(
+    mu: Float[Array, "n 3"]
+) -> Tuple[Float[Array, "n"], Float[Array, "n"]]:
+    """Batch version: (n, 3) -> (n,), (n,)."""
+    return jax.vmap(cartesian_to_spherical)(mu)
+
+
+def spherical_to_cartesian_batch(
+    theta: Float[Array, "n"], phi: Float[Array, "n"]
+) -> Float[Array, "n 3"]:
+    """Batch version: (n,), (n,) -> (n, 3)."""
+    return jax.vmap(spherical_to_cartesian)(theta, phi)
+
+
+# ------------------------------------------------------------------ #
+# MLP score network — spherical parameterization
+# ------------------------------------------------------------------ #
+
+class MLPScoreNetSpherical(eqx.Module):
+    """MLP score network using spherical orientation coordinates.
+
+    Parameter vector is 8-D: [d_ball, d_stick, f1, f2, theta1, phi1, theta2, phi2]
+    instead of the 10-D Cartesian [d_ball, d_stick, f1, f2, mu1x, mu1y, mu1z, mu2x, mu2y, mu2z].
+
+    This avoids wasting network capacity learning the unit-sphere constraint.
+    Same residual MLP + FiLM architecture as ``MLPScoreNet``.
+    """
+    layers: list
+    signal_encoder: eqx.nn.MLP
+    time_encoder: eqx.nn.MLP
+    cond_proj: list
+    output_layer: eqx.nn.Linear
+
+    def __init__(
+        self,
+        key: PRNGKeyArray,
+        *,
+        param_dim: int = 8,
+        signal_dim: int = 90,
+        hidden_dim: int = 512,
+        depth: int = 6,
+        cond_dim: int = 128,
+    ):
+        keys = jax.random.split(key, depth + 5)
+
+        self.signal_encoder = eqx.nn.MLP(
+            in_size=signal_dim, out_size=cond_dim, width_size=cond_dim,
+            depth=2, activation=jax.nn.gelu, key=keys[0],
+        )
+        self.time_encoder = eqx.nn.MLP(
+            in_size=1, out_size=cond_dim, width_size=cond_dim // 2,
+            depth=2, activation=jax.nn.silu, key=keys[1],
+        )
+
+        self.layers = [eqx.nn.Linear(param_dim, hidden_dim, key=keys[2])]
+        self.cond_proj = []
+
+        for i in range(depth - 1):
+            ki = keys[3 + i]
+            k_l, k_g, k_b = jax.random.split(ki, 3)
+            self.layers.append(eqx.nn.Linear(hidden_dim, hidden_dim, key=k_l))
+            self.cond_proj.append((
+                eqx.nn.Linear(cond_dim * 2, hidden_dim, key=k_g),
+                eqx.nn.Linear(cond_dim * 2, hidden_dim, key=k_b),
+            ))
+
+        self.output_layer = eqx.nn.Linear(hidden_dim, param_dim, key=keys[-1])
+
+    def __call__(
+        self,
+        theta_t: Float[Array, "param_dim"],
+        t: Float[Array, ""],
+        signal: Float[Array, "signal_dim"],
+    ) -> Float[Array, "param_dim"]:
+        """Predict noise epsilon."""
+        sig_emb = self.signal_encoder(signal)
+        t_emb = self.time_encoder(jnp.atleast_1d(t))
+        cond = jnp.concatenate([sig_emb, t_emb])
+
+        h = self.layers[0](theta_t)
+        h = jax.nn.gelu(h)
+
+        for layer, (gamma_proj, beta_proj) in zip(self.layers[1:], self.cond_proj):
+            h_in = h
+            gamma = gamma_proj(cond)
+            beta = beta_proj(cond)
+            h = layer(h)
+            h = h * (1.0 + gamma) + beta
+            h = jax.nn.gelu(h)
+            h = h + h_in  # residual
+
+        return self.output_layer(h)
+
+
 class EquivariantVectorHead(eqx.Module):
     """Predicts noise for orientation vectors in a local frame.
 
@@ -547,6 +679,7 @@ def sample_posterior(
     n_vectors: int = 2,
     method: str = "ddpm",
     prediction: str = "eps",
+    spherical: bool = False,
 ) -> Float[Array, "n_samples param_dim"]:
     """Draw posterior samples.
 
@@ -557,7 +690,19 @@ def sample_posterior(
         or ``"ode"`` (probability flow ODE, deterministic).
     prediction : str
         ``"eps"`` or ``"v"`` — must match training.
+    spherical : bool
+        If True, the score network operates in 8-D spherical parameterization
+        [d_ball, d_stick, f1, f2, theta1, phi1, theta2, phi2].  After DDPM
+        sampling, angles are clamped and converted back to 10-D Cartesian
+        [d_ball, d_stick, f1, f2, mu1x, mu1y, mu1z, mu2x, mu2y, mu2z].
     """
+    if spherical:
+        if method != "ddpm":
+            raise ValueError("Spherical sampling currently only supports 'ddpm'")
+        return _sample_ddpm_spherical(key, score_net, signal, schedule,
+                                      n_samples, n_steps, n_scalars, n_vectors,
+                                      prediction)
+
     if method == "ddpm":
         return _sample_ddpm(key, score_net, signal, schedule,
                             n_samples, n_steps, n_scalars, n_vectors, prediction)
@@ -569,6 +714,81 @@ def sample_posterior(
                            n_samples, n_steps, n_scalars, n_vectors)
     else:
         raise ValueError(f"Unknown sampling method: {method!r}")
+
+
+def _sample_ddpm_spherical(key, score_net, signal, schedule,
+                           n_samples, n_steps, n_scalars, n_vectors,
+                           prediction="eps"):
+    """DDPM sampling in spherical coordinates, then convert to Cartesian.
+
+    The score network operates in 8-D: [scalars..., theta1, phi1, theta2, phi2].
+    After denoising, clamp angles and convert to 10-D Cartesian unit vectors.
+    """
+    param_dim = n_scalars + n_vectors * 2  # 4 + 4 = 8
+
+    timesteps = jnp.linspace(1.0, 1e-4, n_steps)
+
+    def ddpm_step(carry, idx):
+        theta_t, key = carry
+        t = timesteps[idx]
+        t_prev = jnp.where(idx < n_steps - 1, timesteps[idx + 1], 0.0)
+
+        alpha_t = schedule.alpha_bar(t)
+        alpha_prev = schedule.alpha_bar(t_prev)
+        sqrt_alpha_t = jnp.sqrt(alpha_t)
+        sqrt_one_minus_alpha_t = jnp.sqrt(jnp.clip(1.0 - alpha_t, 0.0))
+
+        net_out = jax.vmap(score_net, in_axes=(0, None, None))(
+            theta_t, t, signal
+        )
+
+        if prediction == "v":
+            pred_x0 = sqrt_alpha_t * theta_t - sqrt_one_minus_alpha_t * net_out
+            eps_pred = (theta_t - sqrt_alpha_t * pred_x0) / jnp.maximum(sqrt_one_minus_alpha_t, 1e-8)
+        else:
+            eps_pred = net_out
+            pred_x0 = (theta_t - sqrt_one_minus_alpha_t * eps_pred) / jnp.maximum(sqrt_alpha_t, 1e-8)
+
+        beta_t = 1.0 - alpha_t / jnp.maximum(alpha_prev, 1e-8)
+        sigma_t = jnp.sqrt(jnp.clip(beta_t, 0.0, 1.0))
+
+        sqrt_alpha_prev = jnp.sqrt(alpha_prev)
+        sqrt_one_minus_alpha_prev = jnp.sqrt(jnp.clip(1.0 - alpha_prev, 0.0))
+
+        mean = sqrt_alpha_prev * pred_x0 + sqrt_one_minus_alpha_prev * eps_pred
+
+        key, k_noise = jax.random.split(key)
+        noise = jax.random.normal(k_noise, theta_t.shape)
+        noise = jnp.where(idx < n_steps - 1, noise, 0.0)
+
+        theta_prev = mean + sigma_t * noise
+        return (theta_prev, key), None
+
+    k_init, k_loop = jax.random.split(key)
+    theta_T = jax.random.normal(k_init, (n_samples, param_dim))
+
+    (theta_0, _), _ = jax.lax.scan(ddpm_step, (theta_T, k_loop), jnp.arange(n_steps))
+
+    # theta_0 is in normalized [0, 1] space.
+    # Return the scalar components as-is (still normalized), but convert the
+    # angular components to Cartesian unit vectors.
+    # The caller is responsible for denormalizing scalars.
+    scalars = theta_0[:, :n_scalars]  # (n_samples, 4) — normalized
+
+    # Denormalize angles: normalized [0,1] -> physical range
+    # theta: [0,1] -> [0, pi/2],  phi: [0,1] -> [0, pi)
+    half_pi = jnp.pi / 2.0
+    pi = jnp.pi
+
+    theta1_raw = jnp.clip(theta_0[:, n_scalars], 0.0, 1.0) * half_pi
+    phi1_raw = (theta_0[:, n_scalars + 1] % 1.0) * pi
+    theta2_raw = jnp.clip(theta_0[:, n_scalars + 2], 0.0, 1.0) * half_pi
+    phi2_raw = (theta_0[:, n_scalars + 3] % 1.0) * pi
+
+    mu1 = spherical_to_cartesian_batch(theta1_raw, phi1_raw)  # (n_samples, 3)
+    mu2 = spherical_to_cartesian_batch(theta2_raw, phi2_raw)  # (n_samples, 3)
+
+    return jnp.concatenate([scalars, mu1, mu2], axis=-1)  # (n_samples, 10)
 
 
 def _sample_ddpm(key, score_net, signal, schedule,

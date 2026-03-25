@@ -14,11 +14,28 @@ __pycache__/
 *.tsv
 .coverage
 
-# Datasets
+# Datasets and large files
 ds004910/
 data/
 sbi_dmri_temp/
 results/
+*.nii.gz
+*.nii
+*.xdmf
+*.elem
+*.node
+*.pvsm
+*.csv
+*.seq
+
+# Temporary / external clones
+.agent/
+.wand_temp_clone/
+ReMiDi/
+navinibs_review/
+benchmarks/external/SwinIR/
+vendor/
+sci_head_mmc.json
 
 # Build outputs
 docs/_build/

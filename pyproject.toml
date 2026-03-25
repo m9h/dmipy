@@ -3,13 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dmipy-jax"
+name = "sbi4dwi"
 version = "0.1.0"
-description = "JAX-accelerated Microstructure Imaging (Drop-in replacement for dmipy)"
+description = "Simulation-Based Inference for Diffusion-Weighted Imaging"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12"
 authors = [
+  { name = "Morgan Hough" },
   { name = "Rutger Fick", email = "fick.rutger@gmail.com" },
 ]
 classifiers = [
@@ -68,7 +69,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/AthenaEPI/dmipy"
+Homepage = "https://github.com/m9h/dmipy"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dmipy_jax"]

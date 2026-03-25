@@ -20,6 +20,9 @@ data/
 sbi_dmri_temp/
 results/
 
+# Build outputs
+docs/_build/
+
 # Ignored by Agent
 bench/
 *.log

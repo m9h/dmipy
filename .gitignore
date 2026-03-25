@@ -35,7 +35,15 @@ ReMiDi/
 navinibs_review/
 benchmarks/external/SwinIR/
 vendor/
-sci_head_mmc.json
+Microstructure.jl/
+
+# Stale logs/outputs
+*.log
+branch_list.txt
+*_output*.txt
+*_results*.txt
+test_final.txt
+lock_log.txt
 
 # Build outputs
 docs/_build/

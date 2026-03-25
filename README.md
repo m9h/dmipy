@@ -64,6 +64,45 @@ inference, uncertainty quantification, and clinical deployment.
    └──────────────────────────────────────────────────────────┘
 ```
 
+## Results
+
+Validated on synthetic data and real **WAND** Siemens Connectom (300 mT/m) acquisitions.
+
+### Normalizing Flow NPE — Ball+2Stick orientation estimation
+
+Neural spline flow posterior trained on simulated multi-shell dMRI.
+Achieves near-target orientation accuracy matching the Nottingham paper
+(Manzano-Patron et al., 2025).
+
+| Config | Fiber 1 median | d_stick r | f1 r | Steps |
+|:-------|:---------------|:----------|:-----|:------|
+| Baseline affine flow | 10.7 deg | 0.95 | 0.85 | 30k |
+| + spline + noise fix + label-switching | 6.4 deg | 0.978 | 0.902 | 30k |
+| + 200k steps | **3.2 deg** | **0.986** | **0.935** | 200k |
+
+Key: spline transformer, train/test noise matching (Rician + b0-norm),
+label-switching fix in prior (f1 >= f2), variable SNR augmentation (10-50).
+
+### Score-Based Posterior — denoising score matching + DDPM
+
+MLP with FiLM conditioning, trained via denoising score matching.
+Spherical coordinate parameterization eliminates unit-sphere constraint.
+
+| Config | Fiber 1 median | Notes |
+|:-------|:---------------|:------|
+| MLP + SDE sampler | 29 deg | SDE diverges |
+| MLP + DDPM sampler | 15.5 deg | DDPM critical |
+| + v-prediction, 1024-wide, 100k | 14.9 deg | Scale up |
+| + spherical coords | **12.8 deg** | Best score-based |
+
+### Experiment tracking
+
+All results tracked via [Trackio](https://huggingface.co/docs/trackio)
+and logged to HuggingFace Hub. Full leaderboard in the companion Julia
+package [DMI.jl](https://github.com/m9h/dmijl).
+
+---
+
 ## Core Capabilities
 
 ### Differentiable Signal Models
@@ -199,13 +238,24 @@ per-b-value error breakdowns.
 | `viz/` | Surface mapping and visualisation |
 | `cli/` | BIDS reporting tool (`dmipy-report`) |
 
+## Companion Project
+
+**[DMI.jl](https://github.com/m9h/dmijl)** — Julia implementation using
+the SciML stack (Lux.jl, DifferentialEquations.jl). Features:
+
+- AxCaliber PINN recovering **axon radius R = 3.15 um** from real WAND
+  Connectom data via Van Gelderen restricted diffusion
+- Neural diffusion tensor field fitting (**MD = 0.74 um^2/ms, FA = 0.42** on CHARMED)
+- Native SDE/ODE samplers via DifferentialEquations.jl
+- Cross-validated against Microstructure.jl (Ting Gong, MGH/Martinos) at machine precision
+
 ## Installation
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/m9h/dmipy.git
-cd dmipy
+git clone https://github.com/m9h/sbi4dwi.git
+cd sbi4dwi
 uv sync
 ```
 

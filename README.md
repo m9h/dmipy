@@ -78,7 +78,8 @@ Achieves near-target orientation accuracy matching the Nottingham paper
 |:-------|:---------------|:----------|:-----|:------|
 | Baseline affine flow | 10.7 deg | 0.95 | 0.85 | 30k |
 | + spline + noise fix + label-switching | 6.4 deg | 0.978 | 0.902 | 30k |
-| + 200k steps | **3.2 deg** | **0.986** | **0.935** | 200k |
+| + 200k steps | 3.2 deg | 0.986 | 0.935 | 200k |
+| + 300k steps | **2.8 deg** | **0.987** | **0.943** | 300k |
 
 Key: spline transformer, train/test noise matching (Rician + b0-norm),
 label-switching fix in prior (f1 >= f2), variable SNR augmentation (10-50).

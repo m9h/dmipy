@@ -33,13 +33,11 @@ def rician_nll_loss(params, acquisition, data, sigma, model_func, unwrap_fn=None
     # Io(z) = i0e(z) * exp(|z|)
     # log(Io(z)) = log(i0e(z)) + |z| (since z > 0 usually)
     
-    z = (prediction * data) / (sigma ** 2)
-    # z is non-negative since prediction and data are magnitudes
-    
+    z = jnp.maximum((prediction * data) / (sigma ** 2), 0.0)
+
     i0e_val = jsp.i0e(z)
-    # i0e_val can be very small but positive. 
-    
-    log_i0e = jnp.log(i0e_val + 1e-12) + z
+
+    log_i0e = jnp.log(jnp.maximum(i0e_val, 1e-12)) + z
     
     # NLL = -log(Signal / sigma^2) - log(Io(z)) + (Signal^2 + Prediction^2) / (2*sigma^2)
     # We ignore constant term -log(Signal/sigma^2) for optimization usually? 

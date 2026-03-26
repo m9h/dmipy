@@ -155,7 +155,7 @@ try:
                 # rho is arg
                 A = self.dict_matrix
                 AtA = A.T @ A
-                LHS = AtA + rho * jnp.eye(N_atoms)
+                LHS = AtA + (rho + 1e-10) * jnp.eye(N_atoms)
                 import jax.scipy.linalg
                 c_and_lower = jax.scipy.linalg.cho_factor(LHS)
                 

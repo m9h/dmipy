@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as _dc_replace
 from typing import Optional, Union, Any, Dict
 import numpy as np
 
@@ -101,23 +101,21 @@ class JaxAcquisition:
         JaxAcquisition
             Self, with arrays updated to reside on the target device.
         """
-        self.bvalues = jax.device_put(self.bvalues, device)
-        self.gradient_directions = jax.device_put(self.gradient_directions, device)
-        self.btensors = jax.device_put(self.btensors, device)
-        
+        updates = dict(
+            bvalues=jax.device_put(self.bvalues, device),
+            gradient_directions=jax.device_put(self.gradient_directions, device),
+            btensors=jax.device_put(self.btensors, device),
+        )
         if self.delta is not None:
-            self.delta = jax.device_put(self.delta, device)
-        
+            updates['delta'] = jax.device_put(self.delta, device)
         if self.Delta is not None:
-            self.Delta = jax.device_put(self.Delta, device)
-            
+            updates['Delta'] = jax.device_put(self.Delta, device)
         if self.echo_time is not None:
-            self.echo_time = jax.device_put(self.echo_time, device)
-
+            updates['echo_time'] = jax.device_put(self.echo_time, device)
         if self.total_readout_time is not None:
-            self.total_readout_time = jax.device_put(self.total_readout_time, device)
+            updates['total_readout_time'] = jax.device_put(self.total_readout_time, device)
 
-        return self
+        return _dc_replace(self, **updates)
 
     @classmethod
     def from_bids_data(cls, bids_data: Dict[str, Any]) -> 'JaxAcquisition':

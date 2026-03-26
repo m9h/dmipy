@@ -14,18 +14,7 @@ class Zeppelin(eqx.Module):
     """
     parameter_names = ['mu', 'lambda_par', 'lambda_perp']
     parameter_cardinality = {'mu': 2, 'lambda_par': 1, 'lambda_perp': 1}
-    parameter_ranges = {
-        'mu': ([-3.14, -6.28], [3.14, 6.28]), 
-        'lambda_par': (0.1, 3.0), # um^2/ms
-        'lambda_perp': (0.1, 3.0) 
-    }
-    parameter_scales = {'mu': 1.0, 'lambda_par': 1e-9, 'lambda_perp': 1e-9} # Scale for fitting?
-    # Actually dmipy-jax usually handles scaling logic in Fitter.
-    # Provided ranges should be reasonable.
-    # If using SI in loop, ranges should be SI.
-    # Our generated data was in SI (b ~ 3000 s/mm^2).
-    # lambda ~ 1e-9 m^2/s = 1 um^2/ms.
-    # Let's use SI in ranges: (1e-10, 3e-9)
+    parameter_scales = {'mu': 1.0, 'lambda_par': 1e-9, 'lambda_perp': 1e-9}
     parameter_ranges = {
         'mu': ([0.0, 3.14159], [-3.14159, 3.14159]), 
         'lambda_par': (0.1e-9, 3e-9), 

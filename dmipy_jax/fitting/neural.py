@@ -36,12 +36,16 @@ class NeuralEstimator(eqx.Module):
         self.layers.append(eqx.nn.Linear(width, output_size, key=keys[-1]))
 
     def __call__(self, x, key=None, inference=False):
+        dropout_idx = 0
         for layer in self.layers:
             if isinstance(layer, eqx.nn.Dropout):
-                # If key is provided, we can use it. If not, maybe we skip or error?
-                # Equinox Dropout handles None key by just doing nothing if inference=True.
-                # If inference=False (training/MC), key is required.
-                x = layer(x, key=key, inference=inference)
+                if key is not None:
+                    subkey = jax.random.fold_in(key, dropout_idx)
+                    dropout_idx += 1
+                    x = layer(x, key=subkey, inference=inference)
+                else:
+                    # No key available -- run in inference mode (no dropout)
+                    x = layer(x, key=jax.random.PRNGKey(0), inference=True)
             else:
                 x = layer(x)
         return x

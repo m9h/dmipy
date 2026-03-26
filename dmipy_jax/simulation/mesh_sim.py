@@ -55,17 +55,20 @@ def compute_cotangents(vertices: Float[Array, "N 3"], faces: Int[Array, "M 3"]) 
     # For v0: u = v1-v0, v = v2-v0
     u0 = v1 - v0
     v0_vec = v2 - v0
-    cot0 = jnp.sum(u0 * v0_vec, axis=1) / jnp.linalg.norm(jnp.cross(u0, v0_vec), axis=1)
-    
+    cross_norm0 = jnp.maximum(jnp.linalg.norm(jnp.cross(u0, v0_vec), axis=1), 1e-12)
+    cot0 = jnp.sum(u0 * v0_vec, axis=1) / cross_norm0
+
     # For v1: u = v2-v1, v = v0-v1
     u1 = v2 - v1
     v1_vec = v0 - v1
-    cot1 = jnp.sum(u1 * v1_vec, axis=1) / jnp.linalg.norm(jnp.cross(u1, v1_vec), axis=1)
-    
+    cross_norm1 = jnp.maximum(jnp.linalg.norm(jnp.cross(u1, v1_vec), axis=1), 1e-12)
+    cot1 = jnp.sum(u1 * v1_vec, axis=1) / cross_norm1
+
     # For v2: u = v0-v2, v = v1-v2
     u2 = v0 - v2
     v2_vec = v1 - v2
-    cot2 = jnp.sum(u2 * v2_vec, axis=1) / jnp.linalg.norm(jnp.cross(u2, v2_vec), axis=1)
+    cross_norm2 = jnp.maximum(jnp.linalg.norm(jnp.cross(u2, v2_vec), axis=1), 1e-12)
+    cot2 = jnp.sum(u2 * v2_vec, axis=1) / cross_norm2
     
     return jnp.stack([cot0, cot1, cot2], axis=1)
 
@@ -362,8 +365,8 @@ class MatrixFormalismSimulator(eqx.Module):
         # L^-1 S L^-T y = lambda y, with v = L^-T y
         
         # 1. Cholesky of M (symmetric, pos-def)
-        # Add jitter for stability
-        M_stable = M + jnp.eye(M.shape[0]) * 1e-12
+        # Add jitter for stability (1e-8 handles ill-conditioned meshes)
+        M_stable = M + jnp.eye(M.shape[0]) * 1e-8
         L = jax.scipy.linalg.cholesky(M_stable, lower=True)
         
         # 2. Compute S_hat = L^-1 S L^-T

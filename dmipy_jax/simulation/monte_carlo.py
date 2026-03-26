@@ -4,23 +4,25 @@ import jax.numpy as jnp
 from jax import grad, jit, vmap
 from functools import partial
 
-def reflect(position, old_position, sdf_func):
+def reflect(position, old_position, sdf_func, sdf_grad=None):
     """
     Elastic collision reflection for a particle stepping outside the SDF.
-    
+
     Args:
         position: The proposed new position (inside the wall, SDF > 0).
         old_position: The previous position (valid, SDF <= 0).
         sdf_func: The Signed Distance Function.
-        
+        sdf_grad: Pre-computed gradient function of sdf_func (optional).
+
     Returns:
         reflected_position: The position reflected back into the valid region.
     """
-    # 1. Compute surface normal at the collision point. 
+    # 1. Compute surface normal at the collision point.
     # We approximate the collision point as the 'position' for gradient calculation.
     # In a strict sense, we should find the root, but for small steps, this is sufficient.
-    # We use jax.grad to get the gradient of the SDF.
-    normal = grad(sdf_func)(position)
+    if sdf_grad is None:
+        sdf_grad = grad(sdf_func)
+    normal = sdf_grad(position)
     
     # Normalize the normal vector
     normal = normal / (jnp.linalg.norm(normal) + 1e-12)
@@ -52,30 +54,33 @@ def step_particles(state, input_data, sdf_func, D, dt, confinement='inside', gam
     """
     positions, phase, key = state
     g_t = input_data # Gradient vector at current time step (3,)
-    
+
     key, subkey = jax.random.split(key)
-    
+
+    # Pre-compute gradient function once for this geometry
+    sdf_grad = grad(sdf_func)
+
     # 1. Brownian Step
     noise = jax.random.normal(subkey, shape=positions.shape)
     step = jnp.sqrt(2 * D * dt) * noise
     proposed_positions = positions + step
-    
+
     # 2. Check collisions and Reflect
     def check_and_reflect(pos, old_pos):
         dist = sdf_func(pos)
-        
-        # Logic: 
+
+        # Logic:
         # inside: valid if <= 0. Invalid if > 0.
         # outside: valid if > 0. Invalid if <= 0.
         if confinement == 'inside':
              is_invalid = dist > 0
         else:
              is_invalid = dist <= 0
-             
+
         return jax.lax.cond(
             is_invalid,
-            lambda p, op: reflect(p, op, sdf_func), # True branch (reflect)
-            lambda p, op: p,                        # False branch (keep)
+            lambda p, op: reflect(p, op, sdf_func, sdf_grad),  # True branch
+            lambda p, op: p,                                     # False branch
             pos, old_pos
         )
 

@@ -103,6 +103,28 @@ class SBIPipelineConfig:
     # Reproducibility
     seed: int = 0
 
+    # ---- validation ----
+
+    def __post_init__(self):
+        if self.parameter_ranges:
+            range_keys = set(self.parameter_ranges.keys())
+            param_keys = set(self.parameter_names)
+            if range_keys != param_keys:
+                missing = param_keys - range_keys
+                extra = range_keys - param_keys
+                parts = []
+                if missing:
+                    parts.append(f"missing ranges for {missing}")
+                if extra:
+                    parts.append(f"extra ranges for {extra}")
+                raise ValueError(
+                    f"parameter_names / parameter_ranges mismatch: {'; '.join(parts)}"
+                )
+        if self.inference_mode not in ("mdn", "flow", "score"):
+            raise ValueError(f"Unknown inference_mode: {self.inference_mode!r}")
+        if self.noise_type not in ("rician", "gaussian"):
+            raise ValueError(f"Unknown noise_type: {self.noise_type!r}")
+
     # ---- helpers ----
 
     @property

@@ -57,6 +57,7 @@ class SimulationLibrary:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with h5py.File(str(path), "w") as f:
+            f.attrs["schema_version"] = 1
             f.create_dataset("params", data=np.asarray(self.params))
             f.create_dataset("signals", data=np.asarray(self.signals))
             f.attrs["parameter_names"] = self.parameter_names
@@ -76,8 +77,9 @@ class SimulationLibrary:
             Path to ``.h5`` file.
         mmap : bool
             If *True*, open the file with ``driver='core', backing_store=False``
-            for memory-mapped read-only access (useful for very large libraries
-            that should not be fully loaded into RAM).
+            which pre-loads the entire file into a RAM buffer for faster
+            sequential reads.  Despite the parameter name this is **not**
+            true memory-mapped I/O; the full dataset is still resident in RAM.
         """
         import h5py
 
@@ -86,10 +88,20 @@ class SimulationLibrary:
             kwargs = dict(driver="core", backing_store=False)
 
         with h5py.File(str(path), "r", **kwargs) as f:
+            if "schema_version" not in f.attrs:
+                import warnings
+                warnings.warn(
+                    f"HDF5 file {path} has no schema_version attribute. "
+                    "It may have been created by an older version of SBI4DWI.",
+                    stacklevel=2,
+                )
             params = jnp.array(f["params"][:])
             signals = jnp.array(f["signals"][:])
             parameter_names = list(f.attrs.get("parameter_names", []))
-            metadata = {k: v for k, v in f.attrs.items() if k != "parameter_names"}
+            metadata = {
+                k: v for k, v in f.attrs.items()
+                if k not in ("parameter_names", "schema_version")
+            }
 
         return cls(
             params=params,

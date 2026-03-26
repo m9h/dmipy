@@ -78,7 +78,7 @@ def g2_tensor(bvals, bvecs, lambda_1, lambda_2, lambda_3, e1, e2):
     return jnp.exp(exponent)
 
 
-class Ball:
+class Ball(eqx.Module):
     """
     Isotropic Ball model class.
     """
@@ -86,8 +86,7 @@ class Ball:
     parameter_cardinality = {'lambda_iso': 1}
     parameter_ranges = {'lambda_iso': (0.0, 3e-9)}
 
-    def __init__(self, lambda_iso=None):
-        self.lambda_iso = lambda_iso
+    lambda_iso: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         lambda_iso = kwargs.get('lambda_iso', self.lambda_iso)

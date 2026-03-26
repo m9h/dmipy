@@ -1,7 +1,9 @@
 from dmipy_jax.signal_models import c1_stick
 from jax import numpy as jnp
+import equinox as eqx
+from typing import Any
 
-class Stick:
+class Stick(eqx.Module):
     r"""
     The Stick model [1]_ - a cylinder with zero radius.
     JAX implementation using c1_stick kernel.
@@ -14,10 +16,8 @@ class Stick:
         'lambda_par': (0.1e-9, 3e-9)
     }
 
-
-    def __init__(self, mu=None, lambda_par=None):
-        self.mu = mu
-        self.lambda_par = lambda_par
+    mu: Any = None
+    lambda_par: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         lambda_par = kwargs.get('lambda_par', self.lambda_par)

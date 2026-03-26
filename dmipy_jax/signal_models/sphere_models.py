@@ -9,7 +9,7 @@ import equinox as eqx
 from typing import Any
 from jaxtyping import Array
 
-class S1Dot:
+class S1Dot(eqx.Module):
     r"""
     The Dot model [1]_ - an non-diffusing compartment.
     It has no parameters and returns 1 no matter the input.
@@ -20,13 +20,10 @@ class S1Dot:
            "Compartment models of the diffusion MR signal in brain white
             matter: a taxonomy and comparison". NeuroImage (2012)
     """
-    
+
     parameter_names = []
     parameter_cardinality = {}
     parameter_ranges = {}
-    
-    def __init__(self):
-        pass
         
     def __call__(self, bvals, gradient_directions, **kwargs):
         # Return ones matching the shape of bvals
@@ -58,34 +55,26 @@ def g2_sphere_stejskal_tanner(q, diameter):
     # term = z * j1(z)
     # We want 3 * (term/z) / z = 3 * term / z^2
     
-    # DEBUG
-    jax.debug.print("q={q}, radius={r}, factor={f}", q=q, r=radius, f=factor)
-    
     E = (3 * term / (safe_factor ** 2)) ** 2
-    
-    # DEBUG
-    print(f"factor min/max: {jnp.min(factor)}, {jnp.max(factor)}")
-    print(f"E min/max: {jnp.min(E)}, {jnp.max(E)}")
     
     return jnp.where(is_nonzero, E, 1.0)
 
 
-class SphereStejskalTanner:
+class SphereStejskalTanner(eqx.Module):
     r"""
     The Stejskal Tanner signal approximation of a sphere model.
-    
+
     Parameters
     ----------
     diameter : float
         sphere diameter in meters.
     """
-    
+
     parameter_names = ['diameter']
     parameter_cardinality = {'diameter': 1}
-    parameter_ranges = {'diameter': (1e-6, 20e-6)} # Typical range
+    parameter_ranges = {'diameter': (1e-6, 20e-6)}
 
-    def __init__(self, diameter=None):
-        self.diameter = diameter
+    diameter: Any = None
 
     def __call__(self, bvals, gradient_directions, **kwargs):
         diameter = kwargs.get('diameter', self.diameter)
@@ -124,29 +113,6 @@ class SphereStejskalTanner:
         return g2_sphere_stejskal_tanner(q, diameter)
 
 
-def jsph_derivative(n, z):
-    """
-    Derivative of spherical Bessel function j_n(z).
-    Formula: j_n'(z) = j_{n-1}(z) - (n+1)/z * j_n(z)
-    Or: j_n'(z) = n/z * j_n(z) - j_{n+1}(z)
-    """
-    # Using python control flow for n? n is integer loop variable.
-    # jax.scipy.special.spherical_jn requires fixed order usually? no, v is float.
-    # However, safe division by z needed.
-    
-    jn = lambda v, x: jsp.bessel_jn(x, v=v + 0.5) * jnp.sqrt(jnp.pi / (2 * x))
-    # Wait, jax.scipy.special doesn't have spherical_jn directly? 
-    # It has bessel_jn. spherical_jn(n, z) = sqrt(pi/2z) * J_{n+0.5}(z).
-    
-    # Actually, let's check if jsp has spherical_jn.
-    # If not, implement it. 
-    # Current doc says jax.scipy.special has bessel_jn.
-    
-    # We will use the formula j_n'(z) = j_{n-1}(z) - (n+1)/z * j_n(z).
-    # Only need to handle z=0 case (derivative is 0 for n>1?).
-    
-    # Let's implement a helper using bessel_jn.
-    pass
 
 # Helper for spherical bessel using pure_callback to scipy
 # This avoids the issue of bessel_jn requiring integer order in JAX

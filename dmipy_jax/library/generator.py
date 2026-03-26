@@ -52,6 +52,12 @@ class LibraryGenerator:
         signals : jnp.ndarray ``(n_entries, signal_dim)``
         """
         if key is None:
+            import warnings
+            warnings.warn(
+                "No PRNG key provided; using default seed 0. "
+                "All runs will produce identical results.",
+                stacklevel=2,
+            )
             key = jax.random.PRNGKey(0)
 
         n_chunks = math.ceil(n_entries / self.chunk_size)

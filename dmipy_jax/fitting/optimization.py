@@ -27,12 +27,13 @@ class VoxelFitter:
             self.scales = jnp.ones(n_params)
         else:
             self.scales = jnp.array(scales)
-            
+        self.scales = jnp.where(self.scales == 0, 1.0, self.scales)
+
         # Convert list of (min, max) into tuple of arrays for JAX
         # Bounds must be scaled for the solver
         lower_bounds_real, upper_bounds_real = zip(*parameter_ranges)
         self.bounds = (
-            jnp.array(lower_bounds_real) / self.scales, 
+            jnp.array(lower_bounds_real) / self.scales,
             jnp.array(upper_bounds_real) / self.scales
         )
         
@@ -100,7 +101,8 @@ class OptimistixFitter:
             self.scales = jnp.ones(n_params)
         else:
             self.scales = jnp.array(scales)
-            
+        self.scales = jnp.where(self.scales == 0, 1.0, self.scales)
+
         # Optimistix handles bounds differently? 
         # Actually optimistix.least_squares doesn't natively support box constraints 
         # in the same way L-BFGS-B does easily without extra work (e.g. projecting).
@@ -180,7 +182,8 @@ class CustomLMFitter:
             self.scales = jnp.ones(n_params)
         else:
             self.scales = jnp.array(scales)
-            
+        self.scales = jnp.where(self.scales == 0, 1.0, self.scales)
+
         self.solver_settings = {
             'max_steps': 20,
             'damping': 1e-3

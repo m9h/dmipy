@@ -5,14 +5,6 @@ import equinox as eqx
 from jaxtyping import Array, Float
 from typing import Optional, Callable
 
-class RationalQuadraticSpline(eqx.Module):
-    """
-    Rational Quadratic Spline (RQS) Bijector.
-    
-    Implements the element-wise transformation described in Durkan et al. (2019).
-    """
-    
-
 def rational_quadratic_spline(inputs, unconstrained_widths, unconstrained_heights, unconstrained_derivatives,
                             inverse=False, left=-3.0, right=3.0, bottom=-3.0, top=3.0,
                             min_bin_width=1e-3, min_bin_height=1e-3, min_derivative=1e-3):
@@ -147,14 +139,10 @@ def rational_quadratic_spline(inputs, unconstrained_widths, unconstrained_height
             # Since 0 <= xi <= 1, we generally take the stable root.
             # Using textbook formula
             
-            discriminant = b**2 - 4 * a * c
-            root = (-b + jnp.sqrt(discriminant)) / (2 * a)
-            
-            # Handle a=0 case (linear) separately or rely on stability?
-            # RQS usually guarantees curvature so a!=0 unless d0=d1=sk (linear bin)
-            # If linear, y_hat / h * w. 
-            
-            xi_sol = root
+            discriminant = jnp.maximum(b**2 - 4 * a * c, 0.0)
+            quadratic_root = (-b + jnp.sqrt(discriminant)) / (2 * jnp.where(jnp.abs(a) < 1e-12, 1.0, a))
+            linear_root = jnp.where(jnp.abs(b) > 1e-12, -c / b, 0.5)
+            xi_sol = jnp.where(jnp.abs(a) < 1e-12, linear_root, quadratic_root)
             
             # Reconstruct x
             x_rec = input_cw + xi_sol * input_w
@@ -165,10 +153,10 @@ def rational_quadratic_spline(inputs, unconstrained_widths, unconstrained_height
             numerator_grad = s_k**2 * (d1 * xi**2 + 2 * s_k * xi * (1 - xi) + d0 * (1 - xi)**2)
             denominator = s_k + term_common * xi * (1 - xi)
             
-            dy_dx = numerator_grad / denominator**2
-            
+            dy_dx = numerator_grad / jnp.maximum(denominator**2, 1e-12)
+
             # log|dx/dy| = - log|dy/dx|
-            log_det = -jnp.log(dy_dx)
+            log_det = -jnp.log(jnp.maximum(dy_dx, 1e-12))
             
             return x_rec, log_det
     # Vectorized bin application
@@ -238,19 +226,19 @@ class RationalQuadraticSpline(eqx.Module):
 class CouplingLayer(eqx.Module):
     dimension: int
     conditioner: eqx.nn.MLP
-    bijector_fn: Callable = eqx.field(static=True)
-    
+    bijector: 'RationalQuadraticSpline'
+
     def __init__(self, key, dimension, n_context, hidden_size=64, num_bins=8):
         self.dimension = dimension
         # Conditioner: Inputs [split_x, context] -> Output [params for RQS]
         # Split dimension: we transform second half based on first half.
         d_in = (dimension // 2) + n_context
-        
+
         # RQS params: 3*K + 1 per dimension.
         # We transform (dimension - dimension//2) dims.
         n_transformed = dimension - (dimension // 2)
         n_params = n_transformed * (3 * num_bins + 1)
-        
+
         self.conditioner = eqx.nn.MLP(
             in_size=d_in,
             out_size=n_params,
@@ -258,9 +246,8 @@ class CouplingLayer(eqx.Module):
             depth=2,
             key=key
         )
-        
-        # We store the bijector class/config
-        self.bijector_fn = lambda x, p, inv: RationalQuadraticSpline(num_bins=num_bins)(x, p, inverse=inv)
+
+        self.bijector = RationalQuadraticSpline(num_bins=num_bins)
 
     def __call__(self, x: Array, context: Array, inverse: bool = False):
         # x: (D,)
@@ -278,7 +265,7 @@ class CouplingLayer(eqx.Module):
         params = params.reshape(x_change.shape[0], -1)
         
         # Transform
-        y_change, log_det = self.bijector_fn(x_change, params, inverse)
+        y_change, log_det = self.bijector(x_change, params, inverse=inverse)
         
         y = jnp.concatenate([x_id, y_change])
         

@@ -77,7 +77,7 @@ python validation/validate_force_replication.py 2>&1 | tee -a "$LOG"
 cp -f validation/force_replication_results.npz "$RESULTS_DIR/" 2>/dev/null || true
 
 log ""
-log "--- Phase 4: Nottingham SBI replication (Ball+2Stick NPE) ---"
+log "--- Phase 4: Manzano-Patron et al. (2025) SBI replication (Ball+2Stick NPE) ---"
 python validation/validate_nottingham_sbi.py 2>&1 | tee -a "$LOG"
 cp -f validation/nottingham_sbi_results.npz "$RESULTS_DIR/" 2>/dev/null || true
 

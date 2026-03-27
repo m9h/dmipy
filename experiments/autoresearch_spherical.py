@@ -2,7 +2,7 @@
 """
 Autoresearch: spherical vs Cartesian orientation parameterization.
 
-The Nottingham paper (Manzano-Patron et al.) showed that spherical coordinates
+Manzano-Patron et al. (2025) showed that spherical coordinates
 (theta, phi) with Jacobian-corrected prior achieves ~2 deg orientation error,
 while Cartesian (x,y,z) wastes network capacity learning the unit-sphere
 constraint.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validation 2: Nottingham SBI replication — Ball+2Stick NPE.
+Validation 2: Manzano-Patron et al. (2025) SBI replication — Ball+2Stick NPE.
 
 Trains an SBI model (MDN) for the Ball+2Stick model and compares
 posterior means against ground truth on synthetic data.
@@ -144,7 +144,7 @@ def angular_error_deg_cartesian(mu_t, mu_r):
 
 def main():
     print("=" * 70)
-    print("Nottingham SBI Replication: Ball + 2 Stick NPE")
+    print("Manzano-Patron et al. (2025) SBI Replication: Ball + 2 Stick NPE")
     print("=" * 70)
 
     acq = make_hcp_like_acquisition()

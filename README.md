@@ -71,8 +71,8 @@ Validated on synthetic data and real **WAND** Siemens Connectom (300 mT/m) acqui
 ### Normalizing Flow NPE — Ball+2Stick orientation estimation
 
 Neural spline flow posterior trained on simulated multi-shell dMRI.
-Achieves near-target orientation accuracy matching the Nottingham paper
-(Manzano-Patron et al., 2025).
+Achieves near-target orientation accuracy matching
+Manzano-Patron et al. (2025).
 
 | Config | Fiber 1 median | d_stick r | f1 r | Steps |
 |:-------|:---------------|:----------|:-----|:------|
@@ -378,6 +378,15 @@ If you use the signal models, please cite the original dmipy paper:
 > Rutger Fick, Demian Wassermann and Rachid Deriche, "The Dmipy Toolbox:
 > Diffusion MRI Multi-Compartment Modeling and Microstructure Recovery Made
 > Easy", *Frontiers in Neuroinformatics* 13 (2019): 64.
+
+The SBI pipeline and orientation estimation targets follow:
+
+> Jose P. Manzano-Patron, Michael Deistler, Cornelius Schroder, Theodore
+> Kypraios, Pedro J. Goncalves, Jakob H. Macke and Stamatios N.
+> Sotiropoulos, "Uncertainty mapping and probabilistic tractography using
+> Simulation-Based Inference in diffusion MRI", *Medical Image Analysis*
+> 103 (2025): 103580. DOI:
+> [10.1016/j.media.2025.103580](https://doi.org/10.1016/j.media.2025.103580)
 
 ## License
 

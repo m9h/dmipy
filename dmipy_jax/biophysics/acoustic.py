@@ -27,13 +27,16 @@ NEPER_TO_DB = 8.685889638  # 1 Np = 20*log10(e) dB
 # Tissue Acoustic Property Table
 # ---------------------------------------------------------------------------
 
-# Label convention matches SCI Institute head model:
-#   0 = background (water/air)
-#   1 = scalp
-#   2 = skull (cortical bone)
-#   3 = CSF
-#   4 = gray matter
-#   5 = white matter
+# Label convention matches SCI Institute head model (Warner et al. 2019):
+#   0 = air / background
+#   1 = scalp (soft tissue)
+#   2 = spongy bone (trabecular / diploe)
+#   3 = compact bone (cortical skull)
+#   4 = CSF
+#   5 = gray matter
+#   6 = white matter
+#   7 = cerebellum
+#   8 = eye / sinus / other
 #
 # Sound speed (m/s), density (kg/m3), attenuation (dB/cm/MHz),
 # specific heat (J/kg/K), thermal conductivity (W/m/K)
@@ -42,12 +45,12 @@ NEPER_TO_DB = 8.685889638  # 1 Np = 20*log10(e) dB
 
 TISSUE_ACOUSTIC_PROPERTIES: Dict[int, Dict[str, float]] = {
     0: {
-        "sound_speed": 1500.0,
-        "density": 1000.0,
+        "sound_speed": 344.0,
+        "density": 1.25,
         "attenuation": 0.0,
-        "specific_heat": 4182.0,
-        "thermal_conductivity": 0.598,
-    },  # water (background)
+        "specific_heat": 1012.0,
+        "thermal_conductivity": 0.025,
+    },  # air (background)
     1: {
         "sound_speed": 1610.0,
         "density": 1090.0,
@@ -56,33 +59,54 @@ TISSUE_ACOUSTIC_PROPERTIES: Dict[int, Dict[str, float]] = {
         "thermal_conductivity": 0.37,
     },  # scalp
     2: {
+        "sound_speed": 2300.0,
+        "density": 1700.0,
+        "attenuation": 4.1,
+        "specific_heat": 1100.0,
+        "thermal_conductivity": 0.30,
+    },  # spongy bone (trabecular) — NDK: alpha0=47 Np/m/MHz
+    3: {
         "sound_speed": 4080.0,
         "density": 1900.0,
         "attenuation": 4.74,
         "specific_heat": 1100.0,
         "thermal_conductivity": 0.30,
-    },  # skull (cortical bone) — 54.553 Np/m/MHz converted
-    3: {
+    },  # compact bone (cortical skull) — NDK: alpha0=54.553 Np/m/MHz
+    4: {
         "sound_speed": 1500.0,
         "density": 1000.0,
         "attenuation": 0.0,
         "specific_heat": 4182.0,
         "thermal_conductivity": 0.598,
     },  # CSF
-    4: {
+    5: {
         "sound_speed": 1560.0,
         "density": 1040.0,
         "attenuation": 5.3,
         "specific_heat": 3630.0,
         "thermal_conductivity": 0.51,
     },  # gray matter
-    5: {
+    6: {
         "sound_speed": 1560.0,
         "density": 1040.0,
         "attenuation": 5.3,
         "specific_heat": 3600.0,
         "thermal_conductivity": 0.50,
     },  # white matter
+    7: {
+        "sound_speed": 1560.0,
+        "density": 1040.0,
+        "attenuation": 5.3,
+        "specific_heat": 3630.0,
+        "thermal_conductivity": 0.51,
+    },  # cerebellum (same as gray matter)
+    8: {
+        "sound_speed": 1500.0,
+        "density": 1000.0,
+        "attenuation": 0.0,
+        "specific_heat": 4182.0,
+        "thermal_conductivity": 0.598,
+    },  # eye / sinus (fluid-filled, water-like)
 }
 
 # Parameter names in consistent order

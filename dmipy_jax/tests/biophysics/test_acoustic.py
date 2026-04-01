@@ -19,10 +19,10 @@ class TestTissueAcousticProperties:
     """Tests for the TISSUE_ACOUSTIC_PROPERTIES table."""
 
     def test_tissue_table_has_required_tissues(self):
-        """All five SCI head model tissues must be present."""
+        """All SCI head model tissues (0-8) must be present."""
         from dmipy_jax.biophysics.acoustic import TISSUE_ACOUSTIC_PROPERTIES
 
-        required = {1, 2, 3, 4, 5}  # scalp, skull, CSF, GM, WM
+        required = {0, 1, 2, 3, 4, 5, 6, 7, 8}  # air, scalp, spongy, compact, CSF, GM, WM, cerebellum, eye
         assert required.issubset(set(TISSUE_ACOUSTIC_PROPERTIES.keys()))
 
     def test_tissue_table_has_background(self):
@@ -64,16 +64,25 @@ class TestTissueAcousticProperties:
             )
 
     def test_skull_sound_speed_above_3000(self):
-        """Cortical bone sound speed should be well above soft tissue."""
+        """Cortical bone (label 3) sound speed should be well above soft tissue."""
         from dmipy_jax.biophysics.acoustic import TISSUE_ACOUSTIC_PROPERTIES
 
-        assert TISSUE_ACOUSTIC_PROPERTIES[2]["sound_speed"] > 3000
+        assert TISSUE_ACOUSTIC_PROPERTIES[3]["sound_speed"] > 3000
+
+    def test_spongy_bone_sound_speed(self):
+        """Spongy bone (label 2) should be between soft tissue and cortical bone."""
+        from dmipy_jax.biophysics.acoustic import TISSUE_ACOUSTIC_PROPERTIES
+
+        spongy_c = TISSUE_ACOUSTIC_PROPERTIES[2]["sound_speed"]
+        cortical_c = TISSUE_ACOUSTIC_PROPERTIES[3]["sound_speed"]
+        brain_c = TISSUE_ACOUSTIC_PROPERTIES[5]["sound_speed"]
+        assert brain_c < spongy_c < cortical_c
 
     def test_csf_matches_water(self):
-        """CSF acoustic properties should be close to water."""
+        """CSF (label 4) acoustic properties should be close to water."""
         from dmipy_jax.biophysics.acoustic import TISSUE_ACOUSTIC_PROPERTIES
 
-        csf = TISSUE_ACOUSTIC_PROPERTIES[3]
+        csf = TISSUE_ACOUSTIC_PROPERTIES[4]
         assert abs(csf["sound_speed"] - 1500) < 50
         assert abs(csf["density"] - 1000) < 50
 
@@ -98,19 +107,19 @@ class TestMapLabelsToProperties:
             TISSUE_ACOUSTIC_PROPERTIES[1]["sound_speed"],
             atol=1.0,
         )
-        # Skull (2)
+        # Spongy bone (2)
         assert jnp.isclose(
             props["sound_speed"][0, 0, 1],
             TISSUE_ACOUSTIC_PROPERTIES[2]["sound_speed"],
             atol=1.0,
         )
-        # CSF (3)
+        # Compact bone (3)
         assert jnp.isclose(
             props["sound_speed"][0, 1, 0],
             TISSUE_ACOUSTIC_PROPERTIES[3]["sound_speed"],
             atol=1.0,
         )
-        # GM (4)
+        # CSF (4)
         assert jnp.isclose(
             props["sound_speed"][0, 1, 1],
             TISSUE_ACOUSTIC_PROPERTIES[4]["sound_speed"],
@@ -143,15 +152,15 @@ class TestMapLabelsToProperties:
         }
         assert expected == set(props.keys())
 
-    def test_map_labels_background_is_water(self):
-        """Label 0 (background) should map to water-like properties."""
+    def test_map_labels_background_is_air(self):
+        """Label 0 (background) should map to air properties."""
         from dmipy_jax.biophysics.acoustic import map_labels_to_properties
 
         labels = jnp.zeros((2, 2, 2), dtype=jnp.int32)
         props = map_labels_to_properties(labels)
-        # Water: c ~1500, rho ~1000
-        assert jnp.allclose(props["sound_speed"], 1500.0, atol=100.0)
-        assert jnp.allclose(props["density"], 1000.0, atol=100.0)
+        # Air: c ~344, rho ~1.25
+        assert jnp.allclose(props["sound_speed"], 344.0, atol=50.0)
+        assert jnp.allclose(props["density"], 1.25, atol=1.0)
 
     def test_map_labels_output_dtype_float(self):
         """Output arrays should be float, not int."""

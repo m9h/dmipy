@@ -199,10 +199,23 @@ class TestJWaveSimulation:
         from dmipy_jax.biophysics.jwave_adapter import (
             create_domain,
             create_medium,
+            create_sources,
             run_simulation_jax,
         )
+        from jwave.geometry import TimeAxis
 
         domain = create_domain((32, 32), 0.5e-3)
+
+        # Pre-compute TimeAxis and Sources with concrete values (outside grad)
+        ref_medium = create_medium(domain, sound_speed=1500.0, density=1000.0, pml_size=5)
+        time_axis = TimeAxis.from_medium(ref_medium, cfl=0.3, t_end=5e-6)
+        dt = float(time_axis.dt)
+        pos = jnp.array([[16 * 0.5e-3, 2 * 0.5e-3]])
+        sources = create_sources(
+            domain, pos, 500e3,
+            delays=jnp.zeros(1), apodizations=jnp.ones(1),
+            dt=dt, n_cycles=3,
+        )
 
         def focal_pressure(c_value):
             medium = create_medium(domain, sound_speed=c_value, density=1000.0, pml_size=5)
@@ -211,6 +224,8 @@ class TestJWaveSimulation:
                 source_position=(16, 2),
                 freq=500e3,
                 t_end=5e-6,
+                time_axis=time_axis,
+                sources=sources,
             )
             return p_max[16, 16]
 

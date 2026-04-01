@@ -1,3 +1,29 @@
+"""Self-Supervised Fine-Tuning (SSFT) for volume-level adaptation.
+
+Provides :class:`SSFTTrainer`, which fine-tunes a pre-trained amortized
+inference network on a specific DWI volume using physics-informed
+reconstruction loss and total variation (TV) spatial regularisation.  This
+is analogous to the AMICO "Global" refinement step but with a neural
+network backbone.
+
+The SSFT loss combines:
+
+1. **Reconstruction loss** -- MSE between the observed signal and the signal
+   re-simulated from network-predicted parameters through the Zeppelin
+   forward model.
+2. **TV regularisation** -- anisotropic total variation on scalar parameter
+   maps (diffusivities, volume fractions) to enforce spatial smoothness.
+
+Key class:
+
+* :class:`SSFTTrainer` -- ``eqx.Module`` with ``loss_fn`` and ``fit``
+  methods.  ``fit`` runs the fine-tuning loop for a configurable number
+  of epochs and returns the adapted network.
+
+See Also:
+    :mod:`dmipy_jax.inference.amortized` -- the pre-trained network that
+    SSFT adapts to a specific volume.
+"""
 
 import jax
 import jax.numpy as jnp

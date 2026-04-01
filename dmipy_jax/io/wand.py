@@ -1,3 +1,23 @@
+"""WAND dataset loader for AxCaliber diffusion MRI.
+
+Provides :class:`WANDLoader` for accessing the
+`WAND dataset <https://gin.g-node.org/CUBRIC/WAND>`_ from CUBRIC, which
+contains high-gradient-strength (300 mT/m) AxCaliber acquisitions suitable
+for axon diameter estimation.
+
+Key methods:
+
+* :meth:`WANDLoader.fetch_data` -- downloads the dataset via DataLad/GIN.
+* :meth:`WANDLoader.get_axcaliber_files` -- discovers AxCaliber DWI
+  files for a subject/session.
+* :meth:`WANDLoader.load_axcaliber_data` -- loads and concatenates all
+  AxCaliber acquisitions, extracting pulse timings (delta, Delta) from
+  JSON sidecars.
+
+B-values are converted to SI (s/m^2) on load.  Pulse timings are
+returned as per-volume JAX arrays for direct use with time-dependent
+signal models (e.g. :class:`~dmipy_jax.signal_models.cylinder_models.RestrictedCylinder`).
+"""
 
 import os
 import json

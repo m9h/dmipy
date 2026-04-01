@@ -1,3 +1,36 @@
+"""Differentiable confined Brownian-motion random walker.
+
+Implements a domain-reparameterised random walk that is fully differentiable
+with respect to geometry parameters (e.g. compartment radius).  The walker
+simulates on a unit-domain (sphere or cylinder of radius 1) with
+correspondingly scaled diffusivity, then rescales trajectories back to
+physical dimensions.  This reparameterisation trick ensures that
+``jax.grad`` flows cleanly through the reflection boundaries.
+
+Key components:
+
+* :class:`DifferentiableWalker` -- ``eqx.Module`` representing a single
+  confined walker with ``diffusivity``, ``radius``, and ``geometry_type``
+  (sphere or cylinder).  Call it with ``(t_span, y0, dt, key)`` to produce
+  a physical-space trajectory.
+* :func:`solve_differentiable_walker_batch` -- ``jax.vmap``-based batch
+  simulation of N particles.
+
+Array shapes (jaxtyping conventions):
+
+* Trajectory output: ``Float[Array, "steps dim"]``
+* Batch output: ``Float[Array, "N steps dim"]``
+
+Example::
+
+    walker = DifferentiableWalker(diffusivity=2.0, radius=5.0,
+                                  geometry_type='sphere')
+    trajectory = walker((0.0, 10.0), y0, dt=0.1, key=key)
+
+See Also:
+    :mod:`dmipy_jax.simulation.simulator` -- integrates the walker with
+    PGSE gradient waveforms to compute the diffusion signal.
+"""
 
 import jax
 import jax.numpy as jnp

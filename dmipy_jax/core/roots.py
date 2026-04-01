@@ -1,3 +1,19 @@
+"""Differentiable polynomial root-finding via implicit function theorem.
+
+Provides a JAX-differentiable wrapper around polynomial root computation
+that enables gradient flow through root-finding operations.  This is
+essential for the direct algebraic solver
+(:mod:`dmipy_jax.core.direct_solver`) where microstructure parameters are
+recovered as roots of a characteristic polynomial.
+
+Key function:
+
+* :func:`differentiable_roots` -- computes polynomial roots with a
+  ``custom_vjp`` that applies the implicit function theorem to propagate
+  gradients through the root-finding.  Supports optional stripping of
+  leading zero coefficients for numerical stability.
+"""
+
 import jax
 import jax.numpy as jnp
 from functools import partial

@@ -1,3 +1,27 @@
+"""End-to-end SDE-based diffusion MRI simulator.
+
+Combines the :class:`~dmipy_jax.simulation.differentiable_walker.DifferentiableWalker`
+random-walk engine with a PGSE gradient waveform to compute the full
+diffusion-weighted signal from particle trajectories.  The simulator is
+fully differentiable (via Diffrax SDE solvers) and supports arbitrary
+pulsed-gradient sequences.
+
+Key functions and classes:
+
+* :func:`trapezoidal_gradient_waveform` -- generates an ideal rectangular
+  PGSE gradient waveform G(t) from amplitude, pulse duration (delta),
+  and pulse separation (Delta).
+* :func:`compute_signal_from_trajectories` -- accumulates the phase of
+  each particle trajectory under the gradient waveform and returns the
+  normalised signal attenuation.
+* :func:`simulate_pgse` -- top-level entry point that runs a batch of
+  walkers inside a restricted geometry, applies the gradient, and returns
+  the ensemble-averaged signal.
+
+The simulator uses the gyromagnetic ratio constant from
+:mod:`dmipy_jax.constants` and operates in SI units throughout (Tesla,
+metres, seconds).
+"""
 
 import jax
 import jax.numpy as jnp

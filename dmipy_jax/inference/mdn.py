@@ -1,3 +1,32 @@
+"""Mixture Density Network (MDN) for neural posterior estimation.
+
+Implements a conditional density estimator that predicts the parameters of
+a Gaussian mixture model (GMM) given an input signal vector.  This is the
+default SBI backend in the pipeline when ``inference_mode="mdn"``.
+
+Architecture:
+
+* Shared MLP backbone (configurable depth, width, activation).
+* Three parallel heads: mixing logits (pi), component means (mu),
+  and component log-standard-deviations (log_sigma).
+
+Key classes:
+
+* :class:`MixtureDensityNetwork` -- standard MLP-based MDN.
+* :class:`ResidualMDN` -- variant with residual skip connections for
+  deeper networks.
+
+The MDN loss (:func:`mdn_loss`) is the negative log-likelihood of the
+true parameters under the predicted mixture.
+
+All modules are ``eqx.Module`` subclasses, fully compatible with
+``jax.jit``, ``jax.vmap``, and ``eqx.filter_grad``.
+
+References:
+    .. [1] Bishop, C. M. "Mixture density networks." Technical Report
+       NCRG/94/004, Aston University (1994).
+"""
+
 import jax
 import jax.numpy as jnp
 import jax.random as jr

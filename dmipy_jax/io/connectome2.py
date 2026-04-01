@@ -1,3 +1,20 @@
+"""Connectome 2.0 (OpenNeuro ds006181) dataset loader.
+
+Fetches and loads the Connectome 2.0 multi-shell diffusion MRI dataset
+via DataLad, providing high-quality gradient-rich acquisitions suitable
+for advanced microstructure modelling.
+
+Key functions:
+
+* :func:`fetch_connectome2` -- clones the dataset and fetches data for a
+  specific subject via DataLad.
+* :func:`load_connectome2_subject` -- loads DWI, bvals, bvecs, and
+  constructs a :class:`~dmipy_jax.acquisition.JaxAcquisition` with SI
+  b-values.
+
+Dependencies:
+    Requires ``datalad`` and ``dipy``.
+"""
 
 from pathlib import Path
 import json

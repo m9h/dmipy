@@ -1,3 +1,22 @@
+"""Direct algebraic inversion of microstructure parameters.
+
+Provides closed-form (non-iterative) estimation of multi-compartment
+diffusion parameters using differentiable Prony's method.  Given signal
+measurements at equidistant b-values, the module decomposes the signal
+into a sum of exponentials and recovers per-compartment diffusivities
+and volume fractions algebraically.
+
+Key function:
+
+* :func:`solve_microstructure` -- inverts 4 equidistant b-value
+  measurements into 2-compartment diffusivities and fractions via
+  differentiable polynomial root-finding
+  (:func:`~dmipy_jax.core.roots.differentiable_roots`).
+
+This algebraic estimator is typically used as an initialisation for
+iterative fitting or variational inference, not as a final result.
+"""
+
 import jax
 import jax.numpy as jnp
 from dmipy_jax.core.roots import differentiable_roots

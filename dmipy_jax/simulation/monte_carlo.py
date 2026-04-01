@@ -1,3 +1,30 @@
+"""Ground-truth Monte Carlo random-walk simulator with SDF-based geometry.
+
+Provides a particle-tracking Monte Carlo engine for simulating restricted
+and hindered diffusion inside arbitrary geometries defined by signed distance
+functions (SDFs).  This module serves as the reference ("gold standard")
+simulator against which the analytical models and FEM/SDE simulators are
+validated.
+
+Key functions:
+
+* :func:`reflect` -- elastic collision reflection for particles that step
+  outside the SDF boundary.
+* :func:`step_particles` -- single time-step function compatible with
+  ``jax.lax.scan``; advances particle positions, applies boundary
+  reflections, and accumulates spin phase under the applied gradient.
+* :func:`run_monte_carlo` -- top-level entry point that runs N particles
+  for a full PGSE sequence and returns the ensemble-averaged signal.
+
+The simulator operates in SI units and uses the proton gyromagnetic ratio
+(gamma = 2.6752e8 rad/s/T) for phase accumulation.
+
+See Also:
+    :mod:`dmipy_jax.simulation.sphere_sdf` -- sphere SDF primitives used
+    as geometry inputs.
+    :mod:`dmipy_jax.simulation.differentiable_walker` -- differentiable
+    alternative for gradient-based optimisation.
+"""
 
 import jax
 import jax.numpy as jnp

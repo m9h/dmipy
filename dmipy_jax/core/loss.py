@@ -1,3 +1,20 @@
+"""Loss functions for diffusion MRI model fitting.
+
+Provides differentiable loss functions used by the fitting and training
+pipelines, including noise-model-aware likelihoods and regularisation
+terms.
+
+Key functions:
+
+* :func:`rician_nll` -- Rician negative log-likelihood using the
+  numerically stable ``i0e`` (exponentially scaled Bessel) formulation.
+  Appropriate for magnitude MRI data.
+* :func:`l1_regularization` -- L1 (LASSO) penalty for sparsity-promoting
+  regularisation of model coefficients.
+* :func:`prior_loss` -- quadratic penalty for deviation from tissue-type
+  prior fractions (e.g. WM/GM/CSF atlas priors).
+"""
+
 import jax
 import jax.numpy as jnp
 from typing import Optional, Union

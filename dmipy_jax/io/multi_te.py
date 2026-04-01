@@ -1,3 +1,30 @@
+"""Loader for multi-echo-time (MTE) diffusion MRI datasets.
+
+Provides :class:`MultiTELoader` for reading datasets where multiple DWI
+volumes were acquired at different echo times (TEs), enabling
+compartment-specific T2 estimation (e.g. MTE-NODDI).
+
+Two dataset layouts are supported:
+
+1. **Split format** -- one NIfTI per TE, filenames like
+   ``sub-03_acq-TE62_dwi.nii.gz``.
+2. **Concatenated format** -- single NIfTI with a ``.delta`` sidecar
+   encoding diffusion timing per volume.  Volumes are sliced on the
+   fly by matching the requested Delta value.
+
+Key methods:
+
+* :meth:`MultiTELoader.get_available_tes` -- discover TEs present in the
+  dataset.
+* :meth:`MultiTELoader.load_data` -- load DWI, bvals, bvecs for a
+  specific TE as JAX arrays.
+* :meth:`MultiTELoader.load_paper_subset` -- return the 8 canonical TEs
+  (62--132 ms) used in the original publication.
+
+Data is returned as JAX arrays with b-values in their native units
+(typically s/mm^2 for MTE datasets).
+"""
+
 import os
 import glob
 import numpy as np

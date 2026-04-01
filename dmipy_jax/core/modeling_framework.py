@@ -1,3 +1,25 @@
+"""Multi-compartment model composition and fitting framework.
+
+Provides the object-oriented interface for building multi-compartment dMRI
+signal models from individual compartment modules, and for fitting them to
+data via Optimistix-based optimisation.
+
+Key classes:
+
+* :class:`CompartmentModel` -- abstract base ``eqx.Module`` defining the
+  interface that all signal model compartments must implement
+  (``__call__``, ``parameter_names``, ``parameter_cardinality``,
+  ``parameter_ranges``).
+* :class:`JaxMultiCompartmentModel` -- wraps :func:`~dmipy_jax.composer.compose_models`
+  with a user-friendly dictionary-based parameter interface.  Supports
+  volume-fraction-weighted signal composition, parameter bounds, and
+  integration with :class:`~dmipy_jax.fitting.optimization.OptimistixFitter`
+  and :class:`~dmipy_jax.fitting.optimization.VoxelFitter`.
+
+This is the central modelling abstraction used throughout the SBI pipeline
+for defining forward models.
+"""
+
 import jax
 import jax
 import jax.numpy as jnp

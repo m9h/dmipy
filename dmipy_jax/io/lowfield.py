@@ -1,3 +1,19 @@
+"""Ultra-low-field brain MRI loader (OpenNeuro ds006557).
+
+Provides functions for downloading and loading the ultra-low-field brain
+MRI dataset from OpenNeuro, which contains structural images acquired at
+field strengths below 0.1 T alongside high-field reference scans.
+
+Key functions:
+
+* :func:`fetch_ds006557` -- downloads a single subject from the
+  ``openneuro.org`` S3 bucket using anonymous access.
+* :func:`load_ds006557_data` -- loads a structural image (T1w or T2w)
+  and returns a dict with the JAX array, affine, and file path.
+
+This dataset is primarily useful for validating low-field-to-high-field
+correspondence and for testing models under low-SNR conditions.
+"""
 
 import os
 from pathlib import Path

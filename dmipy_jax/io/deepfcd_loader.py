@@ -1,3 +1,12 @@
+"""BIDS data loader for focal cortical dysplasia (FCD) detection.
+
+Provides :class:`DeepFCDLoader` for reading multi-contrast MRI data
+(T1w, FLAIR, DTI-derived maps) from BIDS datasets with the goal of
+training FCD detection models.  The loader yields axial slices with
+configurable neighbourhood context (2*N+1 slices per sample) suitable
+for 2.5-D CNN architectures.
+"""
+
 import os
 import glob
 import numpy as np

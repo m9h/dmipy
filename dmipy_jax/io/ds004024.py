@@ -1,3 +1,14 @@
+"""OpenNeuro ds004024 loader for TMS-EEG-MRI-DWI paired associative stimulation data.
+
+Provides :class:`Ds004024Loader`, a specialised BIDS reader for the
+ds004024 dataset, which contains multi-modal data (DWI, EEG, TMS, fMRI)
+acquired to study paired associative stimulation and structural/functional
+connectivity.
+
+The loader extends the generic :class:`~dmipy_jax.io.bids.BIDSLoader`
+with dataset-specific logic for extracting TMS/EEG event information
+alongside the diffusion data.
+"""
 
 import os
 import pandas as pd

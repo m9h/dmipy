@@ -1,3 +1,26 @@
+"""BIDS-compliant data loading and derivative writing.
+
+Provides :class:`BIDSLoader` for reading diffusion MRI data from
+`Brain Imaging Data Structure <https://bids.neuroimaging.io/>`_ datasets
+and :func:`save_bids_derivative` for writing parameter maps as BIDS
+derivatives with proper entity inheritance and JSON sidecars.
+
+Dependencies:
+    Requires ``pybids`` (``pip install pybids``).  The module gracefully
+    degrades with an ``ImportError`` if ``pybids`` is not installed.
+
+Typical usage::
+
+    loader = BIDSLoader("/path/to/bids_dataset")
+    info = loader.load_dwi(subject="01", session="01")
+    # info['dwi_file'], info['bval_file'], info['bvec_file']
+
+    save_bids_derivative(
+        fa_map, input_file=info['dwi_file'],
+        metric_name="FA", output_dir="derivatives/sbi4dwi"
+    )
+"""
+
 import os
 import json
 import logging

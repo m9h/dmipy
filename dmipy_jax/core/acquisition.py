@@ -1,3 +1,14 @@
+"""Simplified acquisition scheme for dmipy-jax forward models.
+
+Provides :class:`SimpleAcquisitionScheme`, a lightweight ``eqx.Module``
+container for diffusion MRI acquisition parameters (b-values, gradient
+directions, pulse timing) that avoids legacy dmipy dependency issues.
+
+This module is used internally by :mod:`dmipy_jax.core.modeling_framework`
+when the full :class:`~dmipy_jax.acquisition.JaxAcquisition` class is not
+needed.  For most pipeline usage, prefer :class:`~dmipy_jax.acquisition.JaxAcquisition`.
+"""
+
 import jax.numpy as jnp
 import numpy as np
 from typing import Optional, Any

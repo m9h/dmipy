@@ -1,3 +1,25 @@
+"""Score-based generative model (SGM) phantoms for diffusion MRI.
+
+Implements a variance-preserving SDE (VP-SDE) score-based generative model
+for learning and sampling from the distribution of diffusion signal vectors.
+This can be used to generate synthetic diffusion MRI phantoms or as a
+generative prior for inverse problems.
+
+Key classes:
+
+* :class:`ScoreNetwork` -- time-dependent MLP that predicts the score
+  function grad_x log p_t(x) at noise level t.
+* :class:`SGM` -- ``eqx.Module`` wrapper combining the score network with
+  VP-SDE forward/reverse dynamics, providing ``train_step``, ``sample``,
+  and ``loss_fn`` methods.
+
+The VP-SDE uses a linear beta schedule: beta(t) = beta_min + t*(beta_max - beta_min),
+which controls the noise injection rate during the forward diffusion process.
+
+See Also:
+    :mod:`dmipy_jax.inference.score_posterior` -- E(3)-equivariant score
+    network for posterior estimation (conditioned on observed signals).
+"""
 
 import jax
 import jax.numpy as jnp

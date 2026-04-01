@@ -1,3 +1,24 @@
+"""JAX-MD particle engine for molecular-dynamics-style diffusion simulation.
+
+Provides a JAX-MD-based particle simulation engine that uses the
+``jax_md.simulate`` framework for Brownian dynamics in periodic or bounded
+boxes.  This is an alternative simulation backend to the Diffrax SDE
+solver, leveraging JAX-MD's neighbour-list infrastructure for efficient
+multi-particle simulations with interactions.
+
+Key functions:
+
+* :func:`check_gpu_visibility` -- diagnostic utility that prints GPU
+  availability for JAX-MD workloads.
+* Box construction helpers for defining simulation domains.
+* Brownian dynamics integrators wrapped with PGSE gradient-waveform
+  phase accumulation.
+
+See Also:
+    :mod:`dmipy_jax.simulation.differentiable_walker` -- lightweight
+    single-particle walker that does not require JAX-MD.
+"""
+
 import jax
 import jax.numpy as jnp
 from jax_md import space, partition, simulate

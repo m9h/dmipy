@@ -1,3 +1,26 @@
+"""FlowJAX-based conditional normalizing flow trainer.
+
+Provides :func:`create_trainer`, which constructs a conditional normalizing
+flow using `FlowJAX <https://github.com/danielward27/flowjax>`_ and returns
+it alongside an Optax optimizer ready for the SBI training loop.
+
+Two flow architectures are supported:
+
+* ``"affine"`` -- masked autoregressive affine coupling layers.  Fast to
+  train, suitable for unimodal or mildly multimodal posteriors.
+* ``"spline"`` -- rational-quadratic spline coupling layers [1]_ with
+  configurable knot count.  More expressive, better for complex posteriors.
+
+The flow is conditioned on the observed signal vector and maps between a
+standard normal base distribution and the posterior over tissue parameters.
+
+This module is the backend used by :func:`~dmipy_jax.pipeline.train.train_sbi`
+when ``inference_mode="flow"``.
+
+References:
+    .. [1] Durkan, C. et al. "Neural Spline Flows." NeurIPS (2019).
+"""
+
 from __future__ import annotations
 
 import time

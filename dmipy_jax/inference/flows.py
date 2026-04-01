@@ -1,3 +1,30 @@
+"""Normalizing flow posterior estimator using rational-quadratic splines.
+
+Implements a conditional normalizing flow for neural posterior estimation
+(NPE) in the SBI pipeline.  The flow maps between a standard normal base
+distribution and the posterior over tissue parameters, conditioned on the
+observed diffusion signal.
+
+Architecture:
+
+* :func:`rational_quadratic_spline` -- element-wise monotonic spline
+  bijection with analytic log-det-Jacobian [1]_.  Supports both forward
+  (normalisation) and inverse (generation) directions.
+* :class:`RationalQuadraticSpline` -- ``eqx.Module`` wrapper that
+  manages bin count and domain range.
+* :class:`CouplingLayer` -- affine coupling layer with an MLP conditioner
+  that predicts spline parameters from the untransformed dimensions and
+  the conditioning context (observed signal).
+* :class:`FlowNetwork` -- stacks multiple coupling layers with
+  alternating dimension permutations, providing ``log_prob`` and ``sample``
+  methods compatible with the SBI training loop.
+
+All components are ``eqx.Module`` subclasses and fully compatible with
+``jax.jit``, ``jax.vmap``, and ``jax.grad``.
+
+References:
+    .. [1] Durkan, C. et al. "Neural Spline Flows." NeurIPS (2019).
+"""
 
 import jax
 import jax.numpy as jnp

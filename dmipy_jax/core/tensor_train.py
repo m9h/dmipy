@@ -1,3 +1,18 @@
+"""Tensor-train (Matrix Product State) decomposition for signal compression.
+
+Provides tensor-train decomposition of multi-dimensional signal arrays,
+which can be used to compress large simulation libraries or represent
+high-dimensional parameter-signal mappings in a memory-efficient factored
+form.
+
+Key function:
+
+* :func:`mps_decomposition` -- decomposes a 4-D tensor into a sequence of
+  3-D core tensors (Matrix Product State / tensor train format) using
+  truncated SVD at each bond.  The bond dimensions are controlled by the
+  ``ranks`` parameter.
+"""
+
 import jax
 import jax.numpy as jnp
 

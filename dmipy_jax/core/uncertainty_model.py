@@ -1,3 +1,25 @@
+"""Bayesian uncertainty propagation through forward models via PCE.
+
+Provides a framework for propagating input parameter uncertainties through
+differentiable forward models using Polynomial Chaos Expansion (PCE)
+surrogates.  Given probability distributions over input parameters, the
+module computes output mean and variance analytically via spectral
+coefficients, avoiding expensive Monte Carlo sampling.
+
+Key classes:
+
+* :class:`Distribution` -- abstract base class for input parameter
+  distributions.
+* :class:`Uniform` -- uniform distribution on [low, high].
+* :class:`Normal` -- Gaussian distribution with specified mean and std.
+* :func:`propagate_uncertainty` -- top-level function that builds a PCE
+  surrogate from the forward model and input distributions, then returns
+  output statistics (mean, variance, Sobol sensitivity indices).
+
+See Also:
+    :mod:`dmipy_jax.core.surrogate` -- PCE polynomial bases and expansion
+    machinery used by this module.
+"""
 
 import jax
 import jax.numpy as jnp

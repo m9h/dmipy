@@ -1,3 +1,16 @@
+"""Spherical sampling grids for numerical integration over S^2.
+
+Provides quasi-uniform point distributions on the unit sphere for use in
+orientation-averaged signal computation, PINN boundary sampling, and
+numerical integration of fibre orientation distribution functions.
+
+Key function:
+
+* :func:`get_spherical_fibonacci_grid` -- generates N quasi-uniform points
+  on the unit sphere using the spherical Fibonacci lattice algorithm.
+  Returns ``(N, 3)`` Cartesian coordinates.  The lattice achieves
+  near-optimal covering efficiency for moderate N (50-500 points).
+"""
 
 import jax
 import jax.numpy as jnp

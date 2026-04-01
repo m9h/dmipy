@@ -1,3 +1,27 @@
+"""Variational inference (VI) for per-voxel Bayesian microstructure estimation.
+
+Implements mean-field Gaussian variational inference as an alternative to
+MCMC (:mod:`dmipy_jax.inference.mcmc`) for obtaining approximate posteriors
+over tissue parameters.  VI is faster than MCMC but provides only an
+approximation (diagonal Gaussian) to the true posterior.
+
+Key components:
+
+* :class:`MeanFieldGaussian` -- ``eqx.Module`` representing a factorised
+  Gaussian variational posterior q(theta) = prod_i N(mu_i, sigma_i).
+  Supports reparameterised sampling and analytic entropy computation.
+* :class:`VIMinimizer` -- ``eqx.Module`` that computes the negative ELBO
+  loss (expected log-likelihood + entropy) for a given tissue forward model.
+  Uses ``softplus`` + scaling to map unconstrained variational parameters
+  to physical parameter space.
+* :func:`fit_vi` -- top-level fitting function that initialises the
+  variational posterior (optionally from an algebraic inverter), runs
+  Optax-based optimisation via ``jax.lax.scan``, and returns the fitted
+  posterior and loss trace.
+
+All components are compatible with ``jax.jit`` and ``eqx.filter_jit``.
+"""
+
 import jax
 import jax.numpy as jnp
 import equinox as eqx

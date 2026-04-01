@@ -1,3 +1,21 @@
+"""Signed distance functions (SDFs) for spherical geometry primitives.
+
+Provides SDF building blocks for defining restricted-diffusion compartments
+in the Monte Carlo and SDE simulators.  SDFs return negative values inside
+the boundary and positive values outside, with zero on the surface.
+
+Key components:
+
+* :func:`sphere_sdf` -- SDF for a single sphere centred at ``center`` with
+  the given ``radius``.
+* :class:`MultiSphereSDF` -- efficient union SDF for N spheres, computing
+  ``min_i(SDF_i(p))`` in a single vectorised pass.  Useful for packed-sphere
+  geometries (e.g. SANDI soma models).
+
+Both are compatible with ``jax.grad`` for computing surface normals, which
+the Monte Carlo reflector (:func:`~dmipy_jax.simulation.monte_carlo.reflect`)
+uses for elastic boundary collisions.
+"""
 
 import jax
 import jax.numpy as jnp

@@ -1,3 +1,26 @@
+"""Probabilistic tractography using SBI-predicted diffusion tensors.
+
+Implements a JAX-native probabilistic tractography engine that uses an SBI
+model (MDN or flow) to predict the full diffusion tensor at each step,
+samples from the posterior, extracts the principal eigenvector, and
+propagates the streamline.  This enables uncertainty-aware fibre tracking
+without a separate fitting step.
+
+Key components:
+
+* :func:`get_tensor_orientation` -- extracts the principal eigenvector from
+  a flat 6-element symmetric tensor ``[Dxx, Dxy, Dxz, Dyy, Dyz, Dzz]``
+  via eigendecomposition.
+* :class:`ProbabilisticTracker` -- ``eqx.Module`` that performs single-seed
+  tractography using ``jax.lax.scan``.  At each step: interpolates the
+  signal from the volume, queries the SBI model, samples a tensor, extracts
+  the fibre direction, enforces angular continuity and curvature constraints,
+  and advances the streamline.
+
+The tracker outputs fixed-length streamlines with a validity mask, suitable
+for ``jax.vmap``-based parallel tracking across many seeds.
+"""
+
 import jax
 import jax.numpy as jnp
 import equinox as eqx

@@ -1,7 +1,24 @@
-"""
-Standardized Mesh IO Module.
-Supports loading surface meshes for PINN training.
-Specialized support for FSL BET outputs (.off, .vtk).
+"""Surface mesh IO for FEM and PINN simulation.
+
+Loads triangular surface meshes from common neuroimaging formats into JAX
+arrays for use with :class:`~dmipy_jax.simulation.mesh_sim.MatrixFormalismSimulator`
+and the Bloch-Torrey PINN trainer.
+
+Supported formats:
+
+* ``.off`` -- Geomview Object File Format (standard FSL BET output).
+* ``.vtk`` -- Legacy ASCII VTK POLYDATA (FSL BET ``-e`` mesh option).
+* Any format supported by ``trimesh`` (``.obj``, ``.stl``, etc.) if
+  the ``trimesh`` package is installed.
+
+Key function:
+
+* :func:`load_mesh` -- dispatches to the appropriate reader based on file
+  extension and returns ``(vertices, faces)`` as ``jnp.ndarray`` tuples
+  with shapes ``(N, 3)`` and ``(M, 3)`` respectively.
+
+All vertex coordinates are returned in the original mesh units (typically
+millimetres for neuroimaging meshes).
 """
 
 import os

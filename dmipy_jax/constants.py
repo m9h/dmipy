@@ -1,3 +1,18 @@
+"""Physical constants and pre-computed numerical tables for dMRI models.
+
+Stores physical constants and expensive pre-computed values as JAX arrays
+to avoid repeated computation on the GPU.
+
+Constants:
+
+* ``SPHERE_ROOTS`` -- first 30 roots of the derivative of the order-3/2
+  Bessel function J'_{3/2}(x), used by the Sphere GPD model (Murday-Cotts
+  approximation) in :mod:`dmipy_jax.signal_models.sphere_models`.
+* ``GYRO_MAGNETIC_RATIO`` -- proton gyromagnetic ratio
+  (2.6752e8 rad s^-1 T^-1), used by all simulation backends that convert
+  gradient amplitude to spin phase.
+"""
+
 import jax.numpy as jnp
 
 # The first 30 roots of the derivative of the first order Bessel function J'_3/2(x)

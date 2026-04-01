@@ -9,10 +9,21 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
+   :caption: User Guide
 
    tutorials/first_steps
+   tutorials/model_composition
    tutorials/simulation_basics
-   reference/index
+   tutorials/sbi_dti
+   tutorials/training_to_deployment
+   tutorials/sbi_noddi
+   tutorials/normalizing_flows
+
+.. toctree::
+   :maxdepth: 3
+   :caption: API Reference
+
+   reference/dmipy_jax
 
 Indices and tables
 ==================

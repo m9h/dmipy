@@ -1,3 +1,27 @@
+"""Stochastic differential equation (SDE) models for diffusion simulation.
+
+Provides ``eqx.Module``-based SDE models that can be integrated with Diffrax
+solvers to simulate particle trajectories under various diffusion regimes.
+These models define the drift and diffusion coefficients of the Ito SDE
+
+    dX = f(t, X) dt + g(t, X) dW
+
+and are solved using Diffrax's adaptive-step SDE integrators.
+
+Key classes and functions:
+
+* :class:`RestrictedAnalyticSDE` -- Ornstein-Uhlenbeck (OU) process with
+  mean-reverting drift ``-k(x - center)`` and constant isotropic diffusion.
+  Models restricted diffusion with a soft confinement potential.
+* :func:`solve_restricted_sde_batch` -- batch-solves the OU SDE for N
+  particles using ``jax.vmap`` and Diffrax, returning trajectories at
+  specified save points.
+
+All SDE models support field interpolation via
+:func:`~dmipy_jax.preprocessing.inputs.interpolate_field` for spatially
+varying diffusivity or drift fields.
+"""
+
 import jax
 import jax.numpy as jnp
 import diffrax

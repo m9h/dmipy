@@ -1,3 +1,26 @@
+"""TMS-EEG conduction latency data loader for tract calibration.
+
+Provides :class:`TMSLoader` for reading empirical transcranial magnetic
+stimulation (TMS) conduction latencies between brain regions.  These
+latencies serve as ground-truth calibration data for validating structural
+connectivity models derived from diffusion tractography.
+
+The loader supports CSV-formatted latency tables (columns: Source, Target,
+Latency_ms) and falls back to synthetic mock data for development when
+real TMS-EEG files are unavailable.
+
+Key class:
+
+* :class:`TMSLoader` -- reads latency data from the WAND dataset's
+  ``derivatives/tms_eeg/`` directory structure and returns a dictionary
+  mapping ``(SourceRegion, TargetRegion)`` tuples to latency values in
+  milliseconds.
+
+See Also:
+    :mod:`dmipy_jax.io.wand` -- WAND dataset loader for the paired
+    diffusion MRI data.
+"""
+
 import os
 import numpy as np
 import pandas as pd

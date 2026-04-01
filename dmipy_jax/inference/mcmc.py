@@ -1,3 +1,28 @@
+"""Bayesian MCMC inference using BlackJAX NUTS sampler.
+
+Provides :class:`MCMCInference`, an ``eqx.Module`` that performs full
+Bayesian inference over tissue microstructure parameters using the
+No-U-Turn Sampler (NUTS) from the BlackJAX library.
+
+Unlike the amortized SBI methods (MDN, flow), MCMC operates per-voxel
+with an explicit likelihood and prior, producing the exact posterior at
+the cost of much higher computation.  This makes it useful as a ground
+truth reference for SBI validation and for small regions of interest.
+
+The log-likelihood assumes Gaussian noise:
+``log p(x | theta) = -0.5 * sum((x - f(theta))^2 / sigma^2)``
+
+where ``f`` is the forward model and ``sigma`` is the noise standard
+deviation.
+
+Dependencies:
+    Requires ``blackjax`` (``uv add blackjax``).
+
+References:
+    .. [1] Hoffman, M. D. & Gelman, A. "The No-U-Turn Sampler."
+       JMLR 15 (2014): 1593--1623.
+"""
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.special as jsp

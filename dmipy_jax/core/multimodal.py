@@ -1,3 +1,22 @@
+"""Multi-modal signal models combining diffusion with relaxation.
+
+Extends the standard diffusion signal models to include T1 and T2
+relaxation effects, enabling joint estimation of microstructure and
+relaxation parameters from multi-echo or multi-inversion-time data.
+
+Key classes:
+
+* :class:`RelaxationModel` -- ``CompartmentModel`` subclass that adds
+  T1/T2 exponential decay to the diffusion signal.  Supports both
+  single-TE and multi-TE acquisition schemes.
+* Multi-contrast model composition utilities for combining diffusion,
+  T1, and T2 signals into a unified forward model.
+
+See Also:
+    :mod:`dmipy_jax.signal_models.mte_noddi` -- MTE-NODDI model that
+    uses per-compartment T2 relaxation.
+"""
+
 import jax
 import jax.numpy as jnp
 import equinox as eqx

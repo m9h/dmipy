@@ -1,3 +1,22 @@
+"""Jacobian-based uncertainty utilities for linearised error propagation.
+
+Provides functions for computing the Jacobian of forward models with
+respect to tissue parameters and propagating parameter covariance through
+the linearised model (first-order Taylor expansion).  This gives a fast
+approximation to output uncertainty when full Bayesian inference is too
+expensive.
+
+Key functions:
+
+* :func:`compute_jacobian` -- computes the ``(n_measurements, n_params)``
+  Jacobian matrix of a forward model at a given parameter vector using
+  ``jax.jacfwd``.
+* :func:`propagate_covariance` -- propagates a parameter covariance matrix
+  through the Jacobian to obtain the output signal covariance:
+  ``Sigma_y = J @ Sigma_theta @ J^T``.
+* :func:`cramer_rao_lower_bound` -- computes the Cramer-Rao lower bound
+  on parameter variance from the Fisher information matrix.
+"""
 
 import jax
 import jax.numpy as jnp

@@ -1,3 +1,19 @@
+"""Bloch equation simulator and pulse-sequence solvers.
+
+Provides Diffrax-based solvers for the Bloch equations governing nuclear
+magnetic resonance spin dynamics.  These solvers underpin the pulse-sequence
+simulation layer that converts diffusion trajectories into MR signals.
+
+Key classes:
+
+* :class:`BlochSimulator` -- ODE integrator for the full Bloch equation
+  dM/dt = M x (gamma B) - R(M - M0), supporting arbitrary time-dependent
+  gradient waveforms and T1/T2 relaxation.
+
+The simulator operates in SI units (Tesla, metres, seconds) and uses the
+proton gyromagnetic ratio from :mod:`dmipy_jax.constants`.
+"""
+
 import jax
 import jax.numpy as jnp
 import diffrax

@@ -1,3 +1,23 @@
+"""Physics-Informed Neural Network (PINN) solver for the Bloch-Torrey PDE.
+
+Trains a SIREN network to satisfy the Bloch-Torrey equation as a soft
+constraint, producing a mesh-free solution for the magnetisation field
+inside arbitrary geometries.  This enables differentiable forward simulation
+without explicit FEM mesh construction.
+
+Key components:
+
+* PINN training loop that minimises the PDE residual, boundary conditions,
+  and initial conditions simultaneously.
+* Integration with :class:`~dmipy_jax.core.networks.SIREN` as the neural
+  field representation.
+* Spherical Fibonacci quadrature (from
+  :mod:`dmipy_jax.core.integration_grids`) for boundary-condition sampling.
+
+See Also:
+    :mod:`dmipy_jax.simulation.mesh_sim` -- FEM-based alternative that
+    requires an explicit mesh but is exact at convergence.
+"""
 
 import jax
 import jax.numpy as jnp

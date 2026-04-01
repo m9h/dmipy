@@ -1,3 +1,24 @@
+"""Polynomial Chaos Expansion (PCE) surrogate models.
+
+Provides orthogonal polynomial bases and PCE construction for building
+cheap-to-evaluate surrogate models of expensive forward simulations.  PCE
+approximates a function as a weighted sum of orthogonal polynomials,
+enabling rapid uncertainty propagation via spectral methods.
+
+Key classes:
+
+* :class:`Polynomial` -- abstract base class for polynomial families.
+* :class:`LegendrePolynomial` -- Legendre polynomials on [-1, 1] for
+  uniform input distributions, with Gauss-Legendre quadrature.
+* :class:`HermitePolynomial` -- probabilist's Hermite polynomials for
+  Gaussian input distributions, with Gauss-Hermite quadrature.
+* :class:`PolynomialChaosExpansion` -- ``eqx.Module`` that stores PCE
+  coefficients and evaluates the surrogate at new input points.
+
+These surrogates are used by the uncertainty propagation framework in
+:mod:`dmipy_jax.core.uncertainty_model` to efficiently compute output
+variance from input parameter distributions.
+"""
 
 import abc
 from typing import Sequence, Tuple, Union, Optional

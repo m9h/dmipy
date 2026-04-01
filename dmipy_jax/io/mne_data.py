@@ -1,3 +1,19 @@
+"""MNE-Python sample dataset loader for structural MRI.
+
+Loads the T1-weighted volume from the MNE-Python sample dataset, which is
+commonly used for EEG/MEG source localisation but also provides a convenient
+structural reference for testing registration and head-model pipelines.
+
+Key function:
+
+* :func:`load_mne_sample_data` -- locates the MNE sample dataset (default
+  ``~/mne_data/MNE-sample-data``), loads the FreeSurfer T1.mgz volume via
+  nibabel, and returns it as a JAX array with its affine matrix.
+
+The dataset must be pre-installed via ``mne.datasets.sample.data_path()``
+or manually downloaded.  Supports ``.mgz``, ``.nii``, and ``.nii.gz``
+formats.
+"""
 
 import os
 from pathlib import Path

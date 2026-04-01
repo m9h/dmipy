@@ -1,3 +1,22 @@
+"""Neural network architectures for physics-informed and surrogate models.
+
+Provides specialised ``eqx.Module`` network architectures used throughout
+the codebase for PINN solvers, neural surrogates, and signal embedding.
+
+Key classes:
+
+* :class:`SineLayer` -- single sinusoidal activation layer with the
+  Sitzmann et al. (2020) initialisation scheme.
+* :class:`SIREN` -- Sinusoidal Representation Network built from stacked
+  ``SineLayer`` modules.  Well-suited for representing smooth physical
+  fields (e.g. Bloch-Torrey solutions, signal embeddings) due to its
+  spectral bias toward low-frequency components.
+
+These networks are used as backbones in the PINN solver
+(:mod:`dmipy_jax.core.pinns`) and the score-based posterior estimator
+(:mod:`dmipy_jax.inference.score_posterior`).
+"""
+
 import jax
 import jax.numpy as jnp
 import jax.random as jr

@@ -1,3 +1,16 @@
+"""Allen Mouse Brain Common Coordinate Framework (CCFv3) loader.
+
+Provides :class:`AllenCCFLoader` for downloading and loading the Allen
+Institute's CCFv3 atlas volumes, including:
+
+* Average template (50 um or 25 um isotropic).
+* Annotation volume (voxelwise region labels).
+
+These volumes are used for registering diffusion data to the Allen atlas
+coordinate space, enabling region-of-interest analysis and connectome
+mapping in preclinical (rodent) diffusion MRI studies.
+"""
+
 import os
 import logging
 import urllib.request

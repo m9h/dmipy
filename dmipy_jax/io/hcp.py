@@ -1,6 +1,21 @@
-"""
-HCP Data Loader using Boto3 (S3).
-Requires AWS credentials with access to the hcp-openaccess bucket.
+"""Human Connectome Project (HCP) data loader via Amazon S3.
+
+Downloads and loads structural (T1w) and diffusion MRI data from the
+``hcp-openaccess`` S3 bucket for a given HCP subject.  Requires valid AWS
+credentials with access to the HCP Open Access dataset.
+
+Key functions:
+
+* :func:`download_hcp_subject` -- fetches T1w, DWI, bvals, and bvecs
+  for a single subject to a local directory.
+* :func:`load_hcp_subject` -- downloads (if needed) and returns the DWI
+  data as a JAX array together with a
+  :class:`~dmipy_jax.core.acquisition.AcquisitionScheme`.
+
+HCP b-values are stored in s/mm^2 and are converted to SI (s/m^2) on
+load.  Default pulse timing estimates (delta=10 ms, Delta=30 ms) are
+applied since the HCP PGSE parameters are not recorded in the standard
+gradient tables.
 """
 
 import os

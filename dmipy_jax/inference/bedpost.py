@@ -1,3 +1,26 @@
+"""BedpostX-style Bayesian Ball-and-Stick model with ARD priors.
+
+Implements a JAX + BlackJAX version of the probabilistic fibre estimation
+from FSL's BedpostX (Behrens et al., 2007).  Fits a Ball + 2-Stick model
+to single-voxel diffusion data using NUTS MCMC, with Automatic Relevance
+Determination (ARD) half-normal priors on stick volume fractions to
+automatically suppress unnecessary fibre compartments.
+
+Key function:
+
+* :func:`fit_probabilistic_fiber` -- runs the full MCMC pipeline: sets up
+  the Ball + 2-Stick forward model, defines log-prior (ARD + uniform-on-
+  sphere for orientations), computes Rician log-likelihood, runs BlackJAX
+  NUTS with window adaptation, and returns posterior samples for all
+  parameters (S0, diffusivity, fractions, orientations).
+
+The model uses normalised parameter space internally (S0_norm, d_scaled)
+with known physical scales to improve NUTS sampling efficiency.
+
+See Also:
+    :mod:`dmipy_jax.inference.mcmc` -- generic BlackJAX NUTS infrastructure
+    and Rician log-likelihood used by this module.
+"""
 
 import jax
 import jax.numpy as jnp

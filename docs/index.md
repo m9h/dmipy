@@ -14,14 +14,20 @@
 :caption: User Guide
 
 tutorials/first_steps
+tutorials/model_composition
 tutorials/complex_synthetic_data
+tutorials/sbi_dti
+tutorials/training_to_deployment
+tutorials/sbi_noddi
+tutorials/normalizing_flows
+tutorials/uncertainty_quantification
 ```
 
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 3
 :caption: API Reference
 
-api/modules
+reference/dmipy_jax
 ```
 
 ## Indices and tables

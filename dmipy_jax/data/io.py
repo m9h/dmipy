@@ -1,3 +1,20 @@
+"""Low-level NIfTI and FSL gradient-table I/O utilities.
+
+Provides thin wrappers around ``nibabel`` for reading NIfTI images and
+FSL-format bval/bvec files into JAX arrays, and for writing parameter
+maps back to NIfTI.
+
+Key functions:
+
+* :func:`load_nifti` -- read a ``.nii`` / ``.nii.gz`` into a
+  ``jnp.ndarray``.
+* :func:`load_bvals_bvecs` -- read FSL bval + bvec text files and return
+  a :class:`~dmipy_jax.acquisition.JaxAcquisition` (b-values converted
+  to SI s/m^2).
+* :func:`save_nifti` -- write a NumPy/JAX array to NIfTI with a given
+  affine.
+"""
+
 import jax.numpy as jnp
 import nibabel as nib
 import numpy as np

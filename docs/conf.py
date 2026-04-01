@@ -15,10 +15,103 @@ extensions = [
     'sphinx.ext.napoleon',  # Support for Google-style docstrings
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
+    'sphinx.ext.intersphinx',
+    'sphinx_autodoc_typehints',
     'myst_parser',          # Markdown support
     'sphinx_copybutton',
     'sphinxcontrib.bibtex',
 ]
+
+# -- Mock imports for ReadTheDocs ------------------------------------------------
+# These packages contain compiled C/CUDA extensions or heavy native dependencies
+# that are not available in the ReadTheDocs build environment. Mocking them
+# allows autodoc to introspect the Python source without actually importing them.
+autodoc_mock_imports = [
+    # JAX ecosystem
+    "jax",
+    "jaxlib",
+    "equinox",
+    "diffrax",
+    "optax",
+    "distrax",
+    "lineax",
+    "optimistix",
+    "jaxtyping",
+    "jaxopt",
+    "jax_md",
+    "blackjax",
+    "flowjax",
+    "numpyro",
+    "chex",
+    "scico",
+    "e3nn_jax",
+    "ttax",
+    "gpjax",
+    "vbjax",
+    # Deep learning
+    "torch",
+    "torchvision",
+    "timm",
+    # Numerical / scientific
+    "numpy",
+    "scipy",
+    "sklearn",
+    "pandas",
+    "h5py",
+    "sympy",
+    "cvxpy",
+    "xarray",
+    # Neuroimaging / dMRI
+    "nibabel",
+    "nilearn",
+    "dipy",
+    "dmipy",
+    "pypulseq",
+    "healpy",
+    "simpleitk",
+    # Mesh / geometry
+    "meshio",
+    "trimesh",
+    # Image processing
+    "cv2",
+    "skimage",
+    # Plotting
+    "matplotlib",
+    "corner",
+    "seaborn",
+    # Data access / cloud
+    "boto3",
+    "botocore",
+    "datalad",
+    # Misc
+    "tqdm",
+    "requests",
+    "annotated_types",
+    "beartype",
+    "tabulate",
+    "ipython",
+    "IPython",
+    "uguide",
+]
+
+# -- Intersphinx configuration -----------------------------------------------
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'jax': ('https://jax.readthedocs.io/en/latest/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+}
+
+# -- Autodoc configuration ---------------------------------------------------
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
+autodoc_member_order = 'bysource'
+autodoc_typehints = 'description'
+
+# -- autodoc-typehints configuration -----------------------------------------
+always_use_bars_union = True
 
 bibtex_bibfiles = ['references.bib']
 

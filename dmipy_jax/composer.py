@@ -1,3 +1,16 @@
+"""Functional model composition for multi-compartment dMRI signals.
+
+Provides :func:`compose_models`, which takes a list of individual signal
+model instances (e.g. ``[C1Stick(), G1Ball()]``) and returns a single
+differentiable function that computes the volume-fraction-weighted sum of
+compartment signals.  The composite function handles parameter packing /
+unpacking automatically based on each model's ``parameter_names`` and
+``parameter_cardinality`` attributes.
+
+This module is the functional counterpart to the OOP wrapper in
+:class:`~dmipy_jax.core.modeling_framework.JaxMultiCompartmentModel`.
+"""
+
 import jax.numpy as jnp
 
 def compose_models(models):

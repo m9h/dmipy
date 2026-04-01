@@ -1,3 +1,32 @@
+"""FEM matrix-formalism simulator for restricted diffusion on triangular meshes.
+
+Constructs finite element stiffness and mass matrices from a triangular surface
+mesh, then simulates the PGSE diffusion signal via a spectral reduced-order
+model (ROM).  This is the primary differentiable FEM backend in the sbi4dwi
+simulation stack.
+
+Key classes and functions:
+
+* :class:`Mesh` -- immutable ``eqx.Module`` container for vertices and faces.
+* :func:`compute_triangle_areas` -- vectorised triangle area computation.
+* :func:`compute_cotangents` -- cotangent weights for the FEM stiffness matrix.
+* :class:`MatrixFormalismSimulator` -- spectral ROM simulator that computes
+  the diffusion signal for arbitrary PGSE gradient parameters via three
+  matrix exponentials (pulse -- gap -- pulse).
+* :func:`construct_fem_matrices_sparse` -- BCOO sparse assembly for large
+  meshes (>2K vertices).
+
+Typical usage::
+
+    mesh = Mesh(vertices, faces)
+    sim = MatrixFormalismSimulator.from_mesh(mesh, n_modes=50)
+    signal = sim(G_amp=0.04, delta=0.01, Delta=0.03,
+                 gradient_direction=jnp.array([1., 0., 0.]))
+
+All operations are compatible with ``jax.jit``, ``jax.vmap``, and
+``jax.grad``, enabling gradient-based optimisation of geometry parameters
+(e.g. radius, vertex positions) through the simulated signal.
+"""
 
 import jax
 import jax.numpy as jnp

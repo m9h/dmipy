@@ -1,3 +1,21 @@
+"""MICA-MICs multi-shell diffusion MRI dataset loader.
+
+Provides :class:`MicaMICsLoader` for reading the
+`MICA-MICs <https://osf.io/j532r/>`_ dataset, a multi-contrast,
+multi-shell dMRI dataset with comprehensive microstructure-relevant
+acquisitions (b = 300, 700, 2000 s/mm^2 across multiple gradient
+directions).
+
+The loader discovers all DWI NIfTI files for a given subject/session,
+reads their paired bval/bvec files, handles the 3xN vs Nx3 bvec
+convention, and concatenates everything into a single set of JAX arrays
+ready for model fitting or SBI training.
+
+Typical usage::
+
+    loader = MicaMICsLoader("/path/to/mica", subject="sub-HC001")
+    data, bvals, bvecs = loader.load_data()
+"""
 
 import os
 import glob

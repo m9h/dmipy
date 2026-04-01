@@ -1,3 +1,14 @@
+"""FRDR C57Bl/6 longitudinal mouse brain MRI dataset loader.
+
+Provides :class:`FRDRMouseLoader` for accessing the CAMRI/CFMM
+longitudinal mouse dataset from the Federated Research Data Repository
+(FRDR).  The dataset contains multi-session (longitudinal) structural
+and diffusion MRI of C57Bl/6 mice in BIDS-like format.
+
+Useful for preclinical microstructure validation studies where
+ground-truth histology or known anatomy can constrain model evaluation.
+"""
+
 import os
 import glob
 import logging

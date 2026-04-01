@@ -1,7 +1,25 @@
-"""
-Data loading utilities for dmipy-jax.
-Provides access to standard validation datasets (Stanford, Sherbrooke) and
-specific loaders for the BigMac dataset.
+"""Convenience loaders for standard diffusion MRI validation datasets.
+
+Wraps DIPY's built-in dataset fetchers to provide JAX-ready data with
+acquisition schemes in SI units.  Also provides a loader for the BigMac
+multi-contrast dataset.
+
+Available datasets:
+
+* :func:`load_stanford_hardi` -- Stanford HARDI single-shell (b=2000,
+  160 directions).  Classic DTI/CSD validation dataset.
+* :func:`load_sherbrooke_3shell` -- Sherbrooke 3-shell (b=1000/2000/3500,
+  192 directions).  Multi-shell microstructure validation.
+* :func:`load_bigmac_mri` -- BigMac multi-contrast dataset with DWI, T1w,
+  T2w, and brain mask.
+
+All functions return JAX arrays and create
+:class:`~dmipy_jax.acquisition.JaxAcquisition` or legacy acquisition scheme
+objects with b-values converted to SI (s/m^2).  Dummy pulse timings
+(delta, Delta) are applied for datasets where they are unavailable.
+
+Dependencies:
+    Requires ``dipy`` for dataset fetching and gradient table construction.
 """
 
 import os

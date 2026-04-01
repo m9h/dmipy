@@ -1,3 +1,28 @@
+"""Diffusion MRI acquisition scheme for JAX-based forward models.
+
+Provides :class:`JaxAcquisition`, the central data structure that describes
+a diffusion-weighted acquisition: b-values, gradient directions, and pulse
+timing parameters (delta, Delta, TE).  All signal model modules and the SBI
+pipeline consume this class.
+
+Key conventions:
+
+* **b-values are stored in SI units (s/m^2)**.  DIPY and FSL use s/mm^2 --
+  convert with ``bvals_si = bvals_fsl * 1e6``.
+* Gradient directions are shape ``(N, 3)`` unit vectors.
+* Pulse timing (delta, Delta) is in seconds.
+
+Factory functions:
+
+* :func:`acquisition_scheme_from_bvalues` -- construct from b-value and
+  b-vector arrays with explicit timing.
+* :func:`acquisition_scheme_from_qvalues` -- construct from q-values.
+
+See Also:
+    :mod:`dmipy_jax.core.acquisition` -- simplified acquisition scheme
+    used by the legacy modelling framework.
+"""
+
 import jax
 import jax.numpy as jnp
 from dataclasses import dataclass, replace as _dc_replace

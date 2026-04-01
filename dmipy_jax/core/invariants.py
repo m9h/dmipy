@@ -1,3 +1,18 @@
+"""Coordinate transforms and rotational invariant computation.
+
+Provides utility functions for converting between Cartesian and spherical
+coordinate systems, and for computing rotationally invariant features from
+diffusion tensor quantities.  These invariants are used as inputs to
+machine learning models that must be agnostic to the choice of gradient
+coordinate frame.
+
+Key functions:
+
+* :func:`cart2sphere` -- Cartesian (x, y, z) to spherical (r, theta, phi).
+* :func:`sphere2cart` -- spherical to Cartesian conversion.
+* Rotational invariant computation from tensor eigenvalues and spherical
+  harmonic coefficients.
+"""
 
 import jax
 import jax.numpy as jnp

@@ -1,3 +1,25 @@
+"""Amortized inference network for the Zeppelin diffusion model.
+
+Provides a self-supervised approach to parameter estimation: a neural network
+(MLP) directly predicts Zeppelin model parameters from the observed diffusion
+signal, trained using a physics-informed reconstruction loss rather than
+labelled ground-truth parameters.
+
+Key components:
+
+* :class:`ZeppelinNetwork` -- ``eqx.Module`` MLP that maps a signal vector
+  ``Float[Array, "N"]`` to a dictionary of Zeppelin parameters
+  (``lambda_par``, ``lambda_perp``, ``fraction``, ``mu``).  Positivity
+  constraints are enforced via ``softplus``; fractions via ``sigmoid``.
+* :func:`self_supervised_loss` -- MSE reconstruction loss between the
+  observed signal and the signal re-simulated from the predicted parameters
+  through the analytical Zeppelin forward model.
+
+This module implements the amortized (feed-forward) approach to
+microstructure estimation, which is complementary to the SBI posterior
+estimation in :mod:`dmipy_jax.inference.mdn` and
+:mod:`dmipy_jax.inference.flows`.
+"""
 
 import jax
 import jax.numpy as jnp

@@ -63,11 +63,27 @@ def run_tus_pipeline():
     print(f"JAX default backend: {jax.default_backend()}")
     print()
 
+    # Direct file imports to avoid dmipy_jax.__init__ heavy dependency chain
+    import importlib.util, sys
+
+    def _load_module(name, path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    SBI = "/opt/sbi4dwi/dmipy_jax"
+    sci_loader = _load_module("sci_head_loader", f"{SBI}/io/sci_head_loader.py")
+    acoustic = _load_module("acoustic", f"{SBI}/biophysics/acoustic.py")
+    rasterizer = _load_module("mesh_rasterizer", f"{SBI}/biophysics/mesh_rasterizer.py")
+    jwa = _load_module("jwave_adapter", f"{SBI}/biophysics/jwave_adapter.py")
+    optimizer = _load_module("tus_optimizer_mod", f"{SBI}/biophysics/tus_optimizer.py")
+
     # ---------------------------------------------------------------
     # Step 1: Load SCI Head Model
     # ---------------------------------------------------------------
     print("=== Step 1: Load SCI Head Model ===")
-    from dmipy_jax.io.sci_head_loader import load_sci_head_mesh
 
     # Find the mesh file in the extracted zip
     import glob
@@ -101,7 +117,7 @@ def run_tus_pipeline():
     # Step 2: Rasterize to Regular Grid
     # ---------------------------------------------------------------
     print("=== Step 2: Rasterize Mesh (2mm grid) ===")
-    from dmipy_jax.biophysics.mesh_rasterizer import rasterize_mesh
+    rasterize_mesh = rasterizer.rasterize_mesh
 
     bounds_min = points.min(axis=0)
     bounds_max = points.max(axis=0)
@@ -124,7 +140,7 @@ def run_tus_pipeline():
     # Step 3: Map Acoustic Properties
     # ---------------------------------------------------------------
     print("=== Step 3: Map Acoustic Properties ===")
-    from dmipy_jax.biophysics.acoustic import map_labels_to_properties
+    map_labels_to_properties = acoustic.map_labels_to_properties
 
     props = map_labels_to_properties(jnp.array(labels))
     for p in ["sound_speed", "density", "attenuation"]:
@@ -136,7 +152,7 @@ def run_tus_pipeline():
     # Step 4: 2D Simulation (axial slice)
     # ---------------------------------------------------------------
     print("=== Step 4: j-Wave 2D Simulation ===")
-    from dmipy_jax.biophysics.jwave_adapter import run_simulation_2d
+    run_simulation_2d = jwa.run_simulation_2d
 
     mid_z = grid_shape[2] // 2
     c_slice = np.array(props["sound_speed"][:, :, mid_z])
@@ -179,8 +195,8 @@ def run_tus_pipeline():
     # Step 5: Delay Optimization
     # ---------------------------------------------------------------
     print("=== Step 5: Delay Optimization (10 iters) ===")
-    from dmipy_jax.biophysics.tus_optimizer import optimize_delays
-    from dmipy_jax.biophysics.jwave_adapter import create_domain
+    optimize_delays = optimizer.optimize_delays
+    create_domain = jwa.create_domain
 
     domain = create_domain(c_slice.shape, grid_spacing_m)
     if len(scalp_coords) > 1:

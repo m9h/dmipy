@@ -16,8 +16,13 @@ import modal
 app = modal.App("tus-sci-head-pipeline")
 
 # --- Container Image ---
+# Downloads SCI head model (~3.5GB) during build so it's cached across runs.
+# CC-BY 4.0 license: Warner, Tate, Burton, Johnson (2019). bioRxiv 10.1101/552190
+SCI_MESH_URL = "https://sci.utah.edu/~datasets/SCI_headmodel/Mesh.zip"
+
 image = (
     modal.Image.debian_slim(python_version="3.11")
+    .apt_install("unzip", "wget")
     .pip_install(
         "jax[cuda12]",
         "jaxlib",
@@ -29,22 +34,19 @@ image = (
         "xarray",
         "h5py",
     )
+    .pip_install("git+https://github.com/m9h/sbi4dwi.git@master")
     .run_commands(
-        "pip install git+https://github.com/m9h/sbi4dwi.git@master",
+        f"mkdir -p /sci_head && wget -q -O /sci_head/Mesh.zip {SCI_MESH_URL}",
+        "cd /sci_head && unzip -q Mesh.zip",
+        "ls -la /sci_head/",
     )
 )
-
-# --- Volume for SCI head data ---
-# Create once: modal volume create sci-head-data
-# Upload once: modal volume put sci-head-data /local/path/to/HeadMesh.mat /HeadMesh.mat
-vol = modal.Volume.from_name("sci-head-data", create_if_missing=True)
 
 
 @app.function(
     image=image,
     gpu="A100",
     timeout=1800,  # 30 min max
-    volumes={"/data": vol},
 )
 def run_tus_pipeline():
     import time
@@ -63,8 +65,25 @@ def run_tus_pipeline():
     print("=== Step 1: Load SCI Head Model ===")
     from dmipy_jax.io.sci_head_loader import load_sci_head_mesh
 
+    # Find the mesh file in the extracted zip
+    import glob
+    mesh_candidates = (
+        glob.glob("/sci_head/**/HeadMesh.mat", recursive=True)
+        + glob.glob("/sci_head/**/*.mat", recursive=True)
+    )
+    print(f"  Mesh files found: {mesh_candidates}")
+    if not mesh_candidates:
+        # List what's in /sci_head for debugging
+        import os
+        for root, dirs, files in os.walk("/sci_head"):
+            for f in files[:20]:
+                print(f"    {os.path.join(root, f)}")
+        raise FileNotFoundError("No .mat mesh file found in /sci_head/")
+    mesh_path = mesh_candidates[0]
+    print(f"  Using: {mesh_path}")
+
     t0 = time.time()
-    mesh = load_sci_head_mesh("/data/HeadMesh.mat")
+    mesh = load_sci_head_mesh(mesh_path)
     points = np.array(mesh["points"])
     cells = np.array(mesh["cells"]["tetra"])
     tissues = np.array(mesh["cell_data"]["tissue"])

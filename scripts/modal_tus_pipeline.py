@@ -34,10 +34,15 @@ image = (
         "xarray",
         "h5py",
     )
-    .pip_install("git+https://github.com/m9h/sbi4dwi.git@master")
+    # Only clone the specific modules we need (not the full sbi4dwi with 50+ deps)
     .run_commands(
-        f"mkdir -p /sci_head && wget -q --show-progress -O /sci_head/Mesh.zip {SCI_MESH_URL}",
-        "cd /sci_head && unzip -q Mesh.zip && ls -la /sci_head/",
+        "git clone --depth 1 https://github.com/m9h/sbi4dwi.git /opt/sbi4dwi",
+        # Add to Python path via .pth file
+        "echo '/opt/sbi4dwi' > /usr/local/lib/python3.12/site-packages/sbi4dwi.pth",
+    )
+    .run_commands(
+        f"mkdir -p /sci_head && wget -q -O /sci_head/Mesh.zip {SCI_MESH_URL}",
+        "cd /sci_head && unzip -q Mesh.zip && ls -lR /sci_head/ | head -30",
     )
 )
 

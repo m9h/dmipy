@@ -230,12 +230,14 @@ def run_tus_pipeline():
     print("=" * 60)
     print("PIPELINE COMPLETE")
     print("=" * 60)
-    print(f"  Head: {points.shape[0]:,} verts, {cells.shape[0]:,} tets")
-    print(f"  Grid: {grid_shape} @ {spacing}mm")
-    print(f"  Rasterize: {raster_time:.1f}s")
-    print(f"  Water sim: {t_water:.1f}s")
-    print(f"  Skull sim: {t_skull:.1f}s")
-    print(f"  Optimization: {t_opt:.1f}s")
+    print(f"  Volume: {grid_shape} @ {spacing}mm")
+    print(f"  Tissue types: {len(unique_labels)}")
+    print(f"  Water sim: {t_water:.1f}s, p_target={p_water:.6f}")
+    print(f"  Skull sim: {t_skull:.1f}s, p_target={p_skull:.6f}")
+    if p_water > 0:
+        print(f"  Skull attenuation: {100*(1-p_skull/p_water):.1f}%")
+    print(f"  Optimization: {t_opt:.1f}s ({t_opt/10:.1f}s/iter)")
+    print(f"  Focal pressure improvement: {abs(history[-1]/history[0]):.1f}x")
 
     return {
         "grid_shape": grid_shape,

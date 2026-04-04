@@ -18,7 +18,8 @@ app = modal.App("tus-sci-head-pipeline")
 # --- Container Image ---
 # Downloads SCI head model (~3.5GB) during build so it's cached across runs.
 # CC-BY 4.0 license: Warner, Tate, Burton, Johnson (2019). bioRxiv 10.1101/552190
-SCI_MESH_URL = "https://sci.utah.edu/~datasets/SCI_headmodel/Mesh.zip"
+# Download the pre-computed segmentation volume (much smaller than the 3.5GB mesh)
+SCI_SEG_URL = "https://sci.utah.edu/~datasets/SCI_headmodel/Segmentation.zip"
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
@@ -33,16 +34,16 @@ image = (
         "numpy<2",
         "xarray",
         "h5py",
+        "nibabel",
+        "pynrrd",
     )
-    # Only clone the specific modules we need (not the full sbi4dwi with 50+ deps)
     .run_commands(
         "git clone --depth 1 https://github.com/m9h/sbi4dwi.git /opt/sbi4dwi",
-        # Add to Python path via .pth file
         "echo '/opt/sbi4dwi' > /usr/local/lib/python3.12/site-packages/sbi4dwi.pth",
     )
     .run_commands(
-        f"mkdir -p /sci_head && wget -q -O /sci_head/Mesh.zip {SCI_MESH_URL}",
-        "cd /sci_head && unzip -q Mesh.zip && ls -lR /sci_head/ | head -30",
+        f"mkdir -p /sci_head && wget -q -O /sci_head/Segmentation.zip {SCI_SEG_URL}",
+        "cd /sci_head && unzip -q Segmentation.zip && find /sci_head -type f | head -20",
     )
 )
 
@@ -74,66 +75,65 @@ def run_tus_pipeline():
         return mod
 
     SBI = "/opt/sbi4dwi/dmipy_jax"
-    sci_loader = _load_module("sci_head_loader", f"{SBI}/io/sci_head_loader.py")
     acoustic = _load_module("acoustic", f"{SBI}/biophysics/acoustic.py")
-    rasterizer = _load_module("mesh_rasterizer", f"{SBI}/biophysics/mesh_rasterizer.py")
     jwa = _load_module("jwave_adapter", f"{SBI}/biophysics/jwave_adapter.py")
     optimizer = _load_module("tus_optimizer_mod", f"{SBI}/biophysics/tus_optimizer.py")
 
     # ---------------------------------------------------------------
-    # Step 1: Load SCI Head Model
+    # Step 1: Load SCI Segmentation Volume (pre-rasterized)
     # ---------------------------------------------------------------
-    print("=== Step 1: Load SCI Head Model ===")
+    print("=== Step 1: Load SCI Segmentation Volume ===")
+    import glob, os, nibabel
 
-    # Find the mesh file in the extracted zip
-    import glob
-    mesh_candidates = (
-        glob.glob("/sci_head/**/HeadMesh.mat", recursive=True)
-        + glob.glob("/sci_head/**/*.mat", recursive=True)
-    )
-    print(f"  Mesh files found: {mesh_candidates}")
-    if not mesh_candidates:
-        # List what's in /sci_head for debugging
-        import os
-        for root, dirs, files in os.walk("/sci_head"):
-            for f in files[:20]:
-                print(f"    {os.path.join(root, f)}")
-        raise FileNotFoundError("No .mat mesh file found in /sci_head/")
-    mesh_path = mesh_candidates[0]
-    print(f"  Using: {mesh_path}")
+    # Find segmentation files
+    seg_files = glob.glob("/sci_head/**/*.nrrd", recursive=True) + \
+                glob.glob("/sci_head/**/*.nii*", recursive=True) + \
+                glob.glob("/sci_head/**/*.mat", recursive=True)
+    print(f"  Segmentation files found:")
+    for f in seg_files[:10]:
+        print(f"    {f} ({os.path.getsize(f)/1e6:.1f} MB)")
 
-    t0 = time.time()
-    mesh = sci_loader.load_sci_head_mesh(mesh_path)
-    points = np.array(mesh["points"])
-    cells = np.array(mesh["cells"]["tetra"])
-    tissues = np.array(mesh["cell_data"]["tissue"])
-    print(f"  Vertices: {points.shape[0]:,}")
-    print(f"  Tetrahedra: {cells.shape[0]:,}")
-    print(f"  Tissue labels: {np.unique(tissues)}")
-    print(f"  Loaded in {time.time()-t0:.1f}s")
-    print()
+    # Try NRRD first (SCI uses NRRD format)
+    nrrd_files = [f for f in seg_files if f.endswith('.nrrd')]
+    if nrrd_files:
+        # Use nibabel or pynrrd to load
+        try:
+            import nrrd
+            data, header = nrrd.read(nrrd_files[0])
+            labels = np.array(data, dtype=np.int32)
+            spacing = float(header.get('space directions', [[1,0,0],[0,1,0],[0,0,1]])[0][0])
+            print(f"  Loaded NRRD: {nrrd_files[0]}")
+        except ImportError:
+            # Fallback: try nibabel
+            img = nibabel.load(nrrd_files[0])
+            labels = np.array(img.get_fdata(), dtype=np.int32)
+            spacing = float(img.header.get_zooms()[0])
+            print(f"  Loaded via nibabel: {nrrd_files[0]}")
+    elif seg_files:
+        # Try .mat files
+        import scipy.io
+        mat = scipy.io.loadmat(seg_files[0])
+        print(f"  Mat keys: {[k for k in mat.keys() if not k.startswith('__')]}")
+        # Find the segmentation array
+        for key in mat:
+            if not key.startswith('__') and hasattr(mat[key], 'shape'):
+                if len(mat[key].shape) == 3 and mat[key].shape[0] > 10:
+                    labels = np.array(mat[key], dtype=np.int32)
+                    print(f"  Using key '{key}': shape {labels.shape}")
+                    break
+        spacing = 1.0  # default
+    else:
+        raise FileNotFoundError("No segmentation files found in /sci_head/")
 
-    # ---------------------------------------------------------------
-    # Step 2: Rasterize to Regular Grid
-    # ---------------------------------------------------------------
-    print("=== Step 2: Rasterize Mesh (2mm grid) ===")
-    rasterize_mesh = rasterizer.rasterize_mesh
-
-    bounds_min = points.min(axis=0)
-    bounds_max = points.max(axis=0)
-    spacing = 4.0  # mm (coarse for speed; reduce to 2mm or 1mm for production)
-    grid_shape = tuple(((bounds_max - bounds_min) / spacing).astype(int) + 1)
-    print(f"  Grid shape: {grid_shape}")
-
-    t0 = time.time()
-    labels = rasterize_mesh(points, cells, tissues, grid_shape, spacing, bounds_min)
-    raster_time = time.time() - t0
+    print(f"  Volume shape: {labels.shape}")
+    print(f"  Spacing: {spacing} mm")
     unique_labels = np.unique(labels)
-    print(f"  Labels: {unique_labels} ({len(unique_labels)} types)")
+    print(f"  Tissue labels: {unique_labels} ({len(unique_labels)} types)")
     for u in unique_labels:
         count = np.sum(labels == u)
         print(f"    Label {u}: {count:,} voxels ({100*count/labels.size:.1f}%)")
-    print(f"  Rasterized in {raster_time:.1f}s")
+    raster_time = 0.0  # Pre-computed
+    grid_shape = labels.shape
     print()
 
     # ---------------------------------------------------------------

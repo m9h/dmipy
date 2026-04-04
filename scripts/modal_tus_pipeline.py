@@ -22,13 +22,13 @@ SCI_MESH_URL = "https://sci.utah.edu/~datasets/SCI_headmodel/Mesh.zip"
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .apt_install("unzip", "wget")
+    .apt_install("unzip", "wget", "git")
     .pip_install(
-        "jax[cuda12]",
-        "jaxlib",
-        "jwave",
-        "optax",
-        "equinox",
+        "jax[cuda12]==0.4.38",
+        "jaxlib==0.4.38",
+        "jwave==0.2.1",
+        "optax==0.2.5",
+        "equinox==0.11.12",
         "scipy",
         "numpy<2",
         "xarray",
@@ -36,9 +36,8 @@ image = (
     )
     .pip_install("git+https://github.com/m9h/sbi4dwi.git@master")
     .run_commands(
-        f"mkdir -p /sci_head && wget -q -O /sci_head/Mesh.zip {SCI_MESH_URL}",
-        "cd /sci_head && unzip -q Mesh.zip",
-        "ls -la /sci_head/",
+        f"mkdir -p /sci_head && wget -q --show-progress -O /sci_head/Mesh.zip {SCI_MESH_URL}",
+        "cd /sci_head && unzip -q Mesh.zip && ls -la /sci_head/",
     )
 )
 

@@ -103,7 +103,7 @@ def run_tus_pipeline():
     print(f"  Using: {mesh_path}")
 
     t0 = time.time()
-    mesh = load_sci_head_mesh(mesh_path)
+    mesh = sci_loader.load_sci_head_mesh(mesh_path)
     points = np.array(mesh["points"])
     cells = np.array(mesh["cells"]["tetra"])
     tissues = np.array(mesh["cell_data"]["tissue"])

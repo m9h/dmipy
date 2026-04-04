@@ -21,7 +21,7 @@ app = modal.App("tus-sci-head-pipeline")
 SCI_MESH_URL = "https://sci.utah.edu/~datasets/SCI_headmodel/Mesh.zip"
 
 image = (
-    modal.Image.debian_slim(python_version="3.11")
+    modal.Image.debian_slim(python_version="3.12")
     .apt_install("unzip", "wget", "git")
     .pip_install(
         "jax[cuda12]==0.4.38",

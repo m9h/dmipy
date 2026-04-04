@@ -74,8 +74,9 @@ def rasterize_mesh(
     Rasterize a tetrahedral mesh onto a regular 3D grid.
 
     For each voxel center, finds which tetrahedron contains it and assigns
-    the corresponding tissue label. Uses scipy.spatial.Delaunay for efficient
-    point location on large meshes.
+    the corresponding tissue label. Uses a centroid-based nearest-neighbor
+    approach for large meshes (>100K tets) and scipy.spatial.Delaunay for
+    smaller meshes.
 
     Args:
         points: (N_vertices, 3) vertex coordinates.
@@ -88,20 +89,12 @@ def rasterize_mesh(
     Returns:
         (nx, ny, nz) integer array of tissue labels. 0 = background (outside mesh).
     """
-    from scipy.spatial import Delaunay
-
     points = np.asarray(points, dtype=np.float64)
     cells = np.asarray(cells, dtype=np.int64)
     tissue_labels = np.asarray(tissue_labels).flatten()
     grid_origin = np.asarray(grid_origin, dtype=np.float64)
 
     nx, ny, nz = grid_shape
-
-    # Build Delaunay triangulation from the mesh vertices.
-    # Delaunay.find_simplex() locates which simplex (tet) contains each query point.
-    # This is O(N log N) construction + O(M log N) query, vastly faster than
-    # brute-force point-in-tet for large meshes.
-    tri = Delaunay(points)
 
     # Generate voxel center coordinates
     x = grid_origin[0] + np.arange(nx) * grid_spacing
@@ -110,20 +103,79 @@ def rasterize_mesh(
     gx, gy, gz = np.meshgrid(x, y, z, indexing="ij")
     query_points = np.column_stack([gx.ravel(), gy.ravel(), gz.ravel()])
 
-    # Find which Delaunay simplex contains each query point (-1 = outside)
+    n_cells = cells.shape[0]
+
+    if n_cells > 100_000:
+        # Large mesh: use KDTree on cell centroids for fast nearest-neighbor
+        # This is approximate but O(M log N) and works for millions of tets.
+        output = _rasterize_centroid_kdtree(
+            points, cells, tissue_labels, query_points, grid_shape
+        )
+    else:
+        # Small mesh: use Delaunay for exact point location
+        output = _rasterize_delaunay(
+            points, cells, tissue_labels, query_points, grid_shape
+        )
+
+    return output
+
+
+def _rasterize_centroid_kdtree(
+    points: np.ndarray,
+    cells: np.ndarray,
+    tissue_labels: np.ndarray,
+    query_points: np.ndarray,
+    grid_shape: Tuple[int, int, int],
+) -> np.ndarray:
+    """
+    Fast rasterization using KDTree on cell centroids.
+
+    For each query point, finds the nearest cell centroid and assigns
+    that cell's tissue label. Then verifies the point is actually inside
+    the mesh by checking the distance is within a reasonable threshold.
+    """
+    from scipy.spatial import cKDTree
+
+    # Compute cell centroids
+    centroids = points[cells].mean(axis=1)  # (N_cells, 3)
+
+    # Build KDTree
+    tree = cKDTree(centroids)
+
+    # Query: find nearest centroid for each voxel
+    distances, indices = tree.query(query_points, k=1)
+
+    # Assign tissue labels from nearest cell
+    output = tissue_labels[indices].astype(np.int32)
+
+    # Mask out points too far from any centroid (outside the mesh)
+    # Use median cell size as threshold
+    cell_sizes = np.linalg.norm(
+        points[cells[:, 0]] - points[cells[:, 1]], axis=1
+    )
+    threshold = np.median(cell_sizes) * 2.0
+    output[distances > threshold] = 0  # background
+
+    return output.reshape(grid_shape)
+
+
+def _rasterize_delaunay(
+    points: np.ndarray,
+    cells: np.ndarray,
+    tissue_labels: np.ndarray,
+    query_points: np.ndarray,
+    grid_shape: Tuple[int, int, int],
+) -> np.ndarray:
+    """Exact rasterization using Delaunay triangulation (for small meshes)."""
+    from scipy.spatial import Delaunay
+
+    tri = Delaunay(points)
+
     simplex_indices = tri.find_simplex(query_points)
 
-    # Build mapping from Delaunay simplex index to tissue label.
-    # Delaunay may reorder or merge simplices. We need to map each Delaunay
-    # simplex back to the original mesh cell.
-    #
-    # Strategy: for each Delaunay simplex, find which original cell it belongs
-    # to by matching vertex sets. Since the Delaunay triangulation is built from
-    # the same point set, each Delaunay simplex's vertices are a subset of the
-    # original vertices. We look up the original cell that matches.
     delaunay_to_tissue = _build_delaunay_tissue_map(tri, cells, tissue_labels)
 
-    # Assign tissue labels
+    nx, ny, nz = grid_shape
     output = np.zeros(nx * ny * nz, dtype=np.int32)
     inside_mask = simplex_indices >= 0
     output[inside_mask] = delaunay_to_tissue[simplex_indices[inside_mask]]

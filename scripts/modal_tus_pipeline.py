@@ -50,7 +50,7 @@ image = (
 @app.function(
     image=image,
     gpu="A100",
-    timeout=1800,  # 30 min max
+    timeout=3600,  # 60 min max
 )
 def run_tus_pipeline():
     import time
@@ -121,7 +121,7 @@ def run_tus_pipeline():
 
     bounds_min = points.min(axis=0)
     bounds_max = points.max(axis=0)
-    spacing = 2.0  # mm
+    spacing = 4.0  # mm (coarse for speed; reduce to 2mm or 1mm for production)
     grid_shape = tuple(((bounds_max - bounds_min) / spacing).astype(int) + 1)
     print(f"  Grid shape: {grid_shape}")
 

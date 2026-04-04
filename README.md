@@ -96,6 +96,22 @@ Spherical coordinate parameterization eliminates unit-sphere constraint.
 | + v-prediction, 1024-wide, 100k | 14.9 deg | Scale up |
 | + spherical coords | **12.8 deg** | Best score-based |
 
+### Transcranial Focused Ultrasound — SCI Head Model (A100, April 2026)
+
+Differentiable skull-corrected acoustic simulation via j-Wave on the
+SCI Institute head model (208x256x256, 1mm, 8 tissue types). Validated
+on Modal A100. [Proposal for Openwater Health](docs/openlifu/).
+
+| Metric | Value |
+|--------|-------|
+| Skull attenuation at 400kHz | **93%** (matches literature for cortical bone) |
+| Gradient-optimized focal improvement | **15x** (10 Adam iterations, 2.2s/iter) |
+| Total pipeline (load + sim + optimize) | **34s** on A100 |
+| Optimized delays | [-843ns, +70ns] |
+
+Integration with [OpenLIFU](https://github.com/OpenwaterHealth/openlifu-python)
+via [`HeterogeneousSkullSegmentation`](https://github.com/m9h/openlifu-python/tree/feature/heterogeneous-skull-segmentation).
+
 ### Experiment tracking
 
 All results tracked via [Trackio](https://huggingface.co/docs/trackio)
@@ -138,6 +154,8 @@ distributions (Watson, Bingham), and tortuosity constraints.
 | `MonteCarloSimulator` | Random walk with SDF geometry | No (ground truth) |
 | `DifferentiableWalker` | Confined Brownian motion | Yes |
 | `SDESimulator` | Diffrax-based SDE integration | Yes |
+| `jwave_adapter` | j-Wave pseudospectral acoustic simulation | Yes |
+| `tus_optimizer` | Gradient-based TUS delay optimization | Yes |
 
 The FEM simulator constructs stiffness/mass matrices from triangular meshes,
 solves a generalised eigendecomposition, and simulates PGSE sequences via

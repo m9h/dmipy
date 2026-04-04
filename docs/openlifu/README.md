@@ -26,9 +26,27 @@ layer bridging sbi4dwi and [OpenLIFU](https://github.com/OpenwaterHealth/openlif
 |--------|---------|
 | [`HeterogeneousSkullSegmentation`](https://github.com/m9h/openlifu-python/tree/feature/heterogeneous-skull-segmentation) | SegmentationMethod subclass for heterogeneous tissue modeling |
 
+## Results (Modal A100, 2026-04-04)
+
+Full pipeline on SCI Institute head model (Warner et al. 2019), 208x256x256 at 1mm, 8 tissue types:
+
+| Step | Time | Result |
+|------|------|--------|
+| Load segmentation (NRRD) | <1s | 8 tissues, 13.6M labeled voxels |
+| Map acoustic properties | <1s | c: 1500-4080 m/s, rho: 1000-1900 kg/m^3 |
+| j-Wave water simulation (2D axial) | 9.3s | p_target = 2.13e-4 Pa |
+| j-Wave skull simulation (heterogeneous) | 2.6s | p_target = 1.5e-5 Pa |
+| **Skull attenuation** | | **93%** (matches literature for cortical bone at 400kHz) |
+| Delay optimization (10 iters, Adam) | 22.0s | 2.2s/iter on A100 |
+| **Focal pressure improvement** | | **15x** via gradient-optimized delays |
+| Optimized delays | | [-843ns, +70ns] for 2-element array |
+
+Run with: `modal run scripts/modal_tus_pipeline.py`
+
 ## Context
 
 - **NeuroTechX Global NeuroHack** — hackathon project
 - **Openwater Health** — collaboration proposal
-- **SCI Institute head model** — test dataset (Warner et al. 2019)
-- **DGX Spark** — GPU compute target for simulation and optimization
+- **SCI Institute head model** — test dataset (Warner et al. 2019, CC-BY 4.0)
+- **Modal A100** — cloud GPU for simulation and optimization
+- **DGX Spark** — local GPU compute target

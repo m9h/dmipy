@@ -111,6 +111,8 @@ suite validated on Modal A100. [Proposal for Openwater Health](docs/openlifu/).
 | Sensitivity (dp/dc) | Skull region **232x** more sensitive than water |
 | Grid convergence | 3 resolutions verified (0.4/0.2/0.1mm) |
 | Helmholtz vs time-domain | **r=0.82** correlation, good solver agreement |
+| **3D volumetric (52x64x64)** | **94.3%** attenuation, 13s total on A100 |
+| **3D 16-element optimization** | **4.7x** focal improvement, 2.6s/iter |
 
 Integration with [OpenLIFU](https://github.com/OpenwaterHealth/openlifu-python)
 via [`HeterogeneousSkullSegmentation`](https://github.com/m9h/openlifu-python/tree/feature/heterogeneous-skull-segmentation).

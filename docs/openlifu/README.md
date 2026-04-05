@@ -88,6 +88,22 @@ Pressure decreases with refinement (expected — finer grid resolves more diffra
 
 Skull region sensitivity is 232x higher than water — confirms that skull property uncertainty dominates focal accuracy.
 
+### 3D Volumetric Simulation (A100, 2026-04-05)
+
+Full 3D simulation through the SCI head model anatomy. Run with: `modal run scripts/modal_3d_validation.py`
+
+| Resolution | Grid | Sim Time (water+skull) | Attenuation | Focal Shift |
+|-----------|------|----------------------|-------------|-------------|
+| 4mm | 52x64x64 (213K vox) | 13.0s | **94.3%** | 0.0mm |
+| 2mm | 104x128x128 (1.7M vox) | 11.9s | -7.6%* | 0.0mm |
+
+*2mm attenuation anomaly due to target/source positioning in different tissue context at higher resolution — needs investigation.
+
+**3D 16-Element Delay Optimization (4mm grid):**
+- **4.7x** focal pressure improvement in 20 iterations (2.6s/iter)
+- Loss: -1.66e-5 to -7.79e-5
+- Delay pattern shows clear alternating phase structure (~0ns vs ~1200ns)
+
 ### Helmholtz (Frequency-Domain) vs Time-Domain
 
 | Solver | p_max | Correlation |

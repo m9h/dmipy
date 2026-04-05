@@ -348,7 +348,7 @@ def run_helmholtz_simulation(
     """
     from jwave.acoustics.time_harmonic import helmholtz_solver
     from jwave.geometry import Medium
-    from jaxdf.discretization import FourierSeries, OnGrid
+    from jaxdf.discretization import FourierSeries
     from jaxdf.geometry import Domain
 
     spacing_m = spacing_mm * 1e-3
@@ -363,10 +363,11 @@ def run_helmholtz_simulation(
     # Angular frequency
     omega = 2 * np.pi * freq
 
-    # Source: point source as OnGrid field
+    # Source: point source as FourierSeries (required by helmholtz_solver's
+    # internal gradient operator dispatch — OnGrid is not supported)
     src_data = jnp.zeros((grid_size, grid_size, 1))
     src_data = src_data.at[source_pos[0], source_pos[1], 0].set(1.0)
-    source = OnGrid(src_data, domain)
+    source = FourierSeries(src_data, domain)
 
     # Solve
     p_complex = helmholtz_solver(medium, omega, source, tol=1e-3, maxiter=500)

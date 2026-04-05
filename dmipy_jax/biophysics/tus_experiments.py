@@ -357,20 +357,22 @@ def run_helmholtz_simulation(
     if source_pos is None:
         source_pos = (grid_size // 2, grid_size // 8)
 
-    # Medium
-    medium = Medium(domain=domain, sound_speed=1500.0, density=1000.0, pml_size=10)
+    # Medium — PML size must be small enough relative to grid
+    # helmholtz_solver internally uses PML arrays that must broadcast with the grid
+    pml = min(10, grid_size // 8)
+    medium = Medium(domain=domain, sound_speed=1500.0, density=1000.0, pml_size=pml)
 
     # Angular frequency
     omega = 2 * np.pi * freq
 
     # Source: point source as FourierSeries (required by helmholtz_solver's
     # internal gradient operator dispatch — OnGrid is not supported)
-    src_data = jnp.zeros((grid_size, grid_size, 1))
-    src_data = src_data.at[source_pos[0], source_pos[1], 0].set(1.0)
+    src_data = jnp.zeros((grid_size, grid_size, 1), dtype=jnp.complex64)
+    src_data = src_data.at[source_pos[0], source_pos[1], 0].set(1.0 + 0j)
     source = FourierSeries(src_data, domain)
 
     # Solve
-    p_complex = helmholtz_solver(medium, omega, source, tol=1e-3, maxiter=500)
+    p_complex = helmholtz_solver(medium, omega, source, tol=1e-2, maxiter=200)
 
     # Extract pressure
     p_data = p_complex.on_grid

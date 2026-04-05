@@ -114,10 +114,16 @@ suite validated on Modal A100. [Proposal for Openwater Health](docs/openlifu/).
 | **3D volumetric (52x64x64)** | **94.3%** attenuation, 13s total on A100 |
 | **3D 16-element optimization** | **4.7x** focal improvement, 2.6s/iter |
 
+Covers the full device range from 4-element entry-level to 256-element
+Oxford-UCL MRI-TFUS helmet (Martin, Stagg, Treeby — Nature Comms 2025).
+Vision: multimodal MRI-TFUS-ARFI simulation connecting acoustic fields
+to MRI-visible tissue displacement via radiation force elastodynamics.
+
 Integration with [OpenLIFU](https://github.com/OpenwaterHealth/openlifu-python)
 via [`HeterogeneousSkullSegmentation`](https://github.com/m9h/openlifu-python/tree/feature/heterogeneous-skull-segmentation).
 
-Run all experiments: `modal run scripts/modal_experiments.py`
+Run all experiments: `modal run scripts/modal_experiments.py` |
+3D validation: `modal run scripts/modal_3d_validation.py`
 
 ### Experiment tracking
 

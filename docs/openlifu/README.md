@@ -113,10 +113,36 @@ Full 3D simulation through the SCI head model anatomy. Run with: `modal run scri
 
 Good agreement between solvers on homogeneous water. Helmholtz is faster for single-frequency steady-state problems.
 
+## Device Range
+
+This simulation platform is **device-agnostic**, covering the full range of TUS hardware:
+
+| Tier | Elements | Example Devices | Status |
+|------|----------|----------------|--------|
+| Entry | 1-4 | NeuroFUS CTX-500, Sonic Concepts | Supported |
+| Mid-range | 16-32 | **OpenLIFU** (Openwater Health) | **Primary target** — full optimization pipeline |
+| High-end | 128-256 | **Oxford-UCL 256-element helmet** (Martin, Stagg, Treeby 2025) | Scalable architecture |
+| Research | Custom | BabelBrain-supported, Insightec ExAblate | Any geometry via array API |
+
+Reference: Martin et al. "Ultrasound system for precise neuromodulation of human deep brain circuits." *Nature Communications* 16:8024 (2025).
+
+## Vision: Multimodal MRI-TFUS-ARFI Simulation
+
+The long-term goal is a **multimodal simulation chain** connecting acoustic simulation with MRI brain modeling:
+
+```
+j-Wave (acoustic)  →  F = 2αI/c (radiation force)  →  µ∇²u + F = ρü (elastodynamics)  →  MRI Bloch sim (ARFI phase maps)
+```
+
+When TFUS displaces brain tissue by 1-10µm, MRI detects this via motion-sensitizing gradients (MR-ARFI). Our existing components — j-Wave for acoustics, sbi4dwi's BrainMaterialMap for tissue elastography, and neurojax's BEM/Bloch simulation — form the building blocks. The missing link is coupling the displacement field to KomaMRI spin positions for synthetic MR-ARFI images.
+
+This closes the loop between the MRI monitoring and acoustic simulation in the Oxford-UCL interleaved MRI-TFUS paradigm.
+
 ## Context
 
 - **NeuroTechX Global NeuroHack** — hackathon project
-- **Openwater Health** — collaboration proposal
+- **Openwater Health** — collaboration proposal (mid-range devices)
+- **Oxford-UCL MRI-TFUS** — target for high-end simulation (Martin, Stagg, Treeby)
 - **SCI Institute head model** — test dataset (Warner et al. 2019, CC-BY 4.0)
 - **Modal A100** — cloud GPU for simulation and optimization
 - **DGX Spark** — local GPU compute target

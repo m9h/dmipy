@@ -551,3 +551,114 @@ water = {'vp': 1500, 'rho': 1000, 'alpha_0': 0.0, 'alpha_power': 0.0}
 - NDK cortical bone: 54.553 Np/m/MHz = 54.553 * 8.686 dB/m/MHz = 473.8 dB/m/MHz = 4.738 dB/cm/MHz
 - openlifu Material uses dB/cm/MHz
 - k-wave-python attenuation also in dB/cm/MHz^y (with alpha_power)
+
+---
+
+## 12. Oxford-UCL MRI-TFUS Program
+
+### The Flagship System
+
+Martin E, Roberts M, Grigoras IF, Wright O, Nandi T, Rieger SW, Campbell J, den Boer T, Cox BT, Stagg CJ, Treeby BE. "Ultrasound system for precise neuromodulation of human deep brain circuits." Nature Communications 16, 8024 (2025). DOI: 10.1038/s41467-025-63020-1
+
+- 256 individually controllable elements, semi-ellipsoidal helmet, 555kHz
+- Interleaved MRI operation: FUS during 400ms idle windows in sparse EPI (TR=3000ms)
+- 3mm^3 focal volume — 1000x smaller than conventional clinical FUS
+- Ex-vivo validation: pressure within 21%, position within 0.9mm of plan
+- LGN stimulation demonstrated in 7 subjects; theta-burst effects lasting 40+ minutes
+- Treatment planning via k-Plan (commercial k-Wave wrapper) with CT-derived skull
+- NeuroHarmonics spinout for clinical commercialization
+
+### Key Supporting Papers
+
+| Paper | DOI | Key Finding |
+|-------|-----|------------|
+| Miscouridou, Stagg, Treeby, Stanziola (2022) | 10.1109/TUFFC.2022.3198522 | ZTE pseudo-CT: 5.7% pressure error, 0.6mm position error |
+| Stanziola, Treeby (2023) | 10.1121/10.0017587 | j-Wave differentiable uncertainty propagation through skull |
+| Yaakub, Stagg et al. (2023) | 10.1016/j.brs.2023.01.838 | Open-source T1w→pseudo-CT CNN |
+| Yaakub, Stagg et al. (2023) | 10.1038/s41467-023-40998-0 | TFUS reduces GABA in PCC, increases connectivity |
+| Aubry, Stagg, Treeby et al. (2025) | 10.1016/j.brs.2025.11.006 | ITRUSST safety: MI ≤ 1.9, T ≤ 39°C |
+| Martin, Treeby et al. (2024) | 10.1016/j.brs.2024.04.013 | ITRUSST standardized reporting |
+
+### UCL GitHub Repos
+
+| Repo | Purpose |
+|------|---------|
+| ucl-bug/transcranial-ultrasound-planning | MR/CT processing for 256-element system (FSL, FreeSurfer, 3D Slicer, k-Plan) |
+| ucl-bug/jwave | j-Wave differentiable acoustic simulator (199 stars) |
+| ucl-bug/k-wave | k-Wave MATLAB toolbox (105 stars) |
+| ucl-bug/jaxdf | JAX differentiable discretization framework (134 stars) |
+| ucl-bug/linear-uncertainty | Uncertainty propagation code (Stanziola 2023) |
+| ucl-bug/petra-to-ct | PETRA/ZTE to pseudo-CT conversion |
+| sitiny/mr-to-pct | T1w to pseudo-CT CNN (Yaakub 2023) |
+
+### Simulation Goals Hierarchy (from the Oxford-UCL roadmap)
+
+1. **Done:** Full-wave simulation through patient skull from CT (k-Plan, Martin 2025)
+2. **Active:** Eliminate CT via pseudo-CT from MRI (5.7% error achieved)
+3. **Active:** Differentiable optimization via j-Wave (uncertainty paper demonstrates this)
+4. **Vision:** Real-time adaptive planning from fMRI feedback (close the MRI-FUS loop)
+5. **Regulatory:** ITRUSST-compliant safety simulation (MI, thermal, per Aubry 2025)
+
+---
+
+## 13. ARFI and Multimodal MRI-TFUS Simulation
+
+### Acoustic Radiation Force Impulse (ARFI) Physics
+
+When focused ultrasound propagates through attenuating tissue, it deposits momentum, creating a body force:
+
+```
+F(r) = 2α(r) · I(r) / c(r)
+```
+
+This force causes micron-scale tissue displacement (1-10µm in brain) that depends on tissue shear modulus:
+
+```
+u_max ≈ (2α · I_spta · w²) / (c · µ)
+```
+
+MRI detects this displacement via motion-sensitizing gradients (MEG):
+
+```
+Δφ(r) = γ ∫ G(t) · u(r,t) dt
+```
+
+### The Multimodal Simulation Chain
+
+```
+j-Wave acoustic sim → radiation force (F=2αI/c) → elastodynamics (µ∇²u + F = ρü) → MRI Bloch sim (Δφ from displacement)
+```
+
+This connects three simulation domains:
+1. **Acoustic** (j-Wave/k-Wave): pressure field through skull
+2. **Mechanics** (FEniCSx/sbi4dwi): tissue displacement from radiation force
+3. **MRI** (KomaMRI/neurojax): phase images encoding displacement
+
+### Parameter Reference for Brain MR-ARFI
+
+| Parameter | Value |
+|-----------|-------|
+| Shear modulus (brain) | 1-5 kPa |
+| Shear wave speed | 1-2 m/s |
+| Peak displacement (neuromod) | 1-10 µm |
+| MR-ARFI phase shift | 0.01-0.5 rad |
+| MEG strength | 40 mT/m typical |
+| Displacement sensitivity | ~0.1-1 µm |
+
+### Existing Components in Our Stack
+
+| Stage | Tool | Status |
+|-------|------|--------|
+| Acoustic propagation | j-Wave adapter (sbi4dwi) | Done — 3D, differentiable |
+| Skull properties | PseudoCTMapper + acoustic.py | Done |
+| Radiation force | F = 2αI/c from j-Wave output | Post-processing step |
+| Tissue elastography | BrainMaterialMap (Kuhl 2023) | Partial — priors exist |
+| Elastodynamics | FEniCSx / sbi4dwi mesh_sim | Needs coupling |
+| MRI Bloch simulation | neurojax BEM / KomaMRI | Exists separately |
+
+### Key MR-ARFI References
+
+- McDannold & Maier (2008). "Magnetic resonance acoustic radiation force imaging." Med Phys 35(8):3748
+- Kaye, Chen, Pauly (2011). "Rapid MR-ARFI method for focal spot localization." MRM 65(3):738
+- Phipps et al. (2019). "Considerations for ultrasound exposure during transcranial MR-ARFI." Sci Rep 9:16235
+- Marsac et al. (2012). "MR-guided adaptive focusing of therapeutic ultrasound beams." Med Phys 39(2):1141

@@ -420,7 +420,76 @@ The WAND Analysis Report (Section 8) also benchmarks three head meshing approach
 
 ---
 
-## 9. Technical References
+## 9. Toward Multimodal MRI-TFUS Simulation
+
+### 9.1 The Oxford-UCL MRI-TFUS System
+
+The state-of-the-art in MRI-guided transcranial focused ultrasound is the 256-element semi-ellipsoidal helmet developed by Martin, Stagg, Treeby et al. (Nature Communications, 2025). This system operates inside a standard MRI scanner using interleaved acquisition (FUS pulses during 400ms idle windows in sparse EPI), targets deep brain structures with a 3mm^3 focal volume, and demonstrated LGN stimulation and theta-burst neuromodulation in humans. Treatment planning uses k-Plan/k-Wave with CT-derived skull properties.
+
+The simulation pipeline we have built is designed to be **device-agnostic** — covering the full range from:
+
+| Device Tier | Elements | Example | Our Coverage |
+|------------|----------|---------|-------------|
+| Entry | 1-4 | NeuroFUS CTX-500, Sonic Concepts | 2D/3D simulation, basic targeting |
+| Mid-range | 16-32 | **OpenLIFU** (Openwater) | Full optimization pipeline, 1.4x improvement |
+| High-end | 128-256 | **Oxford-UCL helmet**, Insightec ExAblate | Scalable to 256 elements with j-Wave |
+| Research | Custom | BabelBrain-supported arrays | Any element geometry via circular/arbitrary array |
+
+### 9.2 The ARFI Bridge: Acoustic → Displacement → MRI
+
+The final convergence point between our acoustic simulation work and MRI brain modeling (neurojax) is **Acoustic Radiation Force Impulse (ARFI)** imaging. When focused ultrasound deposits momentum in tissue, it creates micron-scale displacements that MRI can detect via motion-sensitizing gradients:
+
+```
+ACOUSTIC SIMULATION (j-Wave)
+    p(r,t), I(r) — pressure and intensity fields
+         │
+         ▼
+RADIATION FORCE
+    F(r) = 2α(r) · I(r) / c(r)
+         │
+         ▼
+TISSUE MECHANICS (FEniCSx / sbi4dwi elastography)
+    ρ ∂²u/∂t² = µ∇²u + (λ+µ)∇(∇·u) + F(r,t)
+    → u(r,t): displacement field (1-10 µm in brain)
+         │
+         ▼
+MRI SIGNAL (KomaMRI / neurojax Bloch simulation)
+    Δφ(r) = γ ∫ G(t) · u(r,t) dt
+    → phase maps showing where ultrasound displaced tissue
+```
+
+This is the multimodal simulation chain: the same MRI simulator that models brain dynamics in neurojax can encode the tissue displacement caused by TFUS, producing synthetic MR-ARFI images that predict what a combined MRI-TFUS device would measure.
+
+**Existing components in our stack:**
+
+| Chain Stage | Tool | Status |
+|------------|------|--------|
+| Acoustic propagation | j-Wave (sbi4dwi adapter) | **Done** — 3D, differentiable, A100-validated |
+| Skull tissue properties | sbi4dwi PseudoCTMapper + acoustic.py | **Done** — ITRUSST values, pseudo-CT pipeline |
+| Radiation force | F = 2αI/c from j-Wave output | **Straightforward** — post-processing step |
+| Tissue mechanics | sbi4dwi BrainMaterialMap (µ, α) | **Partial** — Kuhl 2023 priors available |
+| MRI Bloch simulation | neurojax BEM + KomaMRI | **Exists separately** — needs ARFI coupling |
+
+**What's needed to close the loop:**
+1. Radiation force computation from j-Wave pressure/intensity output
+2. Elastodynamic solver for tissue displacement (FEniCSx or JAX-native)
+3. Coupling displacement field to KomaMRI spin positions for MR-ARFI phase maps
+4. Validation against the Oxford-UCL experimental MR-ARFI data
+
+### 9.3 Key References for the MRI-TFUS Vision
+
+| Paper | Authors | Contribution |
+|-------|---------|-------------|
+| Nature Comms 2025 | Martin, Stagg, Treeby et al. | 256-element MRI-TFUS helmet, LGN stimulation |
+| Nature Comms 2023 | Yaakub, Stagg et al. | TFUS neurochemical effects (GABA, fMRI connectivity) |
+| IEEE TUFFC 2022 | Miscouridou, Stagg, Treeby, Stanziola | Pseudo-CT: 5.7% pressure error, 0.6mm position error |
+| JASA Express 2023 | Stanziola, Treeby | j-Wave uncertainty propagation through skull |
+| Brain Stim 2025 | Aubry, Stagg, Treeby et al. | ITRUSST safety consensus: MI ≤ 1.9, T ≤ 39°C |
+| Brain Stim 2023 | Yaakub et al. | Open-source T1w→pseudo-CT CNN (mr-to-pct) |
+
+---
+
+## 10. Technical References
 
 ### Software
 

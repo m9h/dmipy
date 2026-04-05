@@ -28,7 +28,7 @@ image = (
         "nibabel",
         "pynrrd",
     )
-    .env({"SBI4DWI_COMMIT": "dc93da6_v2"})  # bump to bust ALL downstream layers
+    .env({"SBI4DWI_COMMIT": "b7d74c6"})  # bump to bust ALL downstream layers
     .run_commands(
         "rm -rf /opt/sbi4dwi"
         " && git clone --depth 1 https://github.com/m9h/sbi4dwi.git /opt/sbi4dwi"

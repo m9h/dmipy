@@ -138,8 +138,8 @@ When TFUS displaces brain tissue by 1-10µm, MRI detects this via motion-sensiti
 
 **Key enabling science:**
 - **Kuhl CANN** (Linka, St Pierre, Kuhl 2023): Region-specific brain shear moduli — corpus callosum displaces 3.4x more than cortex from same radiation force. Bayesian CANN (2025) provides uncertainty distributions.
-- **Butts Pauly MR-ARFI** (Kaye & Pauly 2011/2013): GRE + bipolar MEG sequences, ~0.1µm sensitivity, ~100ms/image. PRF thermometry for temperature monitoring.
-- **KomaMRI**: Best MRI simulator for ARFI — Pulseq-compatible, GPU-accelerated, supports time-dependent displacement via Motion objects. POSSUM lacks MEG support; JEMRIS capable but slow.
+- **Butts Pauly MR-ARFI** (Kaye & Pauly 2011/2013): GRE + bipolar motion-sensitizing gradients (MSGs), ~0.1µm sensitivity, ~100ms/image. MSGs are gradient lobe pairs that encode tissue displacement into MRI phase — same principle as diffusion encoding but for deterministic ultrasound-induced displacement. PRF thermometry for temperature monitoring.
+- **KomaMRI**: Best MRI simulator for ARFI — Pulseq-compatible, GPU-accelerated, supports time-dependent displacement via Motion objects. POSSUM lacks MSG support; JEMRIS capable but slow.
 
 This closes the loop between MRI monitoring and acoustic simulation in the Oxford-UCL interleaved MRI-TFUS paradigm.
 

@@ -617,7 +617,7 @@ This force causes micron-scale tissue displacement (1-10µm in brain) that depen
 u_max ≈ (2α · I_spta · w²) / (c · µ)
 ```
 
-MRI detects this displacement via motion-sensitizing gradients (MEG):
+MRI detects this displacement via **motion-sensitizing gradients (MSGs)** — bipolar gradient lobe pairs in the MRI pulse sequence that convert micron-scale tissue displacement into measurable signal phase. This is the same encoding principle used in diffusion-weighted imaging (where gradients encode random Brownian motion), but here the displacement is deterministic, caused by the focused ultrasound radiation force push. The phase shift is proportional to displacement:
 
 ```
 Δφ(r) = γ ∫ G(t) · u(r,t) dt
@@ -642,7 +642,7 @@ This connects three simulation domains:
 | Shear wave speed | 1-2 m/s |
 | Peak displacement (neuromod) | 1-10 µm |
 | MR-ARFI phase shift | 0.01-0.5 rad |
-| MEG strength | 40 mT/m typical |
+| MSG strength | 40 mT/m typical |
 | Displacement sensitivity | ~0.1-1 µm |
 
 ### Existing Components in Our Stack
@@ -671,16 +671,16 @@ Kim Butts Pauly is the pioneer of MR-ARFI for focused ultrasound monitoring. Her
 
 | Parameter | Value |
 |-----------|-------|
-| MEG amplitude | 20-40 mT/m |
-| MEG lobe duration | 2-10 ms |
+| MSG amplitude | 20-40 mT/m |
+| MSG lobe duration | 2-10 ms |
 | FUS pulse duration | 5-15 ms |
 | Displacement sensitivity | ~0.1 µm (with averaging) |
-| Phase encoding | Δφ = γ · G_MEG · δ · u |
+| Phase encoding | Δφ = γ · G_MSG · δ · u |
 | Typical phase shift | 0.05-0.5 rad for 1-10 µm displacement |
 
 **Sequence timing:**
 ```
-RF excitation → MEG_lobe_1 → FUS_pulse (displacement) → MEG_lobe_2 → readout
+RF excitation → MSG_lobe_1 → FUS_pulse (displacement) → MSG_lobe_2 → readout
 ```
 Phase from displacement: Δφ = γ · G · δ · u_0 = 2.675e8 · 0.040 · 0.005 · 5e-6 = 0.27 rad
 
@@ -737,24 +737,24 @@ Posterior distributions over material parameters instead of point estimates — 
 | Feature | POSSUM (FSL) | JEMRIS | **KomaMRI** |
 |---------|-------------|--------|------------|
 | Bloch simulation | Partial | Full | Full |
-| Arbitrary sequence | No | Yes (XML) | Yes (Pulseq) |
-| Motion-encoding gradients | No | Yes | Yes |
-| Time-dependent displacement | Rigid body only | Yes | Yes (Motion objects) |
+| Arbitrary sequence | No (predefined EPI/GRE) | Yes (XML) | Yes (Pulseq) |
+| Motion-sensitizing gradients (MSG) | No | Yes | Yes |
+| Time-dependent displacement | Rigid body only | Yes (displacement field) | Yes (Motion objects) |
 | GPU acceleration | No | Partial | **Yes (CUDA)** |
 | Existing integration | None | Wrapper exists | **Working wrapper** |
 | **MR-ARFI suitability** | **Not suitable** | Capable but slow | **Best choice** |
 
-**POSSUM cannot simulate MR-ARFI** — it lacks motion-encoding gradient support and only models rigid-body motion. JEMRIS can but is slow without GPU. **KomaMRI is the clear choice**: Pulseq-compatible, GPU-accelerated, supports time-dependent displacement via Motion objects, and we already have a working wrapper.
+**POSSUM cannot simulate MR-ARFI** — it lacks MSG (motion-sensitizing gradient) support and only models rigid-body motion. The MSG is the bipolar gradient pair that encodes micron-scale tissue displacement into MRI phase — without it, you cannot simulate the displacement-to-phase encoding that is the core of MR-ARFI. JEMRIS can model MSGs but is slow without GPU. **KomaMRI is the clear choice**: Pulseq-compatible, GPU-accelerated, supports time-dependent displacement via Motion objects, and we already have a working wrapper.
 
 ### Implementation Path: j-Wave → ARFI → KomaMRI
 
 ```
-1. pypulseq: Design MR-ARFI sequence (GRE + bipolar MEG, per Butts Pauly)
+1. pypulseq: Design MR-ARFI sequence (GRE + bipolar MSG, per Butts Pauly)
 2. j-Wave: Compute pressure field through skull → I(r)
 3. Radiation force: F(r) = 2α·I(r)/c(r)
 4. Displacement: u(r) = F(r)/(µ·k²) using Kuhl CANN shear moduli per region
 5. KomaMRI: Phantom with Motion(u(r,t)) during FUS window
-6. Bloch simulation: MEG gradients encode displacement → phase maps
+6. Bloch simulation: MSG gradients encode displacement → phase maps
 7. Reconstruction: Δφ → displacement map → compare with ground truth from step 4
 ```
 

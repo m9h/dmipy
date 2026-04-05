@@ -474,7 +474,7 @@ This is the multimodal simulation chain: the same MRI simulator that models brai
 1. Radiation force computation from j-Wave pressure/intensity output
 2. Elastodynamic solver using Kuhl CANN region-specific shear moduli (cortex=1.82, BG=0.88, CR=0.94, CC=0.54 kPa)
 3. Coupling displacement field to KomaMRI spin positions via Motion objects for MR-ARFI phase maps
-4. pypulseq MR-ARFI sequence (GRE + bipolar MEG per Butts Pauly 2011/2013)
+4. pypulseq MR-ARFI sequence (GRE + bipolar MSG per Butts Pauly 2011/2013)
 5. Validation against the Oxford-UCL experimental MR-ARFI data
 
 ### 9.3 Kuhl CANN: Why Region-Specific Tissue Mechanics Matter
@@ -487,11 +487,11 @@ Kuhl's brain morphogenesis work on cortical folding mechanics shares structural 
 
 ### 9.4 Butts Pauly MR-ARFI: The MRI Measurement Standard
 
-Kim Butts Pauly (Stanford) established the MR-ARFI sequences that detect ultrasound-induced tissue displacement. Her rapid GRE MR-ARFI (Kaye & Pauly, MRM 2011) achieves ~100ms per displacement image with ~0.1µm sensitivity. The sequence uses bipolar motion-encoding gradients synchronized with the FUS push pulse:
+Kim Butts Pauly (Stanford) established the MR-ARFI sequences that detect ultrasound-induced tissue displacement. Her rapid GRE MR-ARFI (Kaye & Pauly, MRM 2011) achieves ~100ms per displacement image with ~0.1µm sensitivity. The sequence uses bipolar **motion-sensitizing gradients (MSGs)** — a pair of gradient lobes with opposite polarity that encode tissue displacement into MRI signal phase (the same encoding principle as diffusion-weighted imaging, but for deterministic displacement from the ultrasound push rather than random Brownian motion):
 
 ```
-RF → MEG_lobe_1 → [FUS pulse, displacement occurs] → MEG_lobe_2 → readout
-Δφ = γ · G_MEG · δ · u₀ ≈ 0.27 rad for 5µm displacement at 40mT/m, 5ms
+RF → MSG_lobe_1 → [FUS pulse, displacement occurs] → MSG_lobe_2 → readout
+Δφ = γ · G_MSG · δ · u₀ ≈ 0.27 rad for 5µm displacement at 40mT/m, 5ms
 ```
 
 She also established PRF shift MR thermometry (Rieke & Butts Pauly, JMRI 2008) for monitoring FUS-induced heating: ΔT = Δφ/(γ·α·B0·TE), with α = -0.01 ppm/°C. Both ARFI displacement and temperature can be measured from the same FUS application using interleaved MRI contrasts.

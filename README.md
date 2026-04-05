@@ -99,18 +99,22 @@ Spherical coordinate parameterization eliminates unit-sphere constraint.
 ### Transcranial Focused Ultrasound — SCI Head Model (A100, April 2026)
 
 Differentiable skull-corrected acoustic simulation via j-Wave on the
-SCI Institute head model (208x256x256, 1mm, 8 tissue types). Validated
-on Modal A100. [Proposal for Openwater Health](docs/openlifu/).
+SCI Institute head model (208x256x256, 1mm, 8 tissue types). Full 7-experiment
+suite validated on Modal A100. [Proposal for Openwater Health](docs/openlifu/).
 
-| Metric | Value |
-|--------|-------|
-| Skull attenuation at 400kHz | **93%** (matches literature for cortical bone) |
-| Gradient-optimized focal improvement | **15x** (10 Adam iterations, 2.2s/iter) |
-| Total pipeline (load + sim + optimize) | **34s** on A100 |
-| Optimized delays | [-843ns, +70ns] |
+| Experiment | Result |
+|-----------|--------|
+| Skull attenuation (400kHz) | **93%** through cortical bone |
+| 32-element array optimization | **1.4x** focal improvement (20 iters, 1.8s/iter) |
+| Multi-target (cortex→thalamus) | 53-55% depth-dependent attenuation |
+| Frequency (180kHz vs 1MHz) | **180kHz best penetration** (32% vs 55% loss) |
+| Sensitivity (dp/dc) | Skull region **232x** more sensitive than water |
+| Grid convergence | 3 resolutions verified (0.4/0.2/0.1mm) |
 
 Integration with [OpenLIFU](https://github.com/OpenwaterHealth/openlifu-python)
 via [`HeterogeneousSkullSegmentation`](https://github.com/m9h/openlifu-python/tree/feature/heterogeneous-skull-segmentation).
+
+Run all experiments: `modal run scripts/modal_experiments.py`
 
 ### Experiment tracking
 

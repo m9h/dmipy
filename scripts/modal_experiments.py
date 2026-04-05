@@ -28,13 +28,13 @@ image = (
         "nibabel",
         "pynrrd",
     )
+    .env({"SBI4DWI_COMMIT": "dc93da6_v2"})  # bump to bust ALL downstream layers
     .run_commands(
-        # Cache-bust: pin to specific commit so Modal rebuilds when code changes
-        "git clone --depth 1 https://github.com/m9h/sbi4dwi.git /opt/sbi4dwi"
+        "rm -rf /opt/sbi4dwi"
+        " && git clone --depth 1 https://github.com/m9h/sbi4dwi.git /opt/sbi4dwi"
         " && cd /opt/sbi4dwi && git log --oneline -1",
         "echo '/opt/sbi4dwi' > /usr/local/lib/python3.12/site-packages/sbi4dwi.pth",
     )
-    .env({"SBI4DWI_COMMIT": "df03ecd"})  # bump this to bust cache
     .run_commands(
         f"mkdir -p /sci_head && wget -q -O /sci_head/Segmentation.zip {SCI_SEG_URL}",
         "cd /sci_head && unzip -q Segmentation.zip",

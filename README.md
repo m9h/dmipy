@@ -110,6 +110,7 @@ suite validated on Modal A100. [Proposal for Openwater Health](docs/openlifu/).
 | Frequency (180kHz vs 1MHz) | **180kHz best penetration** (32% vs 55% loss) |
 | Sensitivity (dp/dc) | Skull region **232x** more sensitive than water |
 | Grid convergence | 3 resolutions verified (0.4/0.2/0.1mm) |
+| Helmholtz vs time-domain | **r=0.82** correlation, good solver agreement |
 
 Integration with [OpenLIFU](https://github.com/OpenwaterHealth/openlifu-python)
 via [`HeterogeneousSkullSegmentation`](https://github.com/m9h/openlifu-python/tree/feature/heterogeneous-skull-segmentation).

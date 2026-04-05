@@ -28,7 +28,7 @@ layer bridging sbi4dwi and [OpenLIFU](https://github.com/OpenwaterHealth/openlif
 
 ## Results (Modal A100, 2026-04-04)
 
-Full experiment suite on SCI Institute head model (Warner et al. 2019), 208x256x256 at 1mm, 8 tissue types. **8/9 experiments passed.** Run with: `modal run scripts/modal_experiments.py`
+Full experiment suite on SCI Institute head model (Warner et al. 2019), 208x256x256 at 1mm, 8 tissue types. **9/9 experiments passed.** Run with: `modal run scripts/modal_experiments.py`
 
 ### SCI Head 2D Simulation
 
@@ -88,9 +88,14 @@ Pressure decreases with refinement (expected — finer grid resolves more diffra
 
 Skull region sensitivity is 232x higher than water — confirms that skull property uncertainty dominates focal accuracy.
 
-### Helmholtz Solver
+### Helmholtz (Frequency-Domain) vs Time-Domain
 
-Failed: j-Wave's `helmholtz_solver` requires `FourierSeries` input, not `OnGrid`. Needs input format fix.
+| Solver | p_max | Correlation |
+|--------|-------|-------------|
+| Time-domain (PSTD) | 0.311 | — |
+| Helmholtz (GMRES) | 0.287 | **0.82** |
+
+Good agreement between solvers on homogeneous water. Helmholtz is faster for single-frequency steady-state problems.
 
 ## Context
 

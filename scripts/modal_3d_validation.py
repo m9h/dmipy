@@ -161,19 +161,29 @@ def run_3d_validation():
         source_4mm = (shape_4mm[0] // 2, shape_4mm[1] // 2, 2)
     print(f"  Source (scalp): {source_4mm}")
 
-    # 3D Water simulation
-    print("  Running 3D water simulation...")
-    t0 = time.time()
+    # Build domain and HETEROGENEOUS medium first (for correct CFL/timestep)
     domain_4mm = jwa.create_domain(shape_4mm, spacing_4mm)
-    medium_water = jwa.create_medium(domain_4mm, 1500.0, 1000.0, pml_size=5)
-    ta_4mm = TimeAxis.from_medium(medium_water, cfl=0.3, t_end=1e-4)
+    medium_skull = jwa.create_medium(
+        domain_4mm,
+        jnp.array(c_4mm, dtype=jnp.float32),
+        jnp.array(rho_4mm, dtype=jnp.float32),
+        pml_size=5,
+    )
+    # Time axis must be computed from the SKULL medium (max c=4080 m/s)
+    # so the CFL condition is satisfied for the fastest wave
+    ta_4mm = TimeAxis.from_medium(medium_skull, cfl=0.3, t_end=5e-5)
     dt_4mm = float(ta_4mm.dt)
+    print(f"  Time step: {dt_4mm*1e9:.1f}ns, Nt: {int(5e-5/dt_4mm)}")
 
     pos_src = jnp.array([[source_4mm[i] * spacing_4mm for i in range(3)]])
     sources_4mm = jwa.create_sources(domain_4mm, pos_src, 400e3, jnp.zeros(1), jnp.ones(1),
                                       dt=dt_4mm, n_cycles=5)
 
-    p_water_3d = jwa.run_simulation_jax(medium_water, source_4mm, 400e3, 1e-4,
+    # 3D Water simulation (reuse same time axis for fair comparison)
+    print("  Running 3D water simulation...")
+    t0 = time.time()
+    medium_water = jwa.create_medium(domain_4mm, 1500.0, 1000.0, pml_size=5)
+    p_water_3d = jwa.run_simulation_jax(medium_water, source_4mm, 400e3, 5e-5,
                                          time_axis=ta_4mm, sources=sources_4mm)
     t_water_3d = time.time() - t0
     p_w_target = float(p_water_3d[target_4mm])
@@ -183,13 +193,7 @@ def run_3d_validation():
     # 3D Skull simulation
     print("  Running 3D skull simulation...")
     t0 = time.time()
-    medium_skull = jwa.create_medium(
-        domain_4mm,
-        jnp.array(c_4mm, dtype=jnp.float32),
-        jnp.array(rho_4mm, dtype=jnp.float32),
-        pml_size=5,
-    )
-    p_skull_3d = jwa.run_simulation_jax(medium_skull, source_4mm, 400e3, 1e-4,
+    p_skull_3d = jwa.run_simulation_jax(medium_skull, source_4mm, 400e3, 5e-5,
                                          time_axis=ta_4mm, sources=sources_4mm)
     t_skull_3d = time.time() - t0
     p_s_target = float(p_skull_3d[target_4mm])
@@ -244,7 +248,7 @@ def run_3d_validation():
             delays=delays, apodizations=jnp.ones(n_elements),
             dt=dt_4mm, n_cycles=5,
         )
-        p = jwa.run_simulation_jax(medium_skull, source_4mm, 400e3, 1e-4,
+        p = jwa.run_simulation_jax(medium_skull, source_4mm, 400e3, 5e-5,
                                     time_axis=ta_4mm, sources=sources)
         return -p[target_4mm]
 
@@ -305,28 +309,32 @@ def run_3d_validation():
 
     domain_2mm = jwa.create_domain(shape_2mm, spacing_2mm)
 
-    # Water
-    print("  Running 3D water simulation (2mm)...")
-    t0 = time.time()
-    med_w_2mm = jwa.create_medium(domain_2mm, 1500.0, 1000.0, pml_size=5)
-    ta_2mm = TimeAxis.from_medium(med_w_2mm, cfl=0.3, t_end=1e-4)
-    dt_2mm = float(ta_2mm.dt)
-    pos_2mm = jnp.array([[source_2mm[i] * spacing_2mm for i in range(3)]])
-    src_2mm = jwa.create_sources(domain_2mm, pos_2mm, 400e3, jnp.zeros(1), jnp.ones(1), dt=dt_2mm, n_cycles=5)
-    p_w_2mm = jwa.run_simulation_jax(med_w_2mm, source_2mm, 400e3, 1e-4, time_axis=ta_2mm, sources=src_2mm)
-    t_w_2mm = time.time() - t0
-    print(f"  Water: {t_w_2mm:.1f}s, p_target={float(p_w_2mm[target_2mm]):.6f}")
-
-    # Skull
-    print("  Running 3D skull simulation (2mm)...")
-    t0 = time.time()
+    # Build skull medium first for correct CFL
     med_s_2mm = jwa.create_medium(
         domain_2mm,
         jnp.array(c_2mm, dtype=jnp.float32),
         jnp.array(rho_2mm, dtype=jnp.float32),
         pml_size=5,
     )
-    p_s_2mm = jwa.run_simulation_jax(med_s_2mm, source_2mm, 400e3, 1e-4, time_axis=ta_2mm, sources=src_2mm)
+    ta_2mm = TimeAxis.from_medium(med_s_2mm, cfl=0.3, t_end=5e-5)
+    dt_2mm = float(ta_2mm.dt)
+    print(f"  Time step: {dt_2mm*1e9:.1f}ns")
+
+    pos_2mm = jnp.array([[source_2mm[i] * spacing_2mm for i in range(3)]])
+    src_2mm = jwa.create_sources(domain_2mm, pos_2mm, 400e3, jnp.zeros(1), jnp.ones(1), dt=dt_2mm, n_cycles=5)
+
+    # Water
+    print("  Running 3D water simulation (2mm)...")
+    t0 = time.time()
+    med_w_2mm = jwa.create_medium(domain_2mm, 1500.0, 1000.0, pml_size=5)
+    p_w_2mm = jwa.run_simulation_jax(med_w_2mm, source_2mm, 400e3, 5e-5, time_axis=ta_2mm, sources=src_2mm)
+    t_w_2mm = time.time() - t0
+    print(f"  Water: {t_w_2mm:.1f}s, p_target={float(p_w_2mm[target_2mm]):.6f}")
+
+    # Skull
+    print("  Running 3D skull simulation (2mm)...")
+    t0 = time.time()
+    p_s_2mm = jwa.run_simulation_jax(med_s_2mm, source_2mm, 400e3, 5e-5, time_axis=ta_2mm, sources=src_2mm)
     t_s_2mm = time.time() - t0
 
     p_w_t_2mm = float(p_w_2mm[target_2mm])

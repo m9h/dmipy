@@ -136,7 +136,12 @@ j-Wave (acoustic)  →  F = 2αI/c (radiation force)  →  µ∇²u + F = ρü (
 
 When TFUS displaces brain tissue by 1-10µm, MRI detects this via motion-sensitizing gradients (MR-ARFI). Our existing components — j-Wave for acoustics, sbi4dwi's BrainMaterialMap for tissue elastography, and neurojax's BEM/Bloch simulation — form the building blocks. The missing link is coupling the displacement field to KomaMRI spin positions for synthetic MR-ARFI images.
 
-This closes the loop between the MRI monitoring and acoustic simulation in the Oxford-UCL interleaved MRI-TFUS paradigm.
+**Key enabling science:**
+- **Kuhl CANN** (Linka, St Pierre, Kuhl 2023): Region-specific brain shear moduli — corpus callosum displaces 3.4x more than cortex from same radiation force. Bayesian CANN (2025) provides uncertainty distributions.
+- **Butts Pauly MR-ARFI** (Kaye & Pauly 2011/2013): GRE + bipolar MEG sequences, ~0.1µm sensitivity, ~100ms/image. PRF thermometry for temperature monitoring.
+- **KomaMRI**: Best MRI simulator for ARFI — Pulseq-compatible, GPU-accelerated, supports time-dependent displacement via Motion objects. POSSUM lacks MEG support; JEMRIS capable but slow.
+
+This closes the loop between MRI monitoring and acoustic simulation in the Oxford-UCL interleaved MRI-TFUS paradigm.
 
 ## Context
 

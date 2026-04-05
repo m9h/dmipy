@@ -472,9 +472,31 @@ This is the multimodal simulation chain: the same MRI simulator that models brai
 
 **What's needed to close the loop:**
 1. Radiation force computation from j-Wave pressure/intensity output
-2. Elastodynamic solver for tissue displacement (FEniCSx or JAX-native)
-3. Coupling displacement field to KomaMRI spin positions for MR-ARFI phase maps
-4. Validation against the Oxford-UCL experimental MR-ARFI data
+2. Elastodynamic solver using Kuhl CANN region-specific shear moduli (cortex=1.82, BG=0.88, CR=0.94, CC=0.54 kPa)
+3. Coupling displacement field to KomaMRI spin positions via Motion objects for MR-ARFI phase maps
+4. pypulseq MR-ARFI sequence (GRE + bipolar MEG per Butts Pauly 2011/2013)
+5. Validation against the Oxford-UCL experimental MR-ARFI data
+
+### 9.3 Kuhl CANN: Why Region-Specific Tissue Mechanics Matter
+
+Ellen Kuhl's Constitutive Artificial Neural Networks (Linka, St Pierre, Kuhl — Acta Biomaterialia 2023) discovered that the same acoustic radiation force produces **3.4x more displacement in the corpus callosum than in the cortex** due to regional variation in shear modulus. This means MR-ARFI images are not just displacement maps — they encode brain tissue stiffness.
+
+The Bayesian CANN extension (Linka, Kuhl — CMAME 2025) provides uncertainty distributions over these mechanical parameters, enabling end-to-end uncertainty quantification: skull acoustic uncertainty (Stanziola/Treeby 2023) → radiation force uncertainty → tissue displacement uncertainty (Bayesian CANN) → MR-ARFI phase uncertainty.
+
+Kuhl's brain morphogenesis work on cortical folding mechanics shares structural properties with the simulation challenges here — expensive FEM evaluations, sharp bifurcation transitions, non-differentiable solvers — making it a natural candidate for surrogate modeling with the CANN architecture already implemented in sbi4dwi.
+
+### 9.4 Butts Pauly MR-ARFI: The MRI Measurement Standard
+
+Kim Butts Pauly (Stanford) established the MR-ARFI sequences that detect ultrasound-induced tissue displacement. Her rapid GRE MR-ARFI (Kaye & Pauly, MRM 2011) achieves ~100ms per displacement image with ~0.1µm sensitivity. The sequence uses bipolar motion-encoding gradients synchronized with the FUS push pulse:
+
+```
+RF → MEG_lobe_1 → [FUS pulse, displacement occurs] → MEG_lobe_2 → readout
+Δφ = γ · G_MEG · δ · u₀ ≈ 0.27 rad for 5µm displacement at 40mT/m, 5ms
+```
+
+She also established PRF shift MR thermometry (Rieke & Butts Pauly, JMRI 2008) for monitoring FUS-induced heating: ΔT = Δφ/(γ·α·B0·TE), with α = -0.01 ppm/°C. Both ARFI displacement and temperature can be measured from the same FUS application using interleaved MRI contrasts.
+
+**KomaMRI is the best simulator** for synthesizing these measurements: it supports arbitrary Pulseq sequences, time-dependent spin displacement (Motion objects), and GPU acceleration. POSSUM lacks motion-encoding gradient support. JEMRIS is capable but slow. We already have a working KomaMRI wrapper.
 
 ### 9.3 Key References for the MRI-TFUS Vision
 

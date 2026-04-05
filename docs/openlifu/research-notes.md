@@ -656,9 +656,106 @@ This connects three simulation domains:
 | Elastodynamics | FEniCSx / sbi4dwi mesh_sim | Needs coupling |
 | MRI Bloch simulation | neurojax BEM / KomaMRI | Exists separately |
 
-### Key MR-ARFI References
+### Kim Butts Pauly MR-ARFI Work (Stanford)
 
-- McDannold & Maier (2008). "Magnetic resonance acoustic radiation force imaging." Med Phys 35(8):3748
-- Kaye, Chen, Pauly (2011). "Rapid MR-ARFI method for focal spot localization." MRM 65(3):738
-- Phipps et al. (2019). "Considerations for ultrasound exposure during transcranial MR-ARFI." Sci Rep 9:16235
-- Marsac et al. (2012). "MR-guided adaptive focusing of therapeutic ultrasound beams." Med Phys 39(2):1141
+Kim Butts Pauly is the pioneer of MR-ARFI for focused ultrasound monitoring. Her group developed the key sequences and established the field. She co-authored the ITRUSST benchmark (Aubry 2022) and safety consensus (Aubry 2025).
+
+**Key papers:**
+- Kaye, Chen, Pauly (2011). "Rapid MR-ARFI method for focal spot localization." MRM 65(3):738. DOI: 10.1002/mrm.22662 — Single-shot GRE MR-ARFI, ~100ms per slice
+- Kaye, Pauly (2013). "Adapting MRI acoustic radiation force imaging for in vivo human brain." MRM 69(3):724. DOI: 10.1002/mrm.24316 — In vivo brain, motion compensation
+- Rieke, Butts Pauly (2008). "MR Thermometry." JMRI 27(2):376. DOI: 10.1002/jmri.21265 — Definitive review, PRF coefficient alpha = -0.01 ppm/°C
+- Phipps et al. (2019). "Considerations for ultrasound exposure during transcranial MR-ARFI." Sci Rep 9:16235. DOI: 10.1038/s41598-019-52443-8
+- Marsac et al. (2012). "MR-guided adaptive focusing using MR-ARFI feedback." Med Phys 39(2):1141. DOI: 10.1118/1.3678988 — Skull aberration correction via ARFI
+
+**MR-ARFI Sequence Parameters (Butts Pauly standard):**
+
+| Parameter | Value |
+|-----------|-------|
+| MEG amplitude | 20-40 mT/m |
+| MEG lobe duration | 2-10 ms |
+| FUS pulse duration | 5-15 ms |
+| Displacement sensitivity | ~0.1 µm (with averaging) |
+| Phase encoding | Δφ = γ · G_MEG · δ · u |
+| Typical phase shift | 0.05-0.5 rad for 1-10 µm displacement |
+
+**Sequence timing:**
+```
+RF excitation → MEG_lobe_1 → FUS_pulse (displacement) → MEG_lobe_2 → readout
+```
+Phase from displacement: Δφ = γ · G · δ · u_0 = 2.675e8 · 0.040 · 0.005 · 5e-6 = 0.27 rad
+
+### MR Thermometry (PRF Shift Method)
+
+Temperature mapping during TFUS via proton resonance frequency shift:
+
+```
+ΔT = Δφ / (γ · α_PRF · B0 · TE)
+```
+
+α_PRF = -0.01 ppm/°C. At 3T, TE=20ms, 1°C produces Δφ ≈ 0.16 rad.
+Same FUS pulse produces both displacement (ARFI) and heating (thermometry) — can be measured with different MRI contrasts in interleaved acquisitions.
+
+### Ellen Kuhl's Living Matter Lab (Stanford) — Brain Tissue Mechanics
+
+Ellen Kuhl's Constitutive Artificial Neural Networks (CANNs) provide the tissue mechanical properties that determine how acoustic radiation force translates to tissue displacement.
+
+**The CANN approach** (Linka, St Pierre, Kuhl — Acta Biomaterialia 2023, DOI: 10.1016/j.actbio.2023.01.055):
+Instead of choosing a constitutive model then fitting parameters, the CANN architecture is constrained to satisfy thermodynamic consistency, objectivity, and polyconvexity a priori. The network autonomously discovers both the model form AND parameters from 4,000+ candidates. Source code: github.com/LivingMatterLab/CANN
+
+**Region-specific shear moduli discovered by CANN:**
+
+| Brain Region | Type | Shear Modulus (kPa) | ARFI displacement at F=1 N/m³ |
+|-------------|------|-------------------|------------------------------|
+| Cortex | GM | 1.82 | 1.0x (reference) |
+| Basal ganglia | GM | 0.88 | 2.1x more |
+| Corona radiata | WM | 0.94 | 1.9x more |
+| Corpus callosum | WM | 0.54 | **3.4x more** |
+
+The same acoustic radiation force produces **3.4x more displacement** in the corpus callosum than in the cortex. This spatial heterogeneity is critical for:
+- Predicting where TFUS actually displaces tissue
+- Safety analysis (which regions experience most mechanical stress)
+- MR-ARFI image simulation (displacement maps encode shear modulus)
+
+**Bayesian CANNs** (Linka, Kuhl — CMAME 2025, DOI: 10.1016/j.cma.2024.117356):
+Posterior distributions over material parameters instead of point estimates — enables uncertainty propagation through the ARFI chain. Combined with j-Wave's differentiable uncertainty (Stanziola 2023), this gives end-to-end UQ from skull properties through acoustic field through tissue displacement.
+
+**Brain morphogenesis connection:** Kuhl's brain folding mechanics (growth-ratio/stiffness parameter space near folding bifurcation) shares structural properties with the oscillatory onset in neural mass models — sharp landscape transitions, tight evaluation budgets, non-differentiable FEM solvers. The CANN approach provides a differentiable surrogate for these expensive FEM evaluations.
+
+**All Kuhl brain mechanics papers:**
+
+| Year | Paper | Key Values |
+|------|-------|-----------|
+| 2015 | Budday...Kuhl, JMBBM 46:318 | WM=1.895, GM=1.389 kPa (indentation) |
+| 2017 | Budday...Kuhl, Acta Biomater 48:319 | µ=0.4-1.4 kPa (multiaxial Ogden) |
+| 2023 | Linka, St Pierre, Kuhl, Acta Biomater 160:134 | CANN: CX=1.82, BG=0.88, CR=0.94, CC=0.54 |
+| 2023 | St Pierre, Linka, Kuhl, Brain Multiphys 4:100066 | Principal-stretch CANN |
+| 2025 | Linka, Kuhl, CMAME 433 | Bayesian CANN (uncertainty distributions) |
+| 2025 | Peirlinck...Kuhl, Comp Mech 75:1703 | Universal material subroutine (60K models) |
+
+### MRI Simulator Assessment for MR-ARFI
+
+| Feature | POSSUM (FSL) | JEMRIS | **KomaMRI** |
+|---------|-------------|--------|------------|
+| Bloch simulation | Partial | Full | Full |
+| Arbitrary sequence | No | Yes (XML) | Yes (Pulseq) |
+| Motion-encoding gradients | No | Yes | Yes |
+| Time-dependent displacement | Rigid body only | Yes | Yes (Motion objects) |
+| GPU acceleration | No | Partial | **Yes (CUDA)** |
+| Existing integration | None | Wrapper exists | **Working wrapper** |
+| **MR-ARFI suitability** | **Not suitable** | Capable but slow | **Best choice** |
+
+**POSSUM cannot simulate MR-ARFI** — it lacks motion-encoding gradient support and only models rigid-body motion. JEMRIS can but is slow without GPU. **KomaMRI is the clear choice**: Pulseq-compatible, GPU-accelerated, supports time-dependent displacement via Motion objects, and we already have a working wrapper.
+
+### Implementation Path: j-Wave → ARFI → KomaMRI
+
+```
+1. pypulseq: Design MR-ARFI sequence (GRE + bipolar MEG, per Butts Pauly)
+2. j-Wave: Compute pressure field through skull → I(r)
+3. Radiation force: F(r) = 2α·I(r)/c(r)
+4. Displacement: u(r) = F(r)/(µ·k²) using Kuhl CANN shear moduli per region
+5. KomaMRI: Phantom with Motion(u(r,t)) during FUS window
+6. Bloch simulation: MEG gradients encode displacement → phase maps
+7. Reconstruction: Δφ → displacement map → compare with ground truth from step 4
+```
+
+No existing open-source tool chains this pipeline. The Butts Pauly group has not released simulation code. This would be a novel contribution.

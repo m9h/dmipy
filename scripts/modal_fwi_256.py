@@ -31,8 +31,12 @@ image = (
         "xarray",
         "h5py",
         "nibabel",
-        "scico==0.0.6",
+        "imageio",
+        "tifffile",
     )
+    # Install SCICO with --no-deps to bypass jaxlib version pin
+    # (SCICO 0.0.6 pins jaxlib<=0.4.35 but works fine with 0.4.38)
+    .run_commands("pip install --no-deps scico==0.0.6")
     .env({"SBI4DWI_COMMIT": "d6db016"})
     .run_commands(
         "rm -rf /opt/sbi4dwi"

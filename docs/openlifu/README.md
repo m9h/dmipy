@@ -165,3 +165,19 @@ This closes the loop between MRI monitoring and acoustic simulation in the Oxfor
 - **SCI Institute head model** — test dataset (Warner et al. 2019, CC-BY 4.0)
 - **Modal A100** — cloud GPU for simulation and optimization
 - **DGX Spark** — local GPU compute target
+
+### 3D FWI on brain-fwi (A100, 2026-04-06)
+
+Full 3D Full Waveform Inversion using brain-fwi project with 256-element helmet array.
+Run with: `cd ~/dev/brain-fwi && modal run scripts/modal_mida_256.py`
+
+| Step | Result |
+|------|--------|
+| Head model | Synthetic 96^3 at 2mm (MIDA pending upload) |
+| Array | 256 elements, Fibonacci helmet with face exclusion |
+| Forward sim | **10.9s** on A100, p_max = 0.788 Pa |
+| Observed data | 4 shots × 16 sensors = (4, 234, 16), 8.6s |
+| FWI (5 iters, 500kHz) | **50.3s** (10s/iter), loss = 0.081 |
+| Velocity recovery | [1411, 2166] m/s from initial 1500 (skull = 2800 true) |
+
+Uses brain-fwi's reparameterized velocity (sigmoid bounds), multi-frequency banding, and gradient smoothing.

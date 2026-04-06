@@ -117,8 +117,8 @@ def run_fwi_256():
             data = img.get_fdata()
             unique = np.unique(data.astype(int))
             if len(unique) >= 3:  # need at least 3 tissue types
-                labels_full = data.astype(np.int32)
-                voxel_size = img.header.get_zooms()
+                labels_full = np.squeeze(data).astype(np.int32)
+                voxel_size = img.header.get_zooms()[:labels_full.ndim]
                 print(f"  Loaded: {candidate}")
                 print(f"  Shape: {labels_full.shape}, Voxels: {voxel_size}")
                 print(f"  Labels: {unique}")

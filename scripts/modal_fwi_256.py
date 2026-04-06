@@ -31,7 +31,7 @@ image = (
         "xarray",
         "h5py",
         "nibabel",
-        "scico==0.0.7",
+        "scico==0.0.6",
     )
     .env({"SBI4DWI_COMMIT": "d6db016"})
     .run_commands(

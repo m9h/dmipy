@@ -276,41 +276,52 @@ def run_fwi_256():
     print()
 
     # ==================================================================
-    # Step 5: FWI — invert for sound speed
+    # Step 5: FWI — invert for sound speed (SCICO + j-Wave)
     # ==================================================================
     print("=" * 70)
-    print("STEP 5: Full Waveform Inversion (10 iterations)")
+    print("STEP 5: Full Waveform Inversion (SCICO PDHG + TV)")
     print("=" * 70)
 
-    import optax
+    fwi = _load("fwi_us", f"{SBI}/biophysics/fwi_us.py")
 
-    # Start with homogeneous water guess
-    c_init = jnp.ones(grid_shape) * 1500.0
+    # Build AcousticForwardOperator (wraps j-Wave as SCICO-compatible operator)
+    forward_op = fwi.AcousticForwardOperator(
+        grid_shape=grid_shape,
+        grid_spacing=spacing_m,
+        density=1000.0,
+        freq=555e3,
+        source_position=tuple(int(x) for x in source_positions_2d[0] / spacing_m),
+        t_end=5e-5,
+        pml_size=8.0,
+    )
+    # Use the pre-computed multi-element sources
+    forward_op.sources = sources
 
-    def fwi_loss(c_field):
-        c_clipped = jnp.clip(c_field, 1000.0, 5000.0)
-        med = jwa.create_medium(domain, c_clipped, 1000.0, pml_size=8)
-        p_pred = jwa.run_simulation_jax(med, target, 555e3, 5e-5,
-                                         time_axis=ta, sources=sources)
-        data_loss = jnp.mean((p_pred - p_observed) ** 2)
-        # TV regularization
-        tv = jnp.mean(jnp.abs(jnp.diff(c_clipped, axis=0))) + \
-             jnp.mean(jnp.abs(jnp.diff(c_clipped, axis=1)))
-        return data_loss + 0.01 * tv
-
-    optimizer = optax.adam(1.0)
-    opt_state = optimizer.init(c_init)
-    c_recon = c_init
-    fwi_history = []
-
+    # Try SCICO first, fall back to optax if SCICO not available
     t0 = time.time()
-    for i in range(10):
-        loss_val, grads = jax.value_and_grad(fwi_loss)(c_recon)
-        updates, opt_state = optimizer.update(grads, opt_state)
-        c_recon = optax.apply_updates(c_recon, updates)
-        fwi_history.append(float(loss_val))
-        if (i+1) % 5 == 0:
-            print(f"    Iter {i+1}: loss={loss_val:.8f}")
+    try:
+        print("  Method: SCICO AcceleratedPGM + IsotropicTVNorm")
+        c_recon, fwi_info = fwi.invert_scico(
+            p_observed, forward_op,
+            initial_sound_speed=1500.0,
+            tv_weight=0.1,
+            n_iters=10,
+        )
+        fwi_history = [fwi_info.get("n_iters", 10)]
+        print(f"  SCICO inversion complete")
+    except Exception as e:
+        print(f"  SCICO failed ({e}), falling back to optax Adam")
+        c_recon, fwi_history = fwi.invert_optax(
+            p_observed, forward_op,
+            initial_sound_speed=1500.0,
+            tv_weight=0.01,
+            n_iters=10,
+            lr=1.0,
+        )
+        for i, h in enumerate(fwi_history):
+            if (i+1) % 5 == 0:
+                print(f"    Iter {i+1}: loss={h:.8f}")
+
     t_fwi = time.time() - t0
 
     # Compare reconstruction to truth

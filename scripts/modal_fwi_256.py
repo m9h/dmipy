@@ -127,6 +127,27 @@ def run_fwi_256():
         except Exception as e:
             continue
 
+    # Remap SimNIBS labels to our convention if needed
+    # SimNIBS: 1=WM, 2=GM, 3=CSF, 4=bone, 5=scalp, 6=eyes, 7=compact, 8=spongy, 9=blood, 10=muscle
+    # Ours:    0=bg, 1=scalp, 2=skull, 3=CSF, 4=GM, 5=WM
+    if seg_loaded:
+        unique = np.unique(labels_full)
+        if 7 in unique or 8 in unique or max(unique) > 5:
+            print("  Remapping SimNIBS labels → our convention...")
+            remap = np.zeros(max(unique) + 1, dtype=np.int32)
+            remap[1] = 5   # WM
+            remap[2] = 4   # GM
+            remap[3] = 3   # CSF
+            remap[4] = 2   # bone → skull
+            remap[5] = 1   # scalp
+            remap[6] = 0   # eyes → background
+            remap[7] = 2   # compact bone → skull
+            remap[8] = 2   # spongy bone → skull
+            remap[9] = 3   # blood → CSF (fluid-like)
+            remap[10] = 1  # muscle → scalp
+            labels_full = remap[np.clip(labels_full, 0, len(remap)-1)]
+            print(f"  Remapped labels: {np.unique(labels_full)}")
+
     if not seg_loaded:
         # Create a synthetic head phantom with skull shell
         print("  No segmentation found — creating synthetic head phantom")
@@ -214,7 +235,11 @@ def run_fwi_256():
 
     print(f"  Sound speed: [{float(props['sound_speed'].min()):.0f}, {float(props['sound_speed'].max()):.0f}] m/s")
     print(f"  Density: [{float(props['density'].min()):.0f}, {float(props['density'].max()):.0f}] kg/m³")
-    print(f"  Shear modulus: [{float(mu_map[mu_map>0].min()):.0f}, {float(mu_map.max()):.0f}] Pa")
+    mu_nonzero = mu_map[mu_map > 0]
+    if mu_nonzero.size > 0:
+        print(f"  Shear modulus: [{float(mu_nonzero.min()):.0f}, {float(mu_map.max()):.0f}] Pa")
+    else:
+        print(f"  Shear modulus: max={float(mu_map.max()):.0f} Pa (no non-zero values)")
 
     # Count tissue types
     for label in np.unique(labels_slice):

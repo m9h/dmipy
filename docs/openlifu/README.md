@@ -181,3 +181,16 @@ Run with: `cd ~/dev/brain-fwi && modal run scripts/modal_mida_256.py`
 | Velocity recovery | [1411, 2166] m/s from initial 1500 (skull = 2800 true) |
 
 Uses brain-fwi's reparameterized velocity (sigmoid bounds), multi-frequency banding, and gradient smoothing.
+
+### Multi-Frequency 3D FWI (A100, 2026-04-06)
+
+3-band FWI (50→200→500 kHz) with 256-element helmet, 8 sources × 32 sensors.
+Run with: `cd ~/dev/brain-fwi && modal run scripts/modal_extended_fwi.py`
+
+| Band | Frequency | Loss | Velocity |
+|------|-----------|------|----------|
+| 1 (coarse) | 50-150 kHz | 0.187→0.080 | 1413-2231 m/s |
+| 2 (medium) | 150-350 kHz | 0.186→0.091 | 1402-3762 m/s |
+| 3 (fine) | 350-600 kHz | 0.132→0.097 | 1402-**4312** m/s |
+
+**Skull velocity recovered to 4312 m/s** (true=4080). Brain MSE=2776. Total: 222s on A100.

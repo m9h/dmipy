@@ -169,6 +169,10 @@ distributions (Watson, Bingham), and tortuosity constraints.
 | `SDESimulator` | Diffrax-based SDE integration | Yes |
 | `jwave_adapter` | j-Wave pseudospectral acoustic simulation | Yes |
 | `tus_optimizer` | Gradient-based TUS delay optimization | Yes |
+| `radiation_force` | F=2αI/c + spectral displacement solver (Kuhl CANN) | Yes |
+| `fwi_us` | Full waveform inversion for ultrasound (acoustic EIT) | Yes |
+| `mr_arfi` | MR-ARFI sequence design + phase prediction (Butts Pauly) | Yes |
+| `multimodal_tus` | End-to-end acoustic → force → displacement → MRI phase | Yes |
 
 The FEM simulator constructs stiffness/mass matrices from triangular meshes,
 solves a generalised eigendecomposition, and simulates PGSE sequences via

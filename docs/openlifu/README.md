@@ -104,6 +104,20 @@ Full 3D simulation through the SCI head model anatomy. Run with: `modal run scri
 - Loss: -1.66e-5 to -7.79e-5
 - Delay pattern shows clear alternating phase structure (~0ns vs ~1200ns)
 
+### 256-Element FWI on SimNIBS Ernie Head (A100, 2026-04-05)
+
+Full waveform inversion on the MNI152 head from SimNIBS with 256-element helmet array. Run with: `modal run scripts/modal_fwi_256.py`
+
+| Step | Result |
+|------|--------|
+| Head model | Ernie MNI152 (182x238x282 at 1mm, 10 tissues → 6 remapped) |
+| Array | 256 elements, semi-ellipsoidal Fibonacci spiral (Oxford-UCL geometry) |
+| Forward sim (555kHz, 2D slice) | 7.5s, p_max=0.806 Pa |
+| FWI (10 iters, optax Adam) | 2.6s/iter, c_range [1498, 1506] m/s |
+| SCICO integration | PDHG + IsotropicTVNorm ready (needs flax dep fix) |
+
+Next: add flax to deps, tune FWI learning rate, scale source amplitude for realistic ARFI displacement.
+
 ### Helmholtz (Frequency-Domain) vs Time-Domain
 
 | Solver | p_max | Correlation |

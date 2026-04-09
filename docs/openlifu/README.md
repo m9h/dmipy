@@ -194,3 +194,17 @@ Run with: `cd ~/dev/brain-fwi && modal run scripts/modal_extended_fwi.py`
 | 3 (fine) | 350-600 kHz | 0.132→0.097 | 1402-**4312** m/s |
 
 **Skull velocity recovered to 4312 m/s** (true=4080). Brain MSE=2776. Total: 222s on A100.
+
+### 3D Brain USCT Reconstruction (DGX Spark, 2026-04-07)
+
+Full 3D reconstruction from DGX Spark GPU with visualization:
+
+| Metric | Value |
+|--------|-------|
+| Grid | 96^3 at 2mm |
+| Elements | 128 (helmet array) |
+| Brain RMSE | **52.7 m/s** |
+| Skull RMSE | 1255.6 m/s |
+| Time | 13.3 min (fast), 44.5 min (extended) |
+
+Axial/coronal/sagittal reconstruction shows skull shell clearly visible in velocity map. Brain soft tissue well-recovered. Results at `brain-fwi/results/`.

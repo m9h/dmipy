@@ -40,7 +40,7 @@ dependencies = [
   "datalad",
   "nibabel",
   "h5py",
-  "dipy>=1.11.0",
+  "dipy>=1.12.1",
   "boto3>=1.42.30",
   "optax>=0.2.6",
   "scikit-image>=0.26.0",

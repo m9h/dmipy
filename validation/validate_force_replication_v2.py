@@ -139,12 +139,15 @@ def check_both_detected(mu1_true, mu2_true, mu1_rec, mu2_rec, threshold):
 
 
 def best_two_peaks(peak_dirs, mu1_true, mu2_true):
-    """Pick the two recovered peaks that best match the ground truth pair."""
+    """Pick the two recovered peaks that best match the ground truth pair.
+
+    Returns ``None`` if fewer than 2 nonzero peaks were recovered — the
+    method has failed to detect a crossing and should be scored as a miss,
+    not rescued with a dummy.
+    """
     nz = [p for p in peak_dirs if np.linalg.norm(p) > 1e-6]
     if len(nz) < 2:
-        if len(nz) == 1:
-            return nz[0], np.array([0.0, 0.0, 1.0])  # dummy second peak (will fail threshold)
-        return np.array([1.0, 0.0, 0.0]), np.array([0.0, 0.0, 1.0])
+        return None
     best, best_score = None, np.inf
     for i in range(len(nz)):
         for j in range(i + 1, len(nz)):
@@ -381,8 +384,10 @@ def main():
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dpf = dipy_force_peaks(noisy_np, dipy_force, angle_threshold)
-                p1, p2 = best_two_peaks(dpf, mu1_true, mu2_true)
-                if check_both_detected(mu1_true, mu2_true, p1, p2, angle_threshold):
+                pair = best_two_peaks(dpf, mu1_true, mu2_true)
+                if pair is not None and check_both_detected(
+                    mu1_true, mu2_true, pair[0], pair[1], angle_threshold
+                ):
                     counts["dipy_force"] += 1
             except Exception:
                 pass
@@ -392,8 +397,10 @@ def main():
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     cs = csd_peaks(noisy_np, gtab, response, sphere, angle_threshold)
-                p1, p2 = best_two_peaks(cs, mu1_true, mu2_true)
-                if check_both_detected(mu1_true, mu2_true, p1, p2, angle_threshold):
+                pair = best_two_peaks(cs, mu1_true, mu2_true)
+                if pair is not None and check_both_detected(
+                    mu1_true, mu2_true, pair[0], pair[1], angle_threshold
+                ):
                     counts["csd"] += 1
             except Exception:
                 pass
@@ -403,8 +410,10 @@ def main():
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     gs = gqi_peaks(noisy_np, gtab, sphere, angle_threshold)
-                p1, p2 = best_two_peaks(gs, mu1_true, mu2_true)
-                if check_both_detected(mu1_true, mu2_true, p1, p2, angle_threshold):
+                pair = best_two_peaks(gs, mu1_true, mu2_true)
+                if pair is not None and check_both_detected(
+                    mu1_true, mu2_true, pair[0], pair[1], angle_threshold
+                ):
                     counts["gqi"] += 1
             except Exception:
                 pass

@@ -46,7 +46,7 @@ from dipy.data import default_sphere
 
 DIPY_FORCE_CACHE = Path(os.environ.get(
     "DIPY_FORCE_CACHE",
-    str(Path.home() / ".cache" / "dipy_force" / "force_v2_100k.npz"),
+    str(Path.home() / ".cache" / "dipy_force" / "force_v2_500k.npz"),
 ))
 
 
@@ -225,10 +225,36 @@ def get_or_make_dipy_force_simulations(gtab, n_sims=100_000, num_cpus=1):
 
 
 def dipy_force_peaks(noisy_signal_np, force_model, ang_threshold):
+    """dipy's standard FORCE pipeline: matcher -> force_peaks (SH on default_sphere)."""
     data4d = noisy_signal_np[None, None, None, :].astype(np.float32)
     fit = force_model.fit(data4d)
     peaks = force_peaks(fit)
     return [peaks.peak_dirs[0, 0, 0, k] for k in range(peaks.peak_dirs.shape[-2])]
+
+
+def dipy_force_internal_peaks(noisy_signal_np, force_model, sphere):
+    """Bypass force_peaks: read FORCEFit.label directly off the matched sphere.
+
+    FORCEFit.label is shape (n_sphere_vertices,) with nonzero entries at
+    fiber-direction indices the matcher selected. Returns those vertex
+    directions, ranked by FORCEFit.fracs.
+    """
+    data4d = noisy_signal_np[None, None, None, :].astype(np.float32)
+    mvfit = force_model.fit(data4d)
+    fit = mvfit[0, 0, 0]
+    label = np.asarray(fit.label)
+    nz_idx = np.nonzero(label)[0]
+    if nz_idx.size == 0:
+        return []
+    dirs = sphere.vertices[nz_idx]
+    # If matcher is reporting >2 active labels, sort by FORCEFit.fracs so the
+    # most-weighted directions come first.
+    fracs = np.asarray(fit.fracs)
+    n_take = min(len(nz_idx), len(fracs))
+    if n_take and fracs[:n_take].sum() > 0:
+        order = np.argsort(-fracs[:n_take])
+        dirs = dirs[order[:n_take]]
+    return [dirs[i] for i in range(len(dirs))]
 
 
 # --------------------------------------------------------------------------- #
@@ -294,10 +320,10 @@ def main():
     response = (np.array([1.7e-3, 3e-4, 3e-4]), 1.0)
     sphere = default_sphere
 
-    # DIPY upstream FORCE
-    dipy_sims = get_or_make_dipy_force_simulations(gtab, n_sims=100_000, num_cpus=1)
-    dipy_force = FORCEModel(gtab, simulations=dipy_sims, n_neighbors=10)
-    print("DIPY FORCEModel ready.")
+    # DIPY upstream FORCE — paper-default settings (500K library, n_neighbors=50)
+    dipy_sims = get_or_make_dipy_force_simulations(gtab, n_sims=500_000, num_cpus=1)
+    dipy_force = FORCEModel(gtab, simulations=dipy_sims, n_neighbors=50)
+    print("DIPY FORCEModel ready (500K sims, n_neighbors=50).")
 
     crossing_angles = np.arange(10, 95, 5)
     n_trials = 200
@@ -306,7 +332,7 @@ def main():
 
     method_names = [
         "dict", "hybrid50", "hybrid15", "hybrid_guard", "lm",
-        "dipy_force", "csd", "gqi",
+        "dipy_force", "dipy_force_internal", "csd", "gqi",
     ]
     results = {m: [] for m in method_names}
     results["angle"] = []
@@ -379,7 +405,7 @@ def main():
             except Exception:
                 pass
 
-            # DIPY upstream FORCE
+            # DIPY upstream FORCE -> force_peaks (SH-on-sphere postprocessing)
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
@@ -389,6 +415,19 @@ def main():
                     mu1_true, mu2_true, pair[0], pair[1], angle_threshold
                 ):
                     counts["dipy_force"] += 1
+            except Exception:
+                pass
+
+            # DIPY FORCE-internal: read FORCEFit.label directly off the sphere
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    dpfi = dipy_force_internal_peaks(noisy_np, dipy_force, sphere)
+                pair = best_two_peaks(dpfi, mu1_true, mu2_true)
+                if pair is not None and check_both_detected(
+                    mu1_true, mu2_true, pair[0], pair[1], angle_threshold
+                ):
+                    counts["dipy_force_internal"] += 1
             except Exception:
                 pass
 

@@ -1,39 +1,90 @@
 #!/usr/bin/env python3
-"""Plot FORCE replication results: peak detection rate vs crossing angle."""
+"""Plot FORCE replication results.
 
-import numpy as np
+Auto-detects v2 (9-method) results if present, falls back to v1 (3-method).
+"""
+
+import argparse
+from pathlib import Path
+
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from pathlib import Path
+import numpy as np
+
+
+V2_METHODS = [
+    ("dict", "dmipy-JAX dictionary", "o-", "#1f77b4"),
+    ("hybrid_guard", "Hybrid (MSE-guarded)", "s-", "#2ca02c"),
+    ("hybrid15", "Hybrid (LM, maxiter=15)", "v-", "#9467bd"),
+    ("hybrid50", "Hybrid (LM, maxiter=50)", "^-", "#8c564b"),
+    ("lm", "Pure LM (random init)", "x--", "#e377c2"),
+    ("dipy_force", "DIPY FORCE (force_peaks)", "D-", "#d62728"),
+    ("dipy_force_internal", "DIPY FORCE-internal (label)", "P:", "#ff7f0e"),
+    ("csd", "DIPY CSD (peaks)", "+-", "#17becf"),
+    ("gqi", "DIPY GQI (peaks)", "*-", "#7f7f7f"),
+]
+
+V1_METHODS = [
+    ("dict_rates", "Dictionary (FORCE-style)", "o-", "#1f77b4"),
+    ("hybrid_rates", "Dictionary + LM (hybrid)", "s-", "#2ca02c"),
+    ("lm_rates", "Pure LM (random init)", "^--", "#e377c2"),
+]
 
 
 def main():
-    npz_path = Path("validation/force_replication_results.npz")
-    if not npz_path.exists():
-        raise SystemExit(f"Results not found at {npz_path}; run validate_force_replication.py first.")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--input", type=Path, default=None,
+                    help="Path to .npz; auto-detects v2 then v1.")
+    ap.add_argument("--output", type=Path, default=None)
+    args = ap.parse_args()
+
+    v2 = Path("validation/force_replication_v2_results.npz")
+    v1 = Path("validation/force_replication_results.npz")
+
+    if args.input is not None:
+        npz_path = args.input
+    elif v2.exists():
+        npz_path = v2
+    elif v1.exists():
+        npz_path = v1
+    else:
+        raise SystemExit("No results .npz found in validation/")
+
+    is_v2 = "dipy_force" in np.load(npz_path).files
+    methods = V2_METHODS if is_v2 else V1_METHODS
+    out = args.output or Path(
+        "validation/force_replication_v2.png" if is_v2
+        else "validation/force_replication.png"
+    )
 
     r = np.load(npz_path)
     angles = r["angles"]
 
-    fig, ax = plt.subplots(figsize=(7.5, 5.0), dpi=140)
-    ax.plot(angles, r["dict_rates"] * 100, "o-", lw=2, ms=6, label="Dictionary (FORCE-style)")
-    ax.plot(angles, r["hybrid_rates"] * 100, "s-", lw=2, ms=6, label="Dictionary + LM (hybrid)")
-    ax.plot(angles, r["lm_rates"] * 100, "^--", lw=2, ms=6, label="Pure LM (random init)")
+    fig, ax = plt.subplots(figsize=(9, 5.5), dpi=140)
+    for key, label, style, color in methods:
+        if key not in r.files:
+            continue
+        ax.plot(angles, r[key] * 100, style, lw=1.6, ms=5,
+                label=label, color=color, alpha=0.9)
 
-    ax.axvspan(10, 40, alpha=0.08, color="red", label="Shallow-crossing regime")
+    ax.axvspan(10, 40, alpha=0.07, color="red",
+               label="Shallow-crossing regime (FORCE paper focus)")
     ax.set_xlabel("Crossing angle (deg)")
     ax.set_ylabel("Both-fibers detection rate (%)")
-    ax.set_title("FORCE Replication: 2-fiber crossing, SNR 30, 200 trials/angle")
+    title = "FORCE Replication v2: 2-fiber crossing, SNR 30, 200 trials/angle"
+    if is_v2:
+        title += "\n(dipy 1.12.1 FORCEModel @ 500K library, n_neighbors=50)"
+    ax.set_title(title, fontsize=11)
     ax.set_ylim(-5, 105)
     ax.set_xticks(angles)
     ax.grid(alpha=0.3)
-    ax.legend(loc="lower right", fontsize=9)
+    ax.legend(loc="center left", bbox_to_anchor=(1.01, 0.5),
+              fontsize=8.5, frameon=False)
 
-    out = Path("validation/force_replication.png")
     fig.tight_layout()
-    fig.savefig(out)
+    fig.savefig(out, bbox_inches="tight")
     print(f"Wrote {out}")
 
 

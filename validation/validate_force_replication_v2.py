@@ -111,67 +111,14 @@ def build_library_simulator(acq):
     )
 
 
-# --------------------------------------------------------------------------- #
-# Geometry helpers
-# --------------------------------------------------------------------------- #
-
-def angular_error(mu_true, mu_recovered):
-    dot = np.abs(np.dot(mu_true, mu_recovered))
-    dot = np.clip(dot, -1.0, 1.0)
-    return np.degrees(np.arccos(dot))
-
-
-def params_to_orientations(params_np):
-    theta1, theta2 = params_np[1], params_np[2]
-    mu1 = np.array([np.sin(theta1), 0.0, np.cos(theta1)])
-    mu2 = np.array([np.sin(theta2), 0.0, np.cos(theta2)])
-    return mu1, mu2
-
-
-def check_both_detected(mu1_true, mu2_true, mu1_rec, mu2_rec, threshold):
-    err_11 = angular_error(mu1_true, mu1_rec)
-    err_12 = angular_error(mu1_true, mu2_rec)
-    err_21 = angular_error(mu2_true, mu1_rec)
-    err_22 = angular_error(mu2_true, mu2_rec)
-    if err_11 + err_22 < err_12 + err_21:
-        return err_11 < threshold and err_22 < threshold
-    return err_12 < threshold and err_21 < threshold
-
-
-def best_two_peaks(peak_dirs, mu1_true, mu2_true):
-    """Pick the two recovered peaks that best match the ground truth pair.
-
-    Returns ``None`` if fewer than 2 nonzero peaks were recovered — the
-    method has failed to detect a crossing and should be scored as a miss,
-    not rescued with a dummy.
-    """
-    nz = [p for p in peak_dirs if np.linalg.norm(p) > 1e-6]
-    if len(nz) < 2:
-        return None
-    best, best_score = None, np.inf
-    for i in range(len(nz)):
-        for j in range(i + 1, len(nz)):
-            a = (angular_error(mu1_true, nz[i]) + angular_error(mu2_true, nz[j]))
-            b = (angular_error(mu1_true, nz[j]) + angular_error(mu2_true, nz[i]))
-            score = min(a, b)
-            if score < best_score:
-                best_score = score
-                best = (nz[i], nz[j])
-    return best
-
-
-# --------------------------------------------------------------------------- #
-# DIPY plumbing
-# --------------------------------------------------------------------------- #
-
-def acq_to_gtab(acq):
-    """JaxAcquisition -> DIPY gradient_table.
-
-    JaxAcquisition stores b-values in SI (s/m^2). DIPY expects s/mm^2.
-    """
-    bvals = np.asarray(acq.bvalues) / 1e6
-    bvecs = np.asarray(acq.gradient_directions)
-    return gradient_table(bvals, bvecs=bvecs)
+# Geometry helpers + acquisition adapter live in dmipy_jax.validation.force_helpers
+from dmipy_jax.validation.force_helpers import (
+    angular_error,
+    params_to_orientations,
+    check_both_detected,
+    best_two_peaks,
+    acq_to_gtab,
+)
 
 
 def csd_peaks(noisy_signal_np, gtab, response, sphere, ang_threshold):

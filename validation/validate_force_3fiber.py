@@ -41,23 +41,28 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from dipy.core.gradients import gradient_table
 from dipy.data import default_sphere
-from dipy.direction import peaks_from_model
-from dipy.reconst.csdeconv import ConstrainedSphericalDeconvModel
-from dipy.reconst.force import FORCEModel, force_peaks, load_force_simulations
-from dipy.reconst.gqi import GeneralizedQSamplingModel
+from dipy.reconst.force import FORCEModel, load_force_simulations
 
-from dmipy_jax.acquisition import JaxAcquisition
 from dmipy_jax.library.generator import LibraryGenerator
 from dmipy_jax.library.matcher import DictionaryMatcher
 from dmipy_jax.library.storage import SimulationLibrary
-from dmipy_jax.pipeline.simulator import ModelSimulator
+from dmipy_jax.validation.force_baselines import (
+    csd_peaks_from_signal,
+    dipy_force_label_directions_from_signal,
+    dipy_force_peaks_from_signal,
+    gqi_peaks_from_signal,
+)
 from dmipy_jax.validation.force_helpers import (
-    acq_to_gtab,
     best_three_peaks,
     check_all_three_detected,
     params3_to_orientations,
+)
+from dmipy_jax.validation.three_fiber import (
+    acq_to_gtab_si,
+    build_three_stick_simulator,
+    make_multishell_acquisition,
+    three_stick_signal,
 )
 
 
@@ -65,126 +70,6 @@ DIPY_FORCE_CACHE = Path(os.environ.get(
     "DIPY_FORCE_CACHE",
     str(Path.home() / ".cache" / "dipy_force" / "force_v2_500k.npz"),
 ))
-
-
-# --------------------------------------------------------------------------- #
-# Acquisition (matches v2 exactly so we can reuse its dipy-FORCE library)
-# --------------------------------------------------------------------------- #
-
-def make_multishell_acquisition():
-    key = jax.random.PRNGKey(0)
-    k1, k2 = jax.random.split(key)
-
-    def rand_vecs(k, n):
-        z = jax.random.normal(k, (n, 3))
-        return z / jnp.linalg.norm(z, axis=-1, keepdims=True)
-
-    v0 = jnp.array([[1.0, 0.0, 0.0]] * 2)
-    v1 = rand_vecs(k1, 32)
-    v2 = rand_vecs(k2, 56)
-    bvals = jnp.concatenate([jnp.zeros(2), jnp.full(32, 1e9), jnp.full(56, 2e9)])
-    bvecs = jnp.concatenate([v0, v1, v2], axis=0)
-    return JaxAcquisition(bvalues=bvals, gradient_directions=bvecs)
-
-
-# --------------------------------------------------------------------------- #
-# 3-fibre forward model and ground-truth synthesiser
-# --------------------------------------------------------------------------- #
-
-def three_stick_signal(acq, mu1, mu2, mu3, f1, f2, f_iso=0.05,
-                       d_par=1.7e-9, d_iso=3.0e-9):
-    f3 = 1.0 - f1 - f2 - f_iso
-    cos1 = acq.gradient_directions @ mu1
-    cos2 = acq.gradient_directions @ mu2
-    cos3 = acq.gradient_directions @ mu3
-    s1 = jnp.exp(-acq.bvalues * d_par * cos1 ** 2)
-    s2 = jnp.exp(-acq.bvalues * d_par * cos2 ** 2)
-    s3 = jnp.exp(-acq.bvalues * d_par * cos3 ** 2)
-    s_iso = jnp.exp(-acq.bvalues * d_iso)
-    return f1 * s1 + f2 * s2 + f3 * s3 + f_iso * s_iso
-
-
-def build_three_stick_simulator(acq):
-    """7-param planar 3-stick simulator for library generation.
-
-    params: [d_par, theta1, theta2, theta3, f1, f2, f_iso]
-    """
-    def forward_fn(params, acq):
-        d_par = params[0]
-        t1, t2, t3 = params[1], params[2], params[3]
-        f1, f2, f_iso = params[4], params[5], params[6]
-        f3 = 1.0 - f1 - f2 - f_iso
-        mu1 = jnp.array([jnp.sin(t1), 0.0, jnp.cos(t1)])
-        mu2 = jnp.array([jnp.sin(t2), 0.0, jnp.cos(t2)])
-        mu3 = jnp.array([jnp.sin(t3), 0.0, jnp.cos(t3)])
-        cos1 = acq.gradient_directions @ mu1
-        cos2 = acq.gradient_directions @ mu2
-        cos3 = acq.gradient_directions @ mu3
-        s1 = jnp.exp(-acq.bvalues * d_par * cos1 ** 2)
-        s2 = jnp.exp(-acq.bvalues * d_par * cos2 ** 2)
-        s3 = jnp.exp(-acq.bvalues * d_par * cos3 ** 2)
-        s_iso = jnp.exp(-acq.bvalues * 3.0e-9)
-        return f1 * s1 + f2 * s2 + f3 * s3 + f_iso * s_iso
-
-    return ModelSimulator(
-        forward_fn=forward_fn,
-        parameter_names=["d_par", "theta1", "theta2", "theta3", "f1", "f2", "f_iso"],
-        parameter_ranges={
-            "d_par": (1.0e-9, 2.5e-9),
-            "theta1": (0.0, float(jnp.pi)),
-            "theta2": (0.0, float(jnp.pi)),
-            "theta3": (0.0, float(jnp.pi)),
-            "f1": (0.1, 0.6),
-            "f2": (0.1, 0.6),
-            "f_iso": (0.0, 0.2),
-        },
-        acquisition=acq,
-    )
-
-
-# --------------------------------------------------------------------------- #
-# DIPY peak helpers (delegate to peaks_from_model)
-# --------------------------------------------------------------------------- #
-
-def csd_peaks_3(noisy_signal_np, gtab, response, sphere):
-    data4d = noisy_signal_np[None, None, None, :]
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order_max=8)
-    peaks = peaks_from_model(
-        model=csd_model, data=data4d, sphere=sphere,
-        relative_peak_threshold=0.3,
-        min_separation_angle=10.0,
-        return_odf=False, normalize_peaks=True, npeaks=5,
-    )
-    return [peaks.peak_dirs[0, 0, 0, k] for k in range(peaks.peak_dirs.shape[-2])]
-
-
-def gqi_peaks_3(noisy_signal_np, gtab, sphere):
-    data4d = noisy_signal_np[None, None, None, :]
-    gqi_model = GeneralizedQSamplingModel(gtab, sampling_length=1.2)
-    peaks = peaks_from_model(
-        model=gqi_model, data=data4d, sphere=sphere,
-        relative_peak_threshold=0.3,
-        min_separation_angle=10.0,
-        return_odf=False, normalize_peaks=True, npeaks=5,
-    )
-    return [peaks.peak_dirs[0, 0, 0, k] for k in range(peaks.peak_dirs.shape[-2])]
-
-
-def dipy_force_peaks_3(noisy_signal_np, force_model):
-    data4d = noisy_signal_np[None, None, None, :].astype(np.float32)
-    fit = force_model.fit(data4d)
-    peaks = force_peaks(fit)
-    return [peaks.peak_dirs[0, 0, 0, k] for k in range(peaks.peak_dirs.shape[-2])]
-
-
-def dipy_force_internal_peaks_3(noisy_signal_np, force_model, sphere):
-    data4d = noisy_signal_np[None, None, None, :].astype(np.float32)
-    fit = force_model.fit(data4d)[0, 0, 0]
-    label = np.asarray(fit.label)
-    nz = np.where(label > 0)[0]
-    if nz.size == 0:
-        return []
-    return [sphere.vertices[i] for i in nz]
 
 
 # --------------------------------------------------------------------------- #
@@ -218,7 +103,7 @@ def main():
     matcher = DictionaryMatcher(lib, k_best=10)
     print(f"Library: {lib.n_entries:,} entries, signal dim {lib.signal_dim}")
 
-    gtab = acq_to_gtab(acq)
+    gtab = acq_to_gtab_si(acq)
     response = (np.array([1.7e-3, 3e-4, 3e-4]), 1.0)
     sphere = default_sphere
 
@@ -283,7 +168,7 @@ def main():
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    pks = dipy_force_peaks_3(noisy_np, dipy_force)
+                    pks = dipy_force_peaks_from_signal(noisy_np, dipy_force)
                 triple = best_three_peaks(pks, mu1_true, mu2_true, mu3_true)
                 if triple is not None and check_all_three_detected(
                     mu1_true, mu2_true, mu3_true,
@@ -297,7 +182,8 @@ def main():
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    pks = dipy_force_internal_peaks_3(noisy_np, dipy_force, sphere)
+                    pks = dipy_force_label_directions_from_signal(
+                        noisy_np, dipy_force, sphere)
                 triple = best_three_peaks(pks, mu1_true, mu2_true, mu3_true)
                 if triple is not None and check_all_three_detected(
                     mu1_true, mu2_true, mu3_true,
@@ -311,7 +197,9 @@ def main():
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    pks = csd_peaks_3(noisy_np, gtab, response, sphere)
+                    pks = csd_peaks_from_signal(
+                        noisy_np, gtab, response, sphere,
+                        relative_peak_threshold=0.3, min_separation_angle=10.0)
                 triple = best_three_peaks(pks, mu1_true, mu2_true, mu3_true)
                 if triple is not None and check_all_three_detected(
                     mu1_true, mu2_true, mu3_true,
@@ -325,7 +213,9 @@ def main():
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    pks = gqi_peaks_3(noisy_np, gtab, sphere)
+                    pks = gqi_peaks_from_signal(
+                        noisy_np, gtab, sphere,
+                        relative_peak_threshold=0.3, min_separation_angle=10.0)
                 triple = best_three_peaks(pks, mu1_true, mu2_true, mu3_true)
                 if triple is not None and check_all_three_detected(
                     mu1_true, mu2_true, mu3_true,

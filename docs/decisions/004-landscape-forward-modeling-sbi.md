@@ -490,7 +490,84 @@ DIPY FORCEModel is configured at FORCE-paper defaults: 500K simulations,
    crossing at 200 trials. They were never the FORCE replacement; the result is
    useful only as a baseline floor.
 
-### 9.4 Implications for the doc 004 roadmap
+### 9.4 Diagnosis: why dipy FORCE has non-monotone failures
+
+`validation/investigate_dipy_force_failures.py` probes the matcher state per
+crossing angle on the same fixed-seed synthetic. Key facts:
+
+**Library composition (500K entries, generated with default
+`generate_force_simulations` settings):**
+
+| Configuration | Count | Share |
+|---|---:|---:|
+| 1-fiber | 50,150 | 10.0% |
+| 2-fiber | 100,223 | 20.0% |
+| 3-fiber | **349,627** | **69.9%** |
+
+The default generator samples fiber fractions from `Dirichlet(2,1,1)` over a
+3-element simplex, which implicitly biases the library toward 3-fiber
+configurations.
+
+**Coverage of 2-fiber crossings in the +x/+z plane:** for any given crossing,
+only **3–46 entries (0.001–0.01%)** of the 500K library are 2-fiber AND have
+one direction within 10° of mu1 AND one within 10° of mu2. The lone exception
+is 10° crossings (575 entries, 0.12%) — at extreme acuity, mu1 and mu2 share
+nearby sphere vertices, so any 2-fiber entry pointing at those vertices counts.
+
+**Per-angle matcher behaviour (fixed-seed noisy synthetic, SNR 30):**
+
+| Angle | num_fibers reported | matched-direction errors (mu1, mu2) | "good 2-fiber" library entries |
+|---:|---:|:---:|---:|
+| 10°–25° | **1** (collapsed) | (5–12°, 4–13°) | 0–575 |
+| 30°–40° | 2 | (5°, 10–35°) | 8–43 |
+| **45°** | **1** (collapsed again) | (26°, 19°) | 38 |
+| 50°–70° | 2 | improving | 29–46 |
+| **75°** | 2 | (12°, **16°**) — just over 15° threshold | 27 |
+| 80°–90° | 2 | (12°, 2–11°) | 24–37 |
+
+This makes the failure mechanism precise:
+
+1. **Acute crossings (10°–25°) collapse to a single dispersed fiber** because
+   1-fiber + high-dispersion library entries (50K of them) fit Rician-noised
+   2-fiber signals as well as the rare correct 2-fiber entries (0–8 of them
+   for these angles).
+
+2. **45° has a deep secondary collapse** to single-fiber-dispersion. Despite
+   38 nominally-correct 2-fiber entries, the matcher's `n_neighbors=50` voting
+   pool averages over 50 best matches — the 38 correct entries are out-voted
+   by 3-fiber neighbours that share signal similarity by coincidence.
+
+3. **75° fails by a narrow margin**: the matcher reports 2 fibers and one
+   recovered direction is ~12° from mu1 (passes), but the second is exactly
+   16° from mu2 (just over the 15° detection threshold). With a denser sphere
+   the missed vertex would be available; on the 362-vertex `default_sphere`
+   it is not.
+
+4. **Sphere quantisation is NOT the bottleneck**: closest-vertex errors are
+   ≤4.4° for all angles. Library coverage and the n_neighbors voting are.
+
+### 9.5 Suggested upstream improvements for dipy FORCE
+
+These are improvements we could prototype in dmipy-jax and PR upstream:
+
+1. **Stratified n_fibers sampling.** Sample uniformly over n_fibers ∈ {1,2,3}
+   so each gets ~33% of the library, instead of Dirichlet-induced 70%
+   3-fiber bias. For users analysing 2-fiber-dominated regions (most WM),
+   this is a strict improvement.
+
+2. **Conditional `n_neighbors` voting.** Compute a `num_fibers` mode across
+   the top-K matches first, then take the posterior mean only over neighbours
+   with that fibre count. Stops 3-fiber neighbours from polluting 2-fiber
+   answers.
+
+3. **Denser sphere option** (`Symmetric724` instead of 362). Finer angular
+   grid would close the 75° gap above. Cost: doubles label memory.
+
+4. **Anisotropic library generation** for known-region inference: when the
+   user knows the data is from a 2-fiber-dominated region, generate a library
+   biased toward 2-fiber configurations.
+
+### 9.6 Implications for the doc 004 roadmap
 
 - **Section 6.2 ("SBI as continuous replacement for discrete dictionary lookup")**
   retains its argument, *and* gains a sharper one: even discrete lookup on a

@@ -8,6 +8,7 @@ takes a :class:`JaxAcquisition`.
 
 from __future__ import annotations
 
+import itertools
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -97,6 +98,79 @@ def best_two_peaks(
             if score < best_score:
                 best_score = score
                 best = (nz[i], nz[j])
+    return best
+
+
+# --------------------------------------------------------------------------- #
+# 3-fiber helpers (planar parameterisation)
+# --------------------------------------------------------------------------- #
+
+def params3_to_orientations(
+    params: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Extract three fibre directions from a 3-stick planar parameter vector.
+
+    Layout:
+        ``[d_par, theta1, theta2, theta3, f1, f2, f_iso]``
+    All three sticks lie in the +x/+z plane (phi = 0). f3 = 1 - f1 - f2 - f_iso.
+    """
+    theta1 = float(params[1])
+    theta2 = float(params[2])
+    theta3 = float(params[3])
+    mu1 = np.array([np.sin(theta1), 0.0, np.cos(theta1)])
+    mu2 = np.array([np.sin(theta2), 0.0, np.cos(theta2)])
+    mu3 = np.array([np.sin(theta3), 0.0, np.cos(theta3)])
+    return mu1, mu2, mu3
+
+
+def check_all_three_detected(
+    mu1_true: np.ndarray, mu2_true: np.ndarray, mu3_true: np.ndarray,
+    mu1_rec: np.ndarray, mu2_rec: np.ndarray, mu3_rec: np.ndarray,
+    threshold: float,
+) -> bool:
+    """True iff each truth direction is within *threshold* (deg) of one
+    of the three recovered peaks under the best of the 6 permutations."""
+    truths = (mu1_true, mu2_true, mu3_true)
+    recs = (mu1_rec, mu2_rec, mu3_rec)
+    best_total = np.inf
+    best_max = np.inf
+    for perm in itertools.permutations(range(3)):
+        errs = [angular_error(truths[i], recs[perm[i]]) for i in range(3)]
+        total = sum(errs)
+        if total < best_total:
+            best_total = total
+            best_max = max(errs)
+    return bool(best_max < threshold)
+
+
+def best_three_peaks(
+    peak_dirs,
+    mu1_true: np.ndarray,
+    mu2_true: np.ndarray,
+    mu3_true: np.ndarray,
+) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Pick the triple from *peak_dirs* that best matches the truth triple.
+
+    Returns ``None`` if fewer than 3 nonzero peaks. Same no-rescue policy as
+    :func:`best_two_peaks`: a method that fails to surface 3 peaks is scored
+    as a miss, not patched up with dummies.
+    """
+    nz: List[np.ndarray] = [
+        np.asarray(p) for p in peak_dirs if np.linalg.norm(p) > 1e-6
+    ]
+    if len(nz) < 3:
+        return None
+    best, best_score = None, np.inf
+    for triple in itertools.combinations(range(len(nz)), 3):
+        for perm in itertools.permutations(triple):
+            errs = (
+                angular_error(mu1_true, nz[perm[0]])
+                + angular_error(mu2_true, nz[perm[1]])
+                + angular_error(mu3_true, nz[perm[2]])
+            )
+            if errs < best_score:
+                best_score = errs
+                best = (nz[perm[0]], nz[perm[1]], nz[perm[2]])
     return best
 
 

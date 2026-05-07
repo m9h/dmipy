@@ -159,3 +159,129 @@ class TestParamsToOrientations:
         # mu1 should now be along +x
         assert abs(mu1 @ np.array([1.0, 0.0, 0.0])) == pytest.approx(1.0, abs=1e-6)
         assert mu2 == pytest.approx(np.array([0.0, 0.0, 1.0]), abs=1e-6)
+
+
+# --------------------------------------------------------------------------- #
+# 3-fiber helpers — planar parameterisation
+# [d_par, theta1, theta2, theta3, f1, f2, f_iso]
+# --------------------------------------------------------------------------- #
+
+class TestParams3ToOrientations:
+    def test_zero_thetas_all_aligned_with_z(self):
+        params = np.array([1.7e-9, 0.0, 0.0, 0.0, 0.33, 0.33, 0.0])
+        mu1, mu2, mu3 = force_helpers.params3_to_orientations(params)
+        z = np.array([0.0, 0.0, 1.0])
+        for mu in (mu1, mu2, mu3):
+            assert mu == pytest.approx(z, abs=1e-6)
+
+    def test_three_distinct_planar_directions(self):
+        # 0°, 60°, 120° — three sticks in +x/+z plane
+        params = np.array([
+            1.7e-9,
+            0.0, math.radians(60), math.radians(120),
+            0.33, 0.33, 0.0,
+        ])
+        mu1, mu2, mu3 = force_helpers.params3_to_orientations(params)
+        assert mu1 == pytest.approx(np.array([0.0, 0.0, 1.0]), abs=1e-6)
+        # 60° from z-axis in +x/+z plane
+        expected2 = np.array([math.sin(math.radians(60)), 0.0, math.cos(math.radians(60))])
+        assert mu2 == pytest.approx(expected2, abs=1e-6)
+        expected3 = np.array([math.sin(math.radians(120)), 0.0, math.cos(math.radians(120))])
+        assert mu3 == pytest.approx(expected3, abs=1e-6)
+
+
+class TestCheckAllThreeDetected:
+    def setup_method(self):
+        self.mu1 = np.array([0.0, 0.0, 1.0])
+        self.mu2 = np.array([math.sin(math.radians(60)), 0.0, math.cos(math.radians(60))])
+        self.mu3 = np.array([math.sin(math.radians(120)), 0.0, math.cos(math.radians(120))])
+
+    def test_perfect_recovery_passes(self):
+        assert force_helpers.check_all_three_detected(
+            self.mu1, self.mu2, self.mu3,
+            self.mu1, self.mu2, self.mu3, threshold=15.0,
+        )
+
+    def test_permuted_recovery_passes(self):
+        # Any of 6 permutations of the recovered triple should still pass
+        assert force_helpers.check_all_three_detected(
+            self.mu1, self.mu2, self.mu3,
+            self.mu3, self.mu1, self.mu2, threshold=15.0,
+        )
+        assert force_helpers.check_all_three_detected(
+            self.mu1, self.mu2, self.mu3,
+            self.mu2, self.mu3, self.mu1, threshold=15.0,
+        )
+
+    def test_one_far_off_fails(self):
+        far = np.array([0.0, 1.0, 0.0])  # 90° from all three
+        assert not force_helpers.check_all_three_detected(
+            self.mu1, self.mu2, self.mu3,
+            self.mu1, self.mu2, far, threshold=15.0,
+        )
+
+    def test_all_within_threshold_passes(self):
+        # Recovered fibres within 14° of each truth
+        def perturb(mu, deg, axis_dir):
+            # Rotate mu around axis perpendicular to mu and axis_dir by deg degrees
+            axis = np.cross(mu, axis_dir)
+            n = np.linalg.norm(axis)
+            if n < 1e-9:
+                return mu
+            axis = axis / n
+            rad = math.radians(deg)
+            return mu * math.cos(rad) + np.cross(axis, mu) * math.sin(rad)
+
+        x = np.array([1.0, 0.0, 0.0])
+        rec1 = perturb(self.mu1, 14.0, x)
+        rec2 = perturb(self.mu2, 14.0, x)
+        rec3 = perturb(self.mu3, 14.0, x)
+        assert force_helpers.check_all_three_detected(
+            self.mu1, self.mu2, self.mu3, rec1, rec2, rec3, threshold=15.0,
+        )
+
+
+class TestBestThreePeaks:
+    def setup_method(self):
+        self.mu1 = np.array([0.0, 0.0, 1.0])
+        self.mu2 = np.array([math.sin(math.radians(60)), 0.0, math.cos(math.radians(60))])
+        self.mu3 = np.array([math.sin(math.radians(120)), 0.0, math.cos(math.radians(120))])
+
+    def test_empty_returns_none(self):
+        assert force_helpers.best_three_peaks([], self.mu1, self.mu2, self.mu3) is None
+
+    def test_one_peak_returns_none(self):
+        assert force_helpers.best_three_peaks(
+            [self.mu1], self.mu1, self.mu2, self.mu3
+        ) is None
+
+    def test_two_peaks_returns_none(self):
+        """A 3-fiber method that recovers only 2 peaks has failed, no rescue."""
+        assert force_helpers.best_three_peaks(
+            [self.mu1, self.mu2], self.mu1, self.mu2, self.mu3
+        ) is None
+
+    def test_zero_norm_peaks_filtered(self):
+        peaks = [
+            np.array([0.0, 0.0, 0.0]),
+            self.mu1,
+            self.mu2,
+        ]
+        assert force_helpers.best_three_peaks(peaks, self.mu1, self.mu2, self.mu3) is None
+
+    def test_three_correct_peaks_returns_triple(self):
+        result = force_helpers.best_three_peaks(
+            [self.mu1, self.mu2, self.mu3], self.mu1, self.mu2, self.mu3
+        )
+        assert result is not None
+        assert len(result) == 3
+
+    def test_decoys_rejected(self):
+        decoy = np.array([1.0, 0.0, 0.0])  # 90° from mu1, mu3; 30° from mu2
+        result = force_helpers.best_three_peaks(
+            [self.mu1, self.mu2, decoy, self.mu3], self.mu1, self.mu2, self.mu3
+        )
+        assert result is not None
+        chosen = {tuple(np.round(r, 6).tolist()) for r in result}
+        for truth in (self.mu1, self.mu2, self.mu3):
+            assert tuple(np.round(truth, 6).tolist()) in chosen

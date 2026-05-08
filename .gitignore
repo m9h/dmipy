@@ -14,6 +14,10 @@ __pycache__/
 *.tsv
 .coverage
 
+# Track paper figures and result NPZs under validation/ (referenced from docs)
+!validation/*.png
+!validation/*.npz
+
 # Datasets and large files
 ds004910/
 data/
@@ -59,4 +63,8 @@ test_result*.txt
 verification_results*.txt
 temp_*.seq
 *.png
+
+# Re-allow paper figures and result NPZs under validation/ (must come last)
+!validation/*.png
+!validation/*.npz
 

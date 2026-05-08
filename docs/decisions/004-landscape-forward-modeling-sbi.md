@@ -589,6 +589,112 @@ These are improvements we could prototype in dmipy-jax and PR upstream:
 
 ---
 
+## 10. Coplanar 3-fibre benchmark (2026-05-07)
+
+`validation/validate_force_3fiber.py` runs a complementary 10-α (15–60°,
+5° steps) × 200-trial × SNR 30 sweep on a *coplanar* 3-stick crossing in
+the +x/+z plane, equal fractions (≈0.317 each), isotropic FW = 0.05.
+Three sticks are placed at θ ∈ {−α, 0, +α}; α controls the fibre spread.
+Detection requires *all three* fibres recovered within 15° of their
+assigned truth direction.
+
+The 9.4 §finding ("dipy FORCE library is 70% 3-fibre") suggested FORCE
+should excel here. It does not.
+
+### 10.1 Methods compared
+
+| Method | Notes |
+|---|---|
+| `dict3` | dmipy-JAX 3-stick dictionary, 200K-entry library |
+| `dipy_force` | dipy upstream `FORCEModel.fit` → `force_peaks` (500K library, n_neighbours=50) |
+| `dipy_force_internal` | Same matcher, read `FORCEFit.label` directly off `default_sphere` |
+| `csd` | DIPY CSD → `peaks_from_model` |
+| `gqi` | DIPY GQI → `peaks_from_model` |
+
+### 10.2 Results
+
+![3-fibre benchmark: detection rate vs fibre half-spread](../../validation/force_3fiber.png)
+
+| α (half-spread) | dict3 | dipy_force | dipy_force_internal | csd | gqi |
+|---:|---:|---:|---:|---:|---:|
+| 15° | 67.5% | **0%** | **0%** | 0% | 0% |
+| 20° | 77.0% | **0%** | **0%** | 0% | 0% |
+| 25° | 71.5% | **0%** | **0%** | 0% | 0% |
+| 30° | 61.0% | **0%** | **0%** | 0% | 0% |
+| 35° | 45.5% | **0%** | **0%** | 0% | 0% |
+| 40° | 97.0% | **0%** | **0%** | 0% | 0% |
+| 45° | 98.5% | **0%** | **0%** | 0% | 0% |
+| 50° | 90.5% | **0%** | **0%** | 0% | 0% |
+| 55° | 94.0% | **0%** | **0%** | 0% | 0% |
+| 60° | 98.5% | **0%** | **0%** | 0% | 0% |
+
+### 10.3 Diagnosis: zero coplanar 3-fibre coverage
+
+`generate_force_simulations` samples 3-fibre orientations as random triples
+on a 362-vertex sphere. A direct count of the 500K library:
+
+> Of 20,000 sampled 3-fibre entries (out of 349,627 total), **zero have all
+> three directions within 15° of the +x/+z plane.**
+
+Random uniform sampling of 3 sphere directions almost never produces three
+coplanar directions. The 70% 3-fibre composition consists of
+tetrahedrally-distributed configurations, never planar ones. This is a
+biologically-relevant gap: regions like the centrum semiovale (corpus
+callosum + corticospinal tract + superior longitudinal fasciculus) cross
+roughly in a plane, and dipy upstream FORCE has no library coverage for
+them.
+
+The wiring that produces this 0% is verified — see Section 10.4.
+
+### 10.4 Wiring + finding pinned by integration tests
+
+`tests/validation/test_force_3fiber_integration.py` (7 tests, all
+passing) pin the result against accidental regressions:
+
+- `test_b0_signal_is_unity` / `test_signal_is_bounded_unit_interval` /
+  `test_fractions_sum_to_one_in_signal` — pin the forward synthetic.
+- `test_clean_signal_recovered_from_library` — confirms dmipy-JAX
+  `LibraryGenerator` + `DictionaryMatcher` round-trip on a stored entry.
+- `test_unit_normalised_single_fibre_produces_active_label` — confirms
+  dipy `FORCEModel.fit` populates `FORCEFit.label` for a properly
+  normalised (S(b=0)=1) clean synthetic. *Without this, the 0% result
+  could be a wiring bug masquerading as a finding.*
+- `test_clean_coplanar_3fiber_recovers_out_of_plane_directions` — the
+  finding itself: clean coplanar 3-stick synthetic, all three truth
+  directions at y=0, but the matcher's recovered peaks have at least
+  one |y| > 0.1. *If this test ever flips green-on-the-other-direction
+  (recovered peaks all coplanar), the finding has been overtaken by an
+  upstream improvement to* `generate_force_simulations`.
+
+The fourth test specifically guards the headline claim of this section.
+
+### 10.5 Implications
+
+This finding **expands** the doc 004 §6.2 argument from "SBI gives
+continuous parameter estimates" to a stronger claim:
+
+> Discrete dictionary methods are competitive with — and on
+> biologically-relevant geometries can outperform — generic large
+> dictionaries, *if the parametric design matches the geometry of
+> interest*. dmipy-JAX's strength is not just differentiability but the
+> ability to compose forward models that span *exactly* the parameter
+> manifold the data lies on.
+
+Together with §9, the upstream FORCE roadmap suggestions sharpen:
+
+| Section | Target | Suggested upstream improvement |
+|---|---|---|
+| 9.5 (1) | Fibre-fraction prior | Stratified n_fibres sampling instead of Dirichlet(2,1,1) |
+| 9.5 (2) | n_neighbours voting | Condition on n_fibres consistency |
+| 9.5 (3) | Sphere | Default `Symmetric724` instead of 362 |
+| 9.5 (4) | Library scope | Per-region anisotropic generation |
+| **10.5 (5)** | **Orientation prior** | **Constrained orientation sampling for known-plane regions; or expose user-specifiable prior over fibre orientation distribution** |
+
+(5) is the new addition. Without it, dipy FORCE will continue to fail on
+coplanar 3-fibre crossings regardless of how (1)–(4) are tuned.
+
+---
+
 ## References
 
 1. Shah AJ et al. FORCE: FORward modeling for Complex microstructure Estimation.

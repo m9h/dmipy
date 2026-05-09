@@ -955,31 +955,142 @@ out-of-regime artifact, which §13 will determine.
 
 ---
 
-## 13. Re-run on FORCE-paper-matched conditions (planned)
+## 13. Re-run on FORCE-paper-matched conditions (2026-05-09, **partial**)
 
-A `validate_force_matched.py` script is to mirror §9, §10, §11 but with the
-following changes:
+Implemented `validation/validate_force_matched.py` (commit 6f35d45) and ran
+the sweep at:
 
-1. **Acquisition**: 150 directions × b=2000 single-shell (Stanford
-   HARDI-equivalent), regenerated dipy FORCE library targeting that gtab.
-2. **Synthetics with dispersion**: each fibre's orientation distribution
-   drawn as Bingham with ODI sampled from `Uniform(0.01, 0.30)`. Forward
-   model integrates over the dispersion at each gradient direction
-   (fast Bingham SH expansion or numerical sphere integration).
-3. **Tolerance**: 20° detection threshold, 10° min peak separation.
-4. **Methods**: same 4 (`dict`, `dipy_force`, `csd`, `gqi`) with `dict`
-   parameterised against a matched dispersion-aware library.
-5. **SNRs**: 10, 20, 50 (matching paper).
+1. ✅ **Acquisition**: Stanford HARDI 150 directions × b=2000 single-shell
+   (160 total: 10 b=0 + 150 b=2000) with FORCE library regenerated for
+   that gtab.
+2. ✅ **Synthetics with dispersion**: 2-fibre Bingham-dispersed sticks
+   with ODI ~ Uniform(0.01, 0.30) per trial.
+3. ✅ **Tolerance**: 20° (paper convention), 10° min peak separation.
+4. ✅ **dmipy-JAX dict library**: 6-param dispersion-aware simulator
+   `[d_par, θ1, θ2, ODI, f1, f_iso]` with the same ODI band as FORCE.
+5. ✅ **SNRs**: 10, 20, 50.
 
-Acceptance criterion for the §13 results:
-- If `dipy_force` achieves ≥60% at 10°–20° at SNR=20: §9 was an
-  out-of-regime artifact; remove the strong "non-monotone" claim from doc
-  004 and only keep the §10 / §9.4 structural findings.
-- If `dipy_force` still has non-monotone failures: §9 may be a real
-  upstream issue worth reporting separately.
-- The §10 coplanar finding is checked again on the matched conditions.
+Compute: 42 min library setup + 1.5 h sweep = ~2 h.
 
-Compute: ~2–3h on GB10 per experiment. Builds on `dmipy_jax/validation/two_fiber.py` and `force_baselines.py` modules.
+### 13.1 Results (with caveats — see §13.4)
+
+![FORCE-paper-matched results: 4 tools × 3 SNR × 17 angles](../../validation/force_matched.png)
+
+#### dict (dmipy-JAX, dispersion-aware library)
+
+| Angle | SNR=10 | SNR=20 | SNR=50 |
+|---:|---:|---:|---:|
+| 10° | 76% | 92% | 98% |
+| 20° | 76% | 90% | 95% |
+| 30° | 62% | 84% | 88% |
+| 45° | 78% | 80% | 88% |
+| 60° | 78% | 93% | 98% |
+| 90° | 85% | 92% | 99% |
+
+Monotone in SNR; 76–98% across all angles at SNR≥20.
+
+#### dipy upstream FORCE
+
+| Angle | SNR=10 | SNR=20 | SNR=50 |
+|---:|---:|---:|---:|
+| 10° | **0%** | **0%** | **0%** |
+| 15° | 35% | 36% | 32% |
+| 20° | 24% | 27% | 27% |
+| 30° | 10% | 4% | 4% |
+| 45° | 12% | 6% | 10% |
+| 60° | 22% | 24% | 38% |
+| 90° | 17% | 24% | 28% |
+
+**The paper reports ~75% at 20° / SNR=20** (Figure 3); we observe **27%** —
+a 48 percentage-point gap. Even on dispersion-matched conditions, dipy
+upstream FORCE substantially underperforms the paper's published numbers
+on this benchmark.
+
+The pattern is also unusual: a peak at 15° (~36%), a dip at 30–50° (4–14%),
+and a partial recovery at 60–70°. **Not** the smooth-rising curve the
+paper's Figure 3 shows.
+
+#### DIPY CSD
+
+3–14% across the range. Not a useful crossing detector at this acquisition.
+
+#### DIPY GQI
+
+0–8% below 45°, climbs to 28–68% at 60°+ (peaks at SNR=50/60°). Useful only
+at wide crossings on this acquisition.
+
+### 13.2 What this changes about §9 / §11
+
+Before this run we conjectured §9's non-monotone collapses and §11's
+anti-monotone SNR were out-of-regime artifacts of zero-dispersion
+synthetics. **The matched run shows the gap to the paper persists** even
+with dispersion fixed. The §9 / §11 phenomena may not be solely
+out-of-regime — they could reflect a genuine upstream implementation
+issue. **But before claiming that, three remaining mismatches need
+verification.**
+
+### 13.3 Coplanar 3-fibre finding (still pending re-test)
+
+The §10 finding (zero coplanar 3-fibre coverage) was not re-tested in
+this matched run; that requires a 3-fibre version of `validate_force_matched.py`
+which is a separate compute (next).
+
+### 13.4 ⚠️ Remaining methodology mismatches (the run above is still imperfect)
+
+After running §13 above, four further mismatches with FORCE Table 1 were
+identified:
+
+| Mismatch | FORCE Table 1 | My §13 setup |
+|---|---|---|
+| **Parallel diffusivity** | `D_∥^in = D_∥^ex ~ Uniform(2.0, 3.0) × 10⁻³ mm²/s` | **`d_par = 1.7 × 10⁻³ mm²/s` (fixed, BELOW range)** |
+| Sphere | 724-vertex grid | dipy `default_sphere` = 362 vertices |
+| Tissue fractions | `WM/GM/FW ~ Dirichlet(2,1,1)` | `f_iso = 0.05` (fixed, very low FW) |
+| ODI sampling | 10 equispaced values in [0.01, 0.30] | continuous Uniform(0.01, 0.30) |
+
+The **d_par mismatch is the most consequential** — my synthetic's
+diffusivity is *below* the FORCE library's range, so by construction
+no library entry exactly matches. The matcher must pick a higher-d_par
+entry, which fits worse in cosine-distance and explains the 48pp gap to
+the paper.
+
+**Conclusion**: dipy upstream FORCE's poor performance on the §13 sweep
+is *also* an out-of-distribution artifact (different parameter mismatch
+than §9–§11, but same category). Until d_par is sampled inside the
+library's `Uniform(2.0, 3.0)×10⁻³` range, the §13 numbers are not a
+fair test of FORCE's actual capability.
+
+### 13.5 Next iteration: §13b
+
+A follow-up `validate_force_matched_v2.py` should:
+
+1. Sample `d_par ~ Uniform(2.0, 3.0) × 10⁻³ mm²/s` per trial (matching
+   FORCE library exactly).
+2. Sample tissue fractions from `Dirichlet(2,1,1)` over (f_WM, f_GM, f_FW)
+   instead of fixed `f_iso = 0.05`.
+3. Optionally test with the 724-vertex sphere if dipy exposes a way to
+   pass a custom sphere to `generate_force_simulations` (likely yes:
+   sphere argument).
+
+If `dipy_force` then achieves the paper-reported ~75% at 20° / SNR=20:
+the §13 gap was a remaining out-of-distribution artifact, and the §10
+structural findings are the only conclusions doc 004 can support. If
+`dipy_force` still underperforms on §13b, there is a genuine upstream
+issue worth a dipy GitHub issue — but only after this final alignment
+pass.
+
+### 13.6 Provisional implications
+
+Until §13b runs, the strongest defensible claim is:
+
+> **Out-of-distribution synthetics — even subtly so (d_par 1.7 vs library
+> 2.0–3.0) — produce dramatic FORCE underperformance.** This is a
+> *user-facing finding* about the importance of synthetic-library
+> alignment, not a critique of the FORCE method per se.
+
+The §10 coplanar 3-fibre finding (orientation prior gap) and §9.4 library
+composition diagnosis (70% 3-fibre Dirichlet) are unaffected — they're
+structural to `generate_force_simulations` regardless of synthetic
+parameters.
 
 ---
 

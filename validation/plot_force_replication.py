@@ -49,7 +49,7 @@ SNR_SWEEP_METHODS = [
 ]
 
 
-def plot_snr_sweep(npz_path: Path, out: Path):
+def plot_snr_sweep(npz_path: Path, out: Path, title_suffix: str = None):
     r = np.load(npz_path)
     snrs = r["snrs"]
     angles = r["angles"]
@@ -77,8 +77,10 @@ def plot_snr_sweep(npz_path: Path, out: Path):
     axes[0].legend(loc="lower right", fontsize=8.5, frameon=False)
 
     fig.suptitle(
-        "FORCE SNR sweep: 4 tools × 4 SNR levels × 17 crossing angles "
-        "(2-stick, 200 trials/cell)",
+        title_suffix or (
+            "FORCE SNR sweep: 4 tools × 4 SNR levels × 17 crossing angles "
+            "(2-stick, 200 trials/cell)"
+        ),
         fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.96])
@@ -93,7 +95,17 @@ def main():
     ap.add_argument("--output", type=Path, default=None)
     args = ap.parse_args()
 
+    matched = Path("validation/force_matched_results.npz")
     snr = Path("validation/force_snr_sweep_results.npz")
+    if (args.input is None and matched.exists()) or (
+        args.input is not None and "matched" in str(args.input)
+    ):
+        npz_path = args.input or matched
+        out = args.output or Path("validation/force_matched.png")
+        return plot_snr_sweep(npz_path, out, title_suffix=(
+            "FORCE-paper-matched re-run: Stanford HARDI 150 dirs × b=2000, "
+            "Bingham-dispersed sticks (ODI∈[0.01,0.30]), 20° tolerance"
+        ))
     if (args.input is None and snr.exists()) or (
         args.input is not None and "snr_sweep" in str(args.input)
     ):

@@ -400,6 +400,30 @@ via Fisher information, then verify them with SBI.
 
 ---
 
+## ⚠️ Methodology caveat (added 2026-05-09)
+
+**Sections 9, 10, and 11 below were run before the FORCE paper's evaluation
+methodology was carefully checked. Three mismatches with the paper's design
+envelope identified after the fact, summarised in [Section 12](#12-methodology-check-vs-force-paper-2026-05-09):**
+
+1. My synthetics use **sharp ODI=0 sticks**; FORCE's library has *no* ODI<0.01
+   entries (Table 1: ODI equispaced on [0.01, 0.30]). The synthetics are
+   structurally out-of-distribution for the FORCE matcher.
+2. My acquisition is **90 dirs × {b=1000, 2000} two-shell**; the FORCE paper's
+   synthetic experiment used **150 dirs × b=2000 single-shell**, and its HCP
+   test used 270 dirs (90/shell × 3 shells).
+3. My angular tolerance is **15°**; the FORCE paper uses **20°** for its
+   "correctly resolved within tolerance" success criterion.
+
+The §9 / §11 findings (non-monotone collapses, anti-monotone SNR) are
+likely *regime-specific* — characterizations of FORCE outside its design
+envelope. The structural §10 claim (zero coplanar 3-fibre coverage) is
+likely independent of acquisition but pending re-test. **Section 13 will
+re-run all three benchmarks on FORCE-paper-matched conditions before any
+of these claims goes into a paper or upstream issue.**
+
+---
+
 ## 9. Empirical replication (2026-05-07)
 
 `validation/validate_force_replication_v2.py` runs a 17-angle (10–90°, 5° steps)
@@ -811,6 +835,151 @@ A future regression test could explicitly assert
 `dipy_force_45deg_snr50 < dipy_force_45deg_snr10`, but this risks turning
 red on legitimate upstream improvements; for now, the npz + figure are
 the durable record.
+
+---
+
+## 12. Methodology check vs FORCE paper (2026-05-09)
+
+After §11 was committed, the FORCE paper (Shah et al. 2025, Research Square
+preprint, DOI 10.21203/rs.3.rs-8151109/v1) was read carefully to verify our
+benchmark conditions matched FORCE's design envelope. **Three mismatches
+were identified.** The dipy in-tree tutorial
+(`doc/examples/reconst_force.py`) and the dipy unit tests
+(`dipy/reconst/tests/test_force.py`) were also surveyed; the tutorial uses
+Stanford HARDI (single-shell 150 dirs × b=2000) and the unit tests are
+structural-only (no end-to-end accuracy evaluation).
+
+### 12.1 Methodology comparison table
+
+| Aspect | FORCE paper (synthetic, §3.1) | dipy tutorial (real data) | **§9–§11 benchmarks** |
+|---|---|---|---|
+| Acquisition | 150 dirs × b=2000 (single-shell) | 150 dirs × b=2000 (Stanford HARDI) | **90 dirs × b={1k, 2k} (2-shell)** |
+| HCP test acquisition | 90 dirs × 3 shells = 270 dirs | n/a | not tested (90 total dirs only) |
+| Voxel size | unspecified for synthetic | n/a | n/a (synthetic) |
+| **Synthetic dispersion** | **ODI ∈ [0.01, 0.30] (n=10 equispaced)** | n/a | **ODI = 0 (sharp sticks)** |
+| Library size | 500K | 500K | 500K (matched) |
+| `n_neighbors` | 50 | 50 | 50 (matched) |
+| α penalty | 1e-5 (recommended) | (default) | (default) |
+| Synthetic count | 8000 two-fiber crossings | n/a | 200 trials × 17 angles = 3400 |
+| **Angular tolerance** | **20°** | (DIPY default) | **15°** |
+| Min peak separation | **10°** | (default) | **10.5°** |
+| SNR levels | 10, 20, 50 | n/a | 10, 20, 30, 50 |
+
+### 12.2 What the FORCE paper itself reports (Figure 3)
+
+Paper's reported peak detection rates with FORCE (α=1e-5) on its synthetic:
+
+| Crossing angle | SNR=50 | SNR=20 | SNR=10 |
+|:-:|:-:|:-:|:-:|
+| 10–20° | ~80% | ~75% | ~65% |
+| 20–30° | ~80% | ~78% | ~62% |
+| 30–40° | ~85% | ~80% | ~60% |
+| 80–90° | ~92% | ~85% | ~75% |
+
+The paper's evaluation reports degradation but not failure at acute crossings,
+with FORCE outperforming CSA / CSD / GQI / ODFFP across all angles and SNRs.
+
+### 12.3 What §9 / §11 reported on the same metric (paraphrasing)
+
+My benchmark at SNR=30 reports `dipy_force = 0%` for crossings 10°–25°,
+0% (failure floor) below the paper's reported 65–80%.
+
+The 60+ percentage-point gap between my SNR=30 result (0%) and the paper's
+SNR=20 result (~75%) at 10°–20° crossings is too large to attribute to a
+5-percentage-point tolerance difference (15° vs 20°) or the +1 b=1000 shell.
+**The dispersion mismatch is the most likely explanation.**
+
+### 12.4 Why the dispersion mismatch matters
+
+FORCE's library Table 1 sets ODI equispaced on `[0.01, 0.30]` with n=10. The
+library has:
+
+- 0 entries with ODI < 0.01 (i.e., perfectly sharp sticks)
+- 0 entries with ODI > 0.30
+
+My synthetic uses sharp delta-function sticks (ODI ≈ 0). Cosine similarity
+between a sharp 2-stick signal and a dispersed-stick library signal is
+*never* exactly 1, so the matcher must pick a "closest" entry from a region
+of parameter space my synthetic doesn't live in. At acute crossings the
+single-fibre + max-dispersion bin (ODI=0.30, num_fibers=1) often fits
+better in cosine-distance than any dispersed 2-fibre bin, causing the
+"1-fibre + dispersion" collapse documented in §9.4.
+
+This also explains the **anti-monotone SNR finding (§11)**: at low SNR,
+noise occasionally pushes the matched entry into a different bin and lands
+on a 2-fibre entry by chance; at high SNR, the matcher converges to the
+deterministically-closest in-distribution bin, which is typically the
+single-fibre + max-dispersion entry — the wrong answer reliably.
+
+### 12.5 What survives this re-evaluation
+
+**Likely regime-specific (need re-test on FORCE-paper conditions):**
+
+- §9 — non-monotone collapses at 40–50° / 75°
+- §11 — anti-monotone SNR behaviour at 45° / 75°
+
+These observations are real on my acquisition, but reflect the dispersion
+mismatch more than a fundamental matcher pathology. The right framing for
+a paper / dipy issue is "FORCE behaves poorly outside its training
+envelope; this matters for users who don't realise their input is
+out-of-distribution," not "FORCE has a fundamental matcher bug."
+
+**Likely structural (independent of acquisition):**
+
+- §9.4 — `Dirichlet(2,1,1)` produces 70% 3-fibre / 20% 2-fibre / 10%
+  1-fibre. This is from `generate_force_simulations` source, not the
+  acquisition.
+- §10 — zero coplanar 3-fibre library entries from uniform-on-sphere
+  orientation sampling. This is from the orientation prior, not the
+  acquisition.
+
+These two are likely to survive a re-test on Stanford-HARDI-equivalent
+conditions, but until they're verified there, neither claim is
+paper-ready.
+
+### 12.6 What FORCE's authors themselves acknowledge
+
+The FORCE paper's Discussion (lines 438–447) explicitly notes:
+
+> "Because the simulations are generated through random sampling of the
+> parameters, **the parameter space remains inherently undersampled**…
+> discrete angular sampling imposes an upper bound on achievable
+> orientation resolution… The matching is also sensitive to noise at
+> lower SNR since the signals along fiber directions have lower signal
+> magnitude."
+
+§9.4 (under-sampling) and §10 (sphere quantisation) thus characterise
+limits the authors already know about. §11 (anti-monotone in SNR at the
+failure points) is *not* what the paper says — but is plausibly an
+out-of-regime artifact, which §13 will determine.
+
+---
+
+## 13. Re-run on FORCE-paper-matched conditions (planned)
+
+A `validate_force_matched.py` script is to mirror §9, §10, §11 but with the
+following changes:
+
+1. **Acquisition**: 150 directions × b=2000 single-shell (Stanford
+   HARDI-equivalent), regenerated dipy FORCE library targeting that gtab.
+2. **Synthetics with dispersion**: each fibre's orientation distribution
+   drawn as Bingham with ODI sampled from `Uniform(0.01, 0.30)`. Forward
+   model integrates over the dispersion at each gradient direction
+   (fast Bingham SH expansion or numerical sphere integration).
+3. **Tolerance**: 20° detection threshold, 10° min peak separation.
+4. **Methods**: same 4 (`dict`, `dipy_force`, `csd`, `gqi`) with `dict`
+   parameterised against a matched dispersion-aware library.
+5. **SNRs**: 10, 20, 50 (matching paper).
+
+Acceptance criterion for the §13 results:
+- If `dipy_force` achieves ≥60% at 10°–20° at SNR=20: §9 was an
+  out-of-regime artifact; remove the strong "non-monotone" claim from doc
+  004 and only keep the §10 / §9.4 structural findings.
+- If `dipy_force` still has non-monotone failures: §9 may be a real
+  upstream issue worth reporting separately.
+- The §10 coplanar finding is checked again on the matched conditions.
+
+Compute: ~2–3h on GB10 per experiment. Builds on `dmipy_jax/validation/two_fiber.py` and `force_baselines.py` modules.
 
 ---
 

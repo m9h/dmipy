@@ -41,12 +41,65 @@ THREE_FIBER_METHODS = [
 ]
 
 
+SNR_SWEEP_METHODS = [
+    ("dict",       "dmipy-JAX dictionary"),
+    ("dipy_force", "DIPY FORCE (force_peaks)"),
+    ("csd",        "DIPY CSD (peaks)"),
+    ("gqi",        "DIPY GQI (peaks)"),
+]
+
+
+def plot_snr_sweep(npz_path: Path, out: Path):
+    r = np.load(npz_path)
+    snrs = r["snrs"]
+    angles = r["angles"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 7.5), dpi=140, sharex=True, sharey=True)
+    axes = axes.flatten()
+
+    cmap = plt.get_cmap("viridis")
+    snr_colors = [cmap(0.15 + 0.7 * i / max(len(snrs) - 1, 1)) for i in range(len(snrs))]
+
+    for ax, (key, label) in zip(axes, SNR_SWEEP_METHODS):
+        for s_idx, snr in enumerate(snrs):
+            ax.plot(angles, r[key][s_idx] * 100, "o-", lw=1.6, ms=4,
+                    color=snr_colors[s_idx], label=f"SNR = {int(snr)}")
+        ax.set_title(label, fontsize=10)
+        ax.set_ylim(-5, 105)
+        ax.set_xticks(angles[::2])
+        ax.grid(alpha=0.3)
+        ax.axvspan(10, 40, alpha=0.06, color="red")
+
+    for ax in axes[2:]:
+        ax.set_xlabel("Crossing angle (deg)")
+    for ax in (axes[0], axes[2]):
+        ax.set_ylabel("Both-fibres detection rate (%)")
+    axes[0].legend(loc="lower right", fontsize=8.5, frameon=False)
+
+    fig.suptitle(
+        "FORCE SNR sweep: 4 tools × 4 SNR levels × 17 crossing angles "
+        "(2-stick, 200 trials/cell)",
+        fontsize=11,
+    )
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.savefig(out, bbox_inches="tight")
+    print(f"Wrote {out}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", type=Path, default=None,
-                    help="Path to .npz; auto-detects v2 then v1.")
+                    help="Path to .npz; auto-detects snr-sweep -> 3fiber -> v2 -> v1.")
     ap.add_argument("--output", type=Path, default=None)
     args = ap.parse_args()
+
+    snr = Path("validation/force_snr_sweep_results.npz")
+    if (args.input is None and snr.exists()) or (
+        args.input is not None and "snr_sweep" in str(args.input)
+    ):
+        npz_path = args.input or snr
+        out = args.output or Path("validation/force_snr_sweep.png")
+        return plot_snr_sweep(npz_path, out)
 
     v3f = Path("validation/force_3fiber_results.npz")
     v2 = Path("validation/force_replication_v2_results.npz")

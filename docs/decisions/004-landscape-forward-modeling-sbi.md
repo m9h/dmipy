@@ -695,6 +695,125 @@ coplanar 3-fibre crossings regardless of how (1)–(4) are tuned.
 
 ---
 
+## 11. SNR sweep (2026-05-09)
+
+`validation/validate_force_snr_sweep.py` extends §9's 2-fibre sweep across
+4 SNR levels — {10, 20, 30, 50} — keeping all other parameters fixed (200
+trials per cell, 17 crossing angles 10–90°, same 90-direction 2-shell
+acquisition, same 200K dmipy-JAX 2-stick library, same 500K dipy FORCE
+library). Limited to 4 baselines: `dict`, `dipy_force`, `csd`, `gqi`.
+
+For context, the comparison method papers (FORCE, Nottingham SBI,
+Alicante SBIDTI) all benchmarked at SNR ≈ 30 as their headline operating
+point; SNR=30 is HCP-quality, on the better end of dMRI realistic.
+
+### 11.1 Results
+
+![FORCE SNR sweep: 4 tools × 4 SNRs × 17 angles](../../validation/force_snr_sweep.png)
+
+#### dmipy-JAX dictionary (the SBI4DWI implementation)
+
+| Angle | SNR=10 | SNR=20 | SNR=30 | SNR=50 |
+|---:|---:|---:|---:|---:|
+| 10° | 66% | 96% | 100% | 100% |
+| 20° | 40% | 90% | 96% | 100% |
+| 30° | 66% | 98% | 100% | 100% |
+| 45° | 92% | 100% | 100% | 100% |
+| 60° | 99% | 100% | 100% | 100% |
+| 90° | 100% | 100% | 100% | 100% |
+
+Monotone in SNR everywhere; graceful degradation in the shallow-crossing
+regime (40% at 20° / SNR=10). Behaves as expected for a sensible inference
+method.
+
+#### dipy upstream FORCE (`force_peaks` postprocessor)
+
+| Angle | SNR=10 | SNR=20 | SNR=30 | SNR=50 |
+|---:|---:|---:|---:|---:|
+| 10–25° | 0% | 0% | 0% | 0% |
+| 30° | 78% | 93% | 99% | 100% |
+| 35° | 93% | 100% | 100% | 100% |
+| 40° | 66% | 68% | 82% | 92% |
+| **45°** | **60%** | **29%** | **20%** | **4%** |
+| 50° | 68% | 62% | 68% | 71% |
+| 55–70° | 60–88% | 92–100% | 100% | 100% |
+| **75°** | **22%** | **20%** | **19%** | **8%** |
+| 80–90° | 92–100% | 100% | 100% | 100% |
+
+**Anti-monotone in SNR at 45° and 75°.** Higher SNR makes dipy FORCE *worse*
+at these specific crossing geometries:
+
+- 45°: 60% → 29% → 20% → **4%** as SNR rises 10 → 50
+- 75°: 22% → 20% → 19% → **8%** as SNR rises 10 → 50
+
+This is counter-intuitive for an inference method. The mechanism is the
+same library coverage gap diagnosed in §9.4: at these specific crossings
+the only "nominally correct" 2-fibre library entries are out-numbered in
+the n_neighbours=50 voting pool by 3-fibre neighbours. At low SNR, noise
+occasionally jiggles the matched entry into a different bin and lands on
+a correct 2-fibre entry; at high SNR, the matcher converges
+deterministically to the best-fitting *wrong* entry. **Cleaner data
+provides no escape — it makes the wrong answer more reliable.**
+
+This is the strongest finding to date that the failure is structural,
+not noise-driven, and it cannot be argued away by claiming "test on noisier
+data."
+
+#### DIPY CSD peaks
+
+| Angle | SNR=10 | SNR=20 | SNR=30 | SNR=50 |
+|---:|---:|---:|---:|---:|
+| ≤70° | 0–11% | 0–4% | 0% | 0% |
+| 80° | 12% | 22% | 10% | 3% |
+| 85° | 22% | 32% | 38% | 14% |
+| 90° | 28% | 46% | 56% | 66% |
+
+CSD is also weakly non-monotone at moderate SNR / wide angles (e.g. 85°
+peaks at SNR=30; 80° at SNR=20), because at lower SNR noise occasionally
+splits a smeared single-mode ODF into two distinguishable peaks. Pure
+monotonicity only holds at orthogonal (90°). On this acquisition, CSD is
+useful only ≥80°.
+
+#### DIPY GQI peaks
+
+GQI is **0% across all 17 angles × 4 SNRs**. The 90-direction 2-shell
+acquisition is below the q-space coverage GQI needs for crossing
+detection. (FORCE paper used 270 dirs × 3 shells.)
+
+### 11.2 Implications
+
+1. **The §9 finding is robust to SNR.** The non-monotone dipy_force
+   collapses at 40°/45° and 75° persist — and *deepen* — at higher SNR.
+   No reviewer can dismiss them as "you tested at too-clean data."
+
+2. **The §9 finding has a stronger form: dipy FORCE is anti-monotone in
+   SNR at the failure crossings.** The matcher's output becomes more
+   confidently wrong as data quality improves. This is a structural
+   pathology of the discrete-library + voting design, not a noise issue.
+
+3. **dmipy-JAX dict scales as a sensible method should.** SNR=50 perfect,
+   SNR=10 graceful degradation. Suitable for clinical-quality (SNR 15–25)
+   data with the expected accuracy reduction.
+
+4. **CSD is unusable for crossings on this acquisition; GQI is unusable
+   at any angle.** Both need the higher angular sampling FORCE paper used.
+
+### 11.3 Pinning the anti-monotonicity
+
+`tests/validation/test_two_fiber_integration.py::TestRicianNoiseScaling::
+test_higher_snr_lower_perturbation` already pins the SNR semantics
+(higher SNR = strictly less noise on the same key). Combined with the
+saved `force_snr_sweep_results.npz`, the anti-monotonic dipy_force
+behaviour at 45°/75° is reproducible from the committed code and library
+caches.
+
+A future regression test could explicitly assert
+`dipy_force_45deg_snr50 < dipy_force_45deg_snr10`, but this risks turning
+red on legitimate upstream improvements; for now, the npz + figure are
+the durable record.
+
+---
+
 ## References
 
 1. Shah AJ et al. FORCE: FORward modeling for Complex microstructure Estimation.

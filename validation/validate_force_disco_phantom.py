@@ -34,38 +34,67 @@ from dmipy_jax.validation.force_inter_method import (
 )
 
 
-DIPY_FORCE_DISCO_CACHE = Path.home() / ".cache" / "dipy_force" / "force_disco_500k.npz"
-DISCO_FORCE_FIT_CACHE = Path.home() / ".cache" / "force_disco" / "force_disco_fit.npz"
+DIPY_FORCE_DISCO_CACHE_DEFAULT = Path.home() / ".cache" / "dipy_force" / "force_disco_500k.npz"
+DIPY_FORCE_DISCO_CACHE_TUNED = Path.home() / ".cache" / "dipy_force" / "force_disco_500k_tuned.npz"
+DISCO_FORCE_FIT_CACHE_DEFAULT = Path.home() / ".cache" / "force_disco" / "force_disco_fit.npz"
+DISCO_FORCE_FIT_CACHE_TUNED = Path.home() / ".cache" / "force_disco" / "force_disco_fit_tuned.npz"
 
 
-def get_or_make_force_library(gtab, n_sims=500_000):
+def get_or_make_force_library(gtab, n_sims=500_000, tuned: bool = False):
+    """Build or load a FORCE library for the DiSCo gtab.
+
+    Parameters
+    ----------
+    tuned : bool
+        If True, use the DiSCo-aligned diffusivity priors from FORCE paper
+        §3.2 (D_∥ ∈ [0.54, 0.66]×10⁻³, D_⊥ ∈ [0.32, 0.38]×10⁻³ mm²/s,
+        wm_threshold=1.0 to disable GM/CSF compartments). Otherwise use
+        the in-vivo defaults.
+    """
     from dipy.reconst.force import (
         generate_force_simulations,
         load_force_simulations,
         save_force_simulations,
     )
 
-    DIPY_FORCE_DISCO_CACHE.parent.mkdir(parents=True, exist_ok=True)
-    if DIPY_FORCE_DISCO_CACHE.exists():
-        print(f"Loading cached DiSCo FORCE library from {DIPY_FORCE_DISCO_CACHE}")
-        return load_force_simulations(str(DIPY_FORCE_DISCO_CACHE))
-    print(f"Generating DiSCo FORCE library (n={n_sims:,}, single-CPU, ~15 min)...")
-    sims = generate_force_simulations(
-        gtab, num_simulations=n_sims, num_cpus=1, verbose=True,
-    )
-    save_force_simulations(sims, str(DIPY_FORCE_DISCO_CACHE))
-    print(f"Saved to {DIPY_FORCE_DISCO_CACHE}")
+    cache_path = DIPY_FORCE_DISCO_CACHE_TUNED if tuned else DIPY_FORCE_DISCO_CACHE_DEFAULT
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    if cache_path.exists():
+        tag = "TUNED" if tuned else "DEFAULT"
+        print(f"Loading {tag} DiSCo FORCE library from {cache_path}")
+        return load_force_simulations(str(cache_path))
+
+    kwargs = dict(gtab=gtab, num_simulations=n_sims, num_cpus=1, verbose=True)
+    if tuned:
+        # FORCE paper §3.2 DiSCo-aligned priors (units: mm²/s)
+        kwargs["diffusivity_config"] = {
+            "wm_d_par_range": (0.00054, 0.00066),
+            "wm_d_perp_range": (0.00032, 0.00038),
+            "gm_d_iso_range": (0.0007, 0.0012),  # paper disables iso via wm_threshold
+            "csf_d": 0.003,
+        }
+        kwargs["wm_threshold"] = 1.0  # purely-WM library, no GM/CSF mixing
+        print(f"Generating TUNED DiSCo FORCE library (DiSCo diffusivities, "
+              f"WM-only) (n={n_sims:,}, single-CPU, ~15 min)...")
+    else:
+        print(f"Generating DEFAULT FORCE library (in-vivo priors) "
+              f"(n={n_sims:,}, single-CPU, ~15 min)...")
+
+    sims = generate_force_simulations(**kwargs)
+    save_force_simulations(sims, str(cache_path))
+    print(f"Saved to {cache_path}")
     return sims
 
 
-def fit_or_load_force_disco(data, gtab, mask, sims, n_neighbors=50, n_jobs=-1):
+def fit_or_load_force_disco(data, gtab, mask, sims, n_neighbors=50, n_jobs=-1, tuned=False):
     import warnings as _w
     _w.filterwarnings("ignore")
     from dipy.reconst.force import FORCEModel
 
-    if DISCO_FORCE_FIT_CACHE.exists():
-        print(f"Loading cached FORCE fit from {DISCO_FORCE_FIT_CACHE}")
-        d = np.load(DISCO_FORCE_FIT_CACHE)
+    cache = DISCO_FORCE_FIT_CACHE_TUNED if tuned else DISCO_FORCE_FIT_CACHE_DEFAULT
+    if cache.exists():
+        print(f"Loading cached FORCE fit from {cache}")
+        d = np.load(cache)
         return {k: d[k] for k in d.files}
 
     model = FORCEModel(gtab, simulations=sims, n_neighbors=n_neighbors)
@@ -81,8 +110,8 @@ def fit_or_load_force_disco(data, gtab, mask, sims, n_neighbors=50, n_jobs=-1):
         "wm_fraction": np.asarray(fit.wm_fraction, dtype=np.float32),
         "num_fibers": np.asarray(fit.num_fibers, dtype=np.float32),
     }
-    DISCO_FORCE_FIT_CACHE.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(DISCO_FORCE_FIT_CACHE, **out)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(cache, **out)
     return out
 
 
@@ -118,12 +147,21 @@ def render_disco_figure(force_maps, dti_maps, gt, mask, out_png):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--tuned", action="store_true",
+                    help="Use FORCE paper §3.2 DiSCo-aligned diffusivity priors "
+                         "instead of the in-vivo defaults.")
+    ap.add_argument("--snr", type=int, default=30,
+                    help="DiSCo SNR variant (10/20/30/40/50)")
+    args = ap.parse_args()
+
     print("=" * 78)
-    print("DiSCo phantom benchmark — FORCE paper §3.2 protocol")
+    print(f"DiSCo phantom benchmark — {'TUNED' if args.tuned else 'DEFAULT'} library")
     print("=" * 78)
 
-    print("\nLoading DiSCo subject 1 (single-shell b=1900, SNR=30)...")
-    out = load_disco_subject(subject=1, snr=30, single_shell_b=1900)
+    print(f"\nLoading DiSCo subject 1 (single-shell b=1900, SNR={args.snr})...")
+    out = load_disco_subject(subject=1, snr=args.snr, single_shell_b=1900)
     data = out["data"]
     mask = out["mask"]
     gtab = out["gtab"]
@@ -131,10 +169,10 @@ def main():
     print(f"  data: {data.shape}, mask: {int(mask.sum()):,} voxels")
 
     print("\nGetting FORCE library (regenerates if not cached)...")
-    sims = get_or_make_force_library(gtab, n_sims=500_000)
+    sims = get_or_make_force_library(gtab, n_sims=500_000, tuned=args.tuned)
 
     print("\nFitting FORCE...")
-    force_maps = fit_or_load_force_disco(data, gtab, mask, sims)
+    force_maps = fit_or_load_force_disco(data, gtab, mask, sims, tuned=args.tuned)
     for k in ("fa", "nd", "dispersion"):
         v = force_maps[k][mask]
         print(f"  FORCE {k:>4s}: min={v.min():.4f}  mean={v.mean():.4f}  max={v.max():.4f}")
@@ -154,11 +192,12 @@ def main():
     print(f"  FORCE NDI vs GT Intra Volume Fraction: r = {r_ndi:.4f}")
     print(f"  FORCE FA  vs DTI FA (sanity round-trip): r = {r_force_dti_fa:.4f}")
 
-    out_png = Path("validation/force_disco.png")
+    suffix = "_tuned" if args.tuned else ""
+    out_png = Path(f"validation/force_disco{suffix}.png")
     render_disco_figure(force_maps, dti_maps, gt, mask, out_png)
 
     # Save the result npz for later
-    out_npz = Path("validation/force_disco_results.npz")
+    out_npz = Path(f"validation/force_disco_results{suffix}.npz")
     np.savez(
         out_npz,
         force_nd=force_maps["nd"],

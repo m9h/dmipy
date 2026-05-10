@@ -1672,6 +1672,109 @@ committing the conclusion. The lesson now memorised
 agent memory): **never weaken a test, and always verify on the full
 dataset before reporting a finding.**
 
+### 17.10 Audit recommendation #4 tested: fibre-count rebalance fails too
+
+Audit recommendation #4 was the last unaddressed lever: subsample the
+default library to `Dirichlet(8,1,1)` over (1f, 2f, 3f) = 80/10/10 %,
+since DiSCo is single-strand-dominated and the default 10/20/70 %
+distribution drives multi-peak false-positive tractography.
+
+Implementation: `dmipy_jax/validation/force_library_rebalance.py`
+random-without-replacement subsampling, 4 TDD tests passing. Run with
+`--rebalance 0.8 0.1 0.1`, default library + audit fixes 1–3.
+
+**Result:**
+
+| SNR | §17.3 (pre-audit) | §17.5 (audit 1–3) | §17.10 (rebalance 80/10/10) | Paper §3.2 |
+|:-:|:-:|:-:|:-:|:-:|
+| 10 | 0.342 | 0.298 | **0.170** ↓ | 0.868 |
+| 30 | 0.234 | 0.211 | 0.232 | — |
+| 50 | 0.279 | 0.322 | 0.272 | 0.894 |
+
+**The rebalance made things *worse* at SNR=10 and slightly worse at
+SNR=50.** Audit recommendation #4's predicted "dominant lever" did not
+behave as predicted. The hypothesis ("87 % 3-fibre matches drives
+multi-peak FP tractography") implied that biasing the library toward
+1-fibre would reduce FP and raise Pearson r. Empirically, it didn't.
+
+Plausible reasons the audit was wrong about #4:
+- The DiSCo data may not actually be single-strand-dominated at the
+  90-direction, b=1900 single-shell extraction — the strands cross
+  enough that the matcher legitimately needs multi-fibre library
+  entries.
+- Subsampling 500K → 62.5K reduces orientation grid coverage; even
+  though the within-class density is preserved, the rare-config tail
+  (specific orientation triples) gets thinner.
+- The "FP streamlines from 3-fibre matches" intuition is qualitative;
+  the actual mechanics of FORCE peak averaging may dilute multi-peak
+  bias even at 70 % 3-fibre.
+
+### 17.11 Final FORCE-connectivity status
+
+We've systematically tested **all four** audit recommendations on the
+§17 connectivity-matrix benchmark:
+
+| Audit fix | Tested | Closed the gap? |
+|---|:-:|:-:|
+| 1. `eudx_tracking` (paper-faithful API) | ✓ | No |
+| 2. Expanded `BinaryStoppingCriterion` to `(rois \| mask)` | ✓ | No |
+| 3. Lin CCC alongside Pearson r | ✓ | Pinned at 0 (unit mismatch on connectivity; works on §16 NDI) |
+| 4. Rebalance fibre-count to `Dirichlet(8,1,1)` | ✓ | No (made worse) |
+
+**None of the audit's recommendations closed the 0.55-magnitude Pearson r
+gap between our reproduction (≤0.34) and the paper's reported 0.87.**
+This is genuine, structural — the paper's headline §3.2 connectivity-
+matrix result is **not reproducible from `dipy.reconst.force` v1.12.1
+plus the methods described in the paper**.
+
+Plausible unmeasured sources of the gap (would require author contact
+to resolve):
+
+- **Tractography parameters not documented in the paper**: max_angle,
+  pmf_threshold, step_size, min/max_len, seeding density — all left
+  unspecified in §3.2 ("EuDX algorithm implementation in DIPY").
+  Different defaults shift r by hundredths but probably not tenths.
+- **Connectivity metric definition**: paper compares streamline counts
+  to mm² cross-sectional area via Pearson r. Maybe they log-transform,
+  normalise by total streamlines, or threshold low entries. These
+  preprocessing choices can change r by ~0.2.
+- **Seeding strategy**: paper may seed only at WM/ROI interfaces, or
+  use a deterministic seeding scheme not equivalent to `seeds_from_mask`.
+- **Author-private code**: the original FORCE repo doesn't contain the
+  §3.2 connectivity pipeline (audit finding #6). The authors may have
+  used custom tractography or post-processing not in dipy.
+
+### 17.12 What we did prove (despite §17 reproduction failing)
+
+| Claim | Evidence | Verdict |
+|---|---|---|
+| FORCE works on its design data | §14 (Stanford HARDI plausible maps), §15 (DTI agreement r ≥ 0.985) | **Holds** |
+| FORCE matches DTI scalar metrics on phantom data | §16.3 NDI r = 0.918 with tuned library | Holds, with caveat (CCC < 0.85) |
+| Library priors must match input distribution | §16.2 (default lib r=0.679) vs §16.3 (tuned r=0.918) | **Holds** |
+| Tuned library breaks tractography (upstream bug) | §17.2 confirmed by regression test | **Holds** |
+| Paper's connectivity-matrix r=0.868 reproduces with public dipy | §17.5, §17.10 tested 4 audit recommendations | **Does NOT reproduce** |
+
+The takeaway for any future paper or discussion: **FORCE's scalar
+microstructure metrics are reproducible from public dipy when the
+library is correctly tuned; its connectivity-matrix headline result
+is not, even after applying all the obvious tractography fixes**. The
+gap is most likely in undocumented tractography parameters or
+preprocessing not captured in §3.2.
+
+### 17.13 Stopping here on FORCE-DiSCo
+
+I'm out of public-dipy levers. The remaining options are:
+- Contact the FORCE authors to share their exact §3.2 pipeline
+- Read the original FORCE codebase line-by-line for tracking semantics
+- Build a from-scratch connectivity pipeline using e.g. MRtrix3's
+  `tckgen -algorithm SD_STREAM` and `tck2connectome` for an independent
+  reference
+
+None of these are quick. doc 004's net story is unchanged: **scalar
+microstructure works, connectivity reproduction doesn't, and the
+methodology lessons are well-pinned with TDD tests + regression
+guards.**
+
 ---
 
 ## References

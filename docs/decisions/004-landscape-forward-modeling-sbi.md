@@ -1171,6 +1171,89 @@ were designed for**, not custom synthetics:
 
 ---
 
+## 15. Stanford HARDI inter-method: FORCE vs DTI (2026-05-09)
+
+`validation/validate_force_inter_method.py` reproduces the FORCE paper's
+Figure C1 logic on Stanford HARDI: fit conventional DTI on the same data
+via `dipy.reconst.dti.TensorModel`, compare voxel-wise against the
+cached FORCE-derived FA / MD / RD on the brain mask.
+
+### 15.1 Brain-mask Pearson correlations
+
+| Metric | FORCE vs DTI Pearson r |
+|:-:|:-:|
+| FA | **0.985** |
+| MD | **0.997** |
+| RD | **0.998** |
+
+These are essentially perfect agreements over 145,641 brain voxels.
+
+### 15.2 Side-by-side maps + scatter
+
+![Stanford HARDI inter-method: FORCE vs DTI](../../validation/force_dti_inter_method.png)
+
+The maps are visually indistinguishable; the scatter plots track the
+y = x line with the residuals attributable to FORCE's discrete library
+matching (snap to nearest of 500K simulations) vs DTI's continuous
+least-squares fit.
+
+### 15.3 What this confirms
+
+This is the first comparison in this doc that produced a clean,
+paper-aligned result, because:
+
+1. **Both methods fit on the same real data** — no synthetic-prior
+   mismatch to argue about.
+2. **DTI is a well-understood baseline** — both methods can produce DTI
+   metrics from the same single-shell data, so the comparison is
+   apples-to-apples.
+3. **The FORCE paper itself uses this comparison** — Figure C1 reports
+   "FORCE FA, MD, RD maps virtually identical to conventional DTI fitting."
+
+§15 reproduces the paper's claim. Combined with §14 (NODDI-style maps
+on Stanford HARDI), this rules out implementation regression in dipy
+1.12.1 and confirms the upstream FORCE works as advertised in its design
+regime.
+
+### 15.4 What this does **not** address
+
+- **Crossing detection accuracy on real data**: no ground truth on
+  Stanford HARDI; would need DiSCo (located at Mendeley Data
+  `10.17632/fgf86jdfg6.1`, 4 files) for that.
+- **NODDI metric agreement vs AMICO**: paper Figure 5; needs `amico`
+  package install or a dmipy NODDI fit (single-shell ill-conditioned).
+- **dmipy-JAX SBI vs FORCE**: requires training the dmipy-JAX SBI on
+  the same Stanford HARDI gtab.
+
+### 15.5 Net story for doc 004
+
+| Section | Conclusion |
+|:-:|---|
+| §9 / §11 / §13 | Out-of-distribution synthetics; not paper-grade findings |
+| §10 | Coplanar 3-fibre orientation prior is structurally absent in FORCE library, but the result was generated in a regime where FORCE is also out-of-distribution. Re-test on Stanford HARDI with paper-aligned prior pending. |
+| §9.4 | Library composition (70 % 3-fibre Dirichlet) is structural and verified directly from the library file — independent of synthetic. |
+| **§14** | **dipy 1.12.1 FORCE works on Stanford HARDI; NODDI-style maps anatomically plausible.** |
+| **§15** | **dipy 1.12.1 FORCE matches conventional DTI on Stanford HARDI: r ≥ 0.985 for FA, MD, RD.** |
+
+The paper-grade claims so far are §14, §15, and the structural §9.4
+library-composition diagnosis. Everything else needs further work in a
+data regime where FORCE is in-distribution.
+
+### 15.6 Next steps
+
+- **DiSCo phantom benchmark** — data located at Mendeley Data
+  `10.17632/fgf86jdfg6.1` ("The Diffusion-Simulated Connectivity Dataset"
+  by Rafael-Patiño et al., 2021). 4 files. Manual download required (the
+  Mendeley public API requires auth); script can be added once the data
+  are local.
+- **AMICO NODDI on Stanford HARDI** — install `amico` package, fit, add
+  to §15 as a third method. Paper Figure 5 reference.
+- **dmipy-JAX SBI on Stanford HARDI** — train an SBI model with the same
+  forward biophysics as FORCE (stick + zeppelin per fibre + GM ball + FW
+  ball), test against this.
+
+---
+
 ## References
 
 1. Shah AJ et al. FORCE: FORward modeling for Complex microstructure Estimation.

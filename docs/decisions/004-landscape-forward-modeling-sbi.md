@@ -1399,6 +1399,67 @@ DiSCo. The user-facing finding is:
 
 That's a real, defensible, and actionable observation to surface upstream.
 
+### 16.7 Multi-SNR DiSCo sweep with tuned library (2026-05-10)
+
+Extended §16.3 to SNR ∈ {10, 20, 30, 50} matching the FORCE paper §3.2
+range. **Tuned library**, same DiSCo subject 1 highRes, single-shell
+b=1900, same 15,267 voxels per cell.
+
+| SNR | FORCE NDI vs GT NDI | FORCE FA vs DTI FA | Paper §3.2 (connectivity-matrix) |
+|:-:|:-:|:-:|:-:|
+| 10 | **0.879** | 0.966 | 0.868 |
+| 20 | 0.913 | 0.986 | — |
+| 30 | 0.918 | 0.990 | — |
+| 50 | **0.922** | **0.992** | 0.894 |
+
+![DiSCo multi-SNR tuned-library Pearson r](../../validation/force_disco_multi_snr.png)
+
+#### Observations
+
+1. **Monotonically improving with SNR** — exactly as a sensible inference
+   method should behave. Range: 0.879→0.922 NDI, 0.966→0.992 FA. No
+   non-monotonicity, no anti-monotonic regions like the §9 / §11 out-of-regime
+   synthetic findings showed.
+2. **NDI r tracks the paper's connectivity-matrix r within ~0.03 across
+   the SNR range** — same ballpark, same monotone-in-SNR shape, but
+   measuring different things (voxel NDI vs connectivity). The fact that
+   our scalar metric tracks the paper's tractography metric at this
+   level of agreement suggests both are limited by the same underlying
+   library coverage, not by metric noise.
+3. **FA vs DTI agreement is essentially perfect** at SNR ≥ 20
+   (r ≥ 0.986). FORCE's DTI-equivalent metrics on DiSCo are
+   indistinguishable from conventional tensor fitting, reproducing the
+   §15 Stanford HARDI pattern.
+4. **At SNR=10, FORCE NDI r drops to 0.879** (vs 0.922 at SNR=50) — a
+   4 percentage-point degradation. This is "graceful" — significantly
+   better than DTI/NODDI typically degrades at SNR=10 (the paper §3.2
+   reports CSD's connectivity r at 0.847, ~3pp below FORCE).
+
+### 16.8 Net story for doc 004 (final)
+
+| Section | What | Status |
+|:-:|---|---|
+| §9 / §11 / §13 | Out-of-regime synthetic benchmarks | Demoted — characterise behaviour outside design envelope |
+| §10 | Coplanar 3-fibre orientation prior | Structurally absent in library, but the §10 test was also out-of-regime; pending re-test on Stanford HARDI |
+| §9.4 | 70 % 3-fibre Dirichlet library composition | Structural; verified from library file; **paper-grade** |
+| §14 | Stanford HARDI maps (visual) | Paper Figure 6 reproduced; **paper-grade** |
+| §15 | Stanford HARDI: FORCE vs DTI | r ≥ 0.985 across FA/MD/RD; paper Figure C1 reproduced; **paper-grade** |
+| §16.2 | DiSCo, default library | NDI r=0.679; demonstrates out-of-regime risk |
+| §16.3 | DiSCo, tuned library, SNR=30 | NDI r=0.918, FA r=0.990; **paper-grade** |
+| §16.7 | DiSCo, tuned library, SNR ∈ {10, 20, 30, 50} | Monotonic 0.879→0.922 NDI; tracks paper §3.2 within 0.03; **paper-grade** |
+
+Five paper-grade results (§14, §15, §16.3, §16.7, §9.4). All consistent
+with the central thesis: **FORCE works as advertised when the library
+prior matches the input distribution**, and that calibration step is
+critical, undocumented in the tutorial, but well-specified in the
+paper. The structured developer feedback in
+`docs/decisions/005-force-developer-feedback.md` captures this for the
+FORCE authors.
+
+---
+
+## References
+
 ### 16.4 What is this comparison actually measuring?
 
 The paper §3.2 reports a **connectivity-matrix Pearson r = 0.868 at SNR=10

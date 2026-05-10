@@ -1094,6 +1094,83 @@ parameters.
 
 ---
 
+## 14. Confirming FORCE on Stanford HARDI (2026-05-09)
+
+After §13 made it clear that the synthetic-driven comparisons were
+fighting a forward-model mismatch (my synthetic was pure-stick; FORCE's
+library has stick + zeppelin per fibre, plus GM ball + FW ball — see
+Eq. 1 of the paper), the methodological reset was to **stop comparing
+against a custom synthetic and confirm dipy 1.12.1's FORCE actually
+reproduces the paper's published results on its own design data**.
+
+`validation/validate_force_stanford_hardi.py` runs the dipy in-tree
+example exactly: Stanford HARDI (160 dirs = 10 b=0 + 150 b=2000,
+single-shell), 500K-entry FORCE library, n_neighbors=50,
+median_otsu mask. 145,641 brain voxels fitted with `n_jobs=-1`.
+
+### 14.1 Six-panel slice figure (mirrors paper Figure 6)
+
+![FORCE Stanford HARDI parameter maps](../../validation/force_stanford_maps.png)
+
+### 14.2 Brain-mask summary statistics
+
+| Map | min | mean | max | Anatomical sanity |
+|---|---:|---:|---:|---|
+| FA | 0.006 | 0.246 | 0.952 | ✓ high in WM (corpus callosum visible), low elsewhere |
+| MD (mm²/s) | 0.0005 | 0.0008 | 0.0027 | ✓ low in WM, high in ventricles |
+| NDI | 0.002 | 0.470 | 0.885 | ✓ high in WM, low in CSF |
+| Dispersion / ODI | 0.027 | 0.507 | 0.998 | ✓ low in coherent WM, higher in GM (mean is GM-weighted) |
+| FW (csf_fraction) | 0.000 | — | — | ✓ high in ventricles |
+| WM fraction | 0.003 | 0.610 | 1.000 | ✓ majority WM in mask |
+| GM fraction | 0.000 | 0.199 | 0.981 | ✓ |
+
+The maps are anatomically plausible and qualitatively match the paper's
+Figure 6. **dipy 1.12.1's FORCE implementation reproduces the paper's
+expected behaviour on Stanford HARDI.**
+
+### 14.3 What this tells us
+
+This confirmation **rules out** "dipy 1.12.1 has a regression vs the
+paper's code" as an explanation for the §9–§13 underperformance. The
+implementation is fine; my synthetic-driven evaluations were comparing
+FORCE against signals it could never match by construction (missing
+extra-axonal compartment, wrong d_par range, wrong fraction priors).
+
+### 14.4 What this does **not** tell us
+
+This is *qualitative* confirmation — visual + range checks against
+expected anatomy. It does not test:
+
+- Quantitative agreement with the paper's reported FA / MD / NDI / ODI
+  values per region (would need atlas overlay + voxel-wise correlation).
+- Crossing-detection accuracy (no ground truth on real data).
+- Comparison to MSMT-CSD / NODDI / AMICO references on the same data.
+
+The §10 coplanar 3-fibre and §9.4 library-composition findings remain
+the only **structural** claims doc 004 supports. The §9 / §11 / §13
+synthetic-driven findings should be treated as *characterisations of
+what happens when synthetic priors don't match library priors*, not as
+critiques of FORCE itself.
+
+### 14.5 Where to go next
+
+The right comparison axis is **fair benchmarking on data both methods
+were designed for**, not custom synthetics:
+
+1. **DiSCo phantom** — the FORCE paper validates against this in §3.2
+   (Pearson correlation 0.868 at SNR=10 vs CSD's 0.847). Has ground
+   truth. Both methods fit on identical input.
+2. **Stanford HARDI inter-method comparison** — same data above, but
+   compare derived NODDI maps from FORCE vs AMICO vs (when available)
+   dmipy-JAX SBI. No ground truth, but the paper itself uses this
+   comparison (Figure 5 vs AMICO).
+3. **Real WAND / HCP cohort** — for the multi-method paper proposed
+   earlier, with scan-rescan reproducibility as the comparison metric.
+
+(2) is the cheapest next step and uses the cached fit from this run.
+
+---
+
 ## References
 
 1. Shah AJ et al. FORCE: FORward modeling for Complex microstructure Estimation.

@@ -41,12 +41,25 @@ def main():
     ap.add_argument("--library", choices=["tuned", "default"], default="tuned",
                     help="Which FORCE library to use. tuned = paper §3.2 "
                          "DiSCo-aligned priors; default = in-vivo priors.")
+    ap.add_argument(
+        "--rebalance",
+        nargs=3, type=float, metavar=("P1", "P2", "P3"),
+        default=None,
+        help="Rebalance the library to target (P1, P2, P3) fractions of "
+             "(1f, 2f, 3f) entries. Example: --rebalance 0.8 0.1 0.1 "
+             "applies the Dirichlet(8,1,1) prior the audit recommended.",
+    )
     args = ap.parse_args()
 
     gt = load_gt_connectivity(subject=1)
     print(f"Ground-truth connectivity: 16×16, "
           f"{int((gt > 0).sum())} nonzero off-diagonal entries.")
     print(f"Library: {args.library}")
+    rebalance_fibres = None
+    if args.rebalance is not None:
+        p1, p2, p3 = args.rebalance
+        rebalance_fibres = {1: p1, 2: p2, 3: p3}
+        print(f"Rebalanced fibre-count fractions: {rebalance_fibres}")
 
     results = {}
     iu = np.triu_indices(16, k=1)
@@ -55,6 +68,7 @@ def main():
         res = run_force_connectivity(
             subject=1, snr=snr, tuned=(args.library == "tuned"),
             seed_density=args.seed_density,
+            rebalance_fibres=rebalance_fibres,
         )
         cmat = res["connectivity"]
         r = connectivity_pearson(cmat, gt)
@@ -76,7 +90,16 @@ def main():
         print(f"  Lin CCC vs GT (upper-triangle):   {ccc:.4f}")
 
     # Save NPZ
-    suffix = f"_{args.library}"
+    rebal_tag = ""
+    if rebalance_fibres is not None:
+        rebal_tag = "_reb" + "".join(
+            f"{int(p*100):02d}" for p in [
+                rebalance_fibres.get(1, 0),
+                rebalance_fibres.get(2, 0),
+                rebalance_fibres.get(3, 0),
+            ]
+        )
+    suffix = f"_{args.library}{rebal_tag}"
     out_npz = Path(f"validation/force_disco_connectivity_results{suffix}.npz")
     np.savez(
         out_npz,

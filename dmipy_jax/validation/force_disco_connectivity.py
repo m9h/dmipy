@@ -20,7 +20,7 @@ pipeline against the same ground truth.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 import numpy as np
 
@@ -106,6 +106,7 @@ def run_force_connectivity(
     max_cross: Optional[int] = None,
     max_angle: float = 45.0,
     pmf_threshold: float = 0.1,
+    rebalance_fibres: Optional[Dict[int, float]] = None,
     _smoke_roi_subset: Optional[Iterable[int]] = None,
 ):
     """Fit FORCE on DiSCo and produce a connectivity matrix.
@@ -170,6 +171,11 @@ def run_force_connectivity(
             "run validate_force_disco_phantom.py {--tuned} first."
         )
     sims = load_force_simulations(str(lib_cache))
+    if rebalance_fibres is not None:
+        from dmipy_jax.validation.force_library_rebalance import (
+            rebalance_force_library,
+        )
+        sims = rebalance_force_library(sims, target_fractions=rebalance_fibres, seed=0)
     model = FORCEModel(gtab, simulations=sims, n_neighbors=50)
 
     # Fit

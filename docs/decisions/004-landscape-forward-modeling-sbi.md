@@ -1458,6 +1458,121 @@ FORCE authors.
 
 ---
 
+## 17. DiSCo connectivity-matrix reproduction — blocked by upstream ODF bug (2026-05-10)
+
+§16.3 and §16.7 produced *scalar* recovery results (NDI Pearson r vs
+ground truth) that closely tracked the paper's reported numbers. The
+paper's actual headline §3.2 metric, however, is the **connectivity
+matrix Pearson r** — built by running tractography on FORCE peaks, then
+correlating the resulting 16×16 ROI-to-ROI matrix against
+`DiSCo1_Connectivity_Matrix_Cross-Sectional_Area.txt`.
+
+### 17.1 Pipeline
+
+`validation/validate_force_disco_connectivity.py` implements:
+
+1. **Fit FORCE** on DiSCo subject 1 single-shell b=1900 at SNR ∈ {10, 30, 50}.
+2. **`force_peaks(fit)`** → `PeaksAndMetrics` direction getter.
+3. **`LocalTracking`** (current dipy's equivalent of EuDX) seeded
+   throughout the ROI mask (35,376 seeds at density=2).
+4. **`dipy.tracking.utils.connectivity_matrix`** with the 16 ROI labels.
+5. Pearson r upper-triangle vs ground-truth.
+
+### 17.2 ⚠️ Upstream bug discovered while building this
+
+`force_peaks` requires the library's per-entry ODF arrays
+(`sims["odfs"]`) to be nonzero — it averages them across the top-K
+matches and finds peaks of the result. The paper §3.2 protocol's
+**tuned library has all-zero ODFs**: 0 of 500,000 rows have any nonzero
+value, vs the default library's 249,898 of 500,000.
+
+The cause is `wm_threshold=1.0` (the parameter the paper says to use
+to "disable the isotropic compartment"). It silently suppresses ODF
+generation. The matcher's scalar outputs (FA, NDI, dispersion) still
+populate correctly — §16.3's r=0.918 NDI recovery is genuine — but
+the `peak_dirs` are empty, so tractography produces zero streamlines.
+
+This is pinned by
+`tests/validation/test_force_disco_connectivity.py::test_tuned_library_suppresses_odfs_upstream_bug`
+and documented in `docs/decisions/005-force-developer-feedback.md` §4d.
+
+**Consequence**: paper-grade connectivity reproduction is blocked.
+We have two paths:
+
+- (a) Use the default in-vivo library (works but has out-of-regime
+  diffusivity → biased peak directions).
+- (b) Tune diffusivity priors but keep `wm_threshold=0.5` so ODFs
+  populate (paper-deviating but functional).
+
+Run (a) below.
+
+### 17.3 Results — default library (out-of-regime peak directions)
+
+| SNR | Pearson r vs GT (upper-triangle) | Paper §3.2 reported | n_streamlines |
+|:-:|:-:|:-:|---:|
+| 10 | **0.342** | 0.868 | 22,457 |
+| 30 | 0.234 | — | 22,413 |
+| 50 | 0.279 | 0.894 | 22,766 |
+
+The gap from paper (0.34 vs 0.87) is consistent with the §16.2 finding:
+out-of-regime library priors give scalar bias *and* orientational
+errors, even though the matcher converges to library entries that
+"look right" by signal cosine similarity. The peak directions chosen
+from default-library entries (which assume in-vivo diffusivity) don't
+align with DiSCo's actual fibre orientations.
+
+![DiSCo connectivity matrix reproduction](../../validation/force_disco_connectivity.png)
+
+Scatter plots reveal the failure mode: a vertical pileup of
+false-positive streamlines at GT-zero ROI pairs, plus a scattered
+relationship at GT-nonzero pairs. **Not monotone in SNR either** —
+SNR=10 actually highest r, SNR=30 lowest. This is suspicious and
+suggests the failure is dominated by spurious connections from a
+mismatched peak-direction distribution, not by noise. Cleaner data
+doesn't help because the peak directions are biased by construction.
+
+### 17.4 What this teaches
+
+The cleanest framing of FORCE for a paper or a colleague:
+
+> FORCE's behaviour decomposes into **two coupled correctness conditions**:
+>
+> 1. **Library priors must match input distribution** — verified §16.3
+>    (r=0.918 NDI on tuned library) vs §16.2 (r=0.679 on default).
+> 2. **Library ODFs must populate** — required for `force_peaks` →
+>    tractography. Currently broken at `wm_threshold=1.0` (upstream
+>    bug §4d).
+>
+> Today, satisfying both conditions simultaneously requires either
+> patching dipy or carefully working around `wm_threshold`. The paper's
+> r=0.868 connectivity result is reproducible *in principle* but not
+> with the current `dipy.reconst.force` package as installed.
+
+This is the strongest possible argument for the doc 005 §4d
+recommendation: the upstream bug blocks the paper's own headline
+result on its own ground-truth dataset, when the user follows the
+paper's documented protocol verbatim.
+
+### 17.5 Path forward
+
+Three options, increasing in effort/value:
+
+1. **Stop here for FORCE**: doc 004 has 5 paper-grade scalar results
+   (§14, §15, §16.3, §16.7, §9.4) + the upstream bug finding (§17,
+   §4d). Move on to other comparators (AMICO, dmipy-JAX SBI).
+2. **Regenerate tuned library with `wm_threshold=0.5`** (paper deviates
+   but functional). Re-run §17 connectivity benchmark. ~30 min compute.
+   If r approaches paper's 0.868, we've validated the workaround.
+3. **Patch the dipy library generator** to populate ODFs regardless of
+   `wm_threshold`. Most effort; would need to PR upstream. Could also
+   be a smaller wrapper that post-hoc computes ODFs from the matched
+   library entries.
+
+Option 2 is the natural next step if we want to push connectivity
+reproduction further.
+
+---
+
 ## References
 
 ### 16.4 What is this comparison actually measuring?

@@ -134,27 +134,26 @@ class TestTractographySmoke:
         assert result["streamlines_count"] > 0
         assert result["connectivity"].shape == (16, 16)
 
-    def test_tuned_library_has_zero_odfs(self, disco_ready):
-        """**Pinned upstream observation**: tuned library generated with
-        ``wm_threshold=1.0`` has all-zero ``sims['odfs']`` rows.
+    def test_tuned_library_breaks_tractography(self, disco_ready):
+        """**Pinned upstream bug**: a FORCE library generated with
+        ``wm_threshold=1.0`` (paper §3.2 protocol for DiSCo) has:
 
-        Originally we concluded this *breaks tractography*. The audit
-        found that conclusion overstated: ``eudx_tracking(pam=peaks,...)``
-        uses ``peak_indices`` and ``peak_values`` (which ARE populated)
-        regardless of the all-zero ``peak_dirs``, so tractography
-        actually works on the tuned library via the modern API.
+          - all-zero ``sims['odfs']`` rows
+          - ``force_peaks(fit).peak_dirs`` all zeros
+          - ``force_peaks(fit).peak_indices`` all -1
 
-        What is still true and worth pinning:
-          - The library file's ``odfs`` array is all-zero
-          - ``force_peaks`` returns ``peak_dirs`` all-zero
-          - Any downstream code that ONLY reads ``peak_dirs`` (e.g.
-            ``LocalTracking(peaks_obj,…)``, the deprecated path) will
-            see zero peaks per voxel and produce zero streamlines.
+        even though ``peak_values`` (derived from ``fit.fracs``) are
+        nonzero. Both ``LocalTracking`` and ``eudx_tracking`` therefore
+        produce **zero streamlines** on a tuned-library fit.
 
-        If this test starts failing — i.e. tuned library starts
-        populating ``odfs`` — then dipy has fixed the ODF generation
-        path and we no longer need to choose between tuned-vs-default
-        when using the legacy LocalTracking API.
+        An earlier read suggested ``eudx_tracking`` works on the tuned
+        library via ``peak_indices`` + ``peak_values``; that was wrong —
+        ``peak_indices`` is also degenerate (all -1).
+
+        When dipy fixes the upstream ODF path, ``odfs`` will populate,
+        ``peak_dirs``/``peak_indices`` will populate, and this test will
+        turn red. At that point ``run_force_connectivity`` can use
+        ``tuned=True`` for the paper-aligned connectivity benchmark.
         """
         import numpy as np
         from dipy.reconst.force import load_force_simulations
@@ -169,4 +168,15 @@ class TestTractographySmoke:
             f"Tuned library now has {nz_odfs} nonzero ODFs (was 0). "
             "Upstream may have fixed the ODF computation path under "
             "wm_threshold=1.0."
+        )
+
+        # Pin the downstream consequence: tractography fails.
+        result = conn.run_force_connectivity(
+            subject=1, snr=30, tuned=True,
+            _smoke_roi_subset=(1, 2, 3), seed_density=1,
+        )
+        assert result["streamlines_count"] == 0, (
+            f"Tuned-library tractography unexpectedly produced "
+            f"{result['streamlines_count']} streamlines. Upstream ODF "
+            "suppression may be partially fixed."
         )

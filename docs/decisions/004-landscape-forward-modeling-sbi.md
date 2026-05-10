@@ -1553,23 +1553,124 @@ recommendation: the upstream bug blocks the paper's own headline
 result on its own ground-truth dataset, when the user follows the
 paper's documented protocol verbatim.
 
-### 17.5 Path forward
+### 17.5 Audit + corrected re-run (2026-05-10)
 
-Three options, increasing in effort/value:
+A code-review agent audited the §14–§17 work end-to-end. It identified
+six findings; three were "small fixes that should each move r up":
 
-1. **Stop here for FORCE**: doc 004 has 5 paper-grade scalar results
-   (§14, §15, §16.3, §16.7, §9.4) + the upstream bug finding (§17,
-   §4d). Move on to other comparators (AMICO, dmipy-JAX SBI).
-2. **Regenerate tuned library with `wm_threshold=0.5`** (paper deviates
-   but functional). Re-run §17 connectivity benchmark. ~30 min compute.
-   If r approaches paper's 0.868, we've validated the workaround.
-3. **Patch the dipy library generator** to populate ODFs regardless of
-   `wm_threshold`. Most effort; would need to PR upstream. Could also
-   be a smaller wrapper that post-hoc computes ODFs from the matched
-   library entries.
+1. Switch tractography from `LocalTracking(peaks,…)` (deprecated for
+   PAMs) to `dipy.tracking.tracker.eudx_tracking(pam=peaks,…)`, the
+   paper-faithful EuDX. Use `max_angle=45`, `pmf_threshold=0.1`.
+2. Expand the `BinaryStoppingCriterion` to `(rois > 0) | mask` so
+   streamlines can propagate into ROI cylinders (only ~43% of each
+   ROI cylinder overlaps the WM mask in DiSCo).
+3. Add Lin's CCC alongside Pearson r — CCC penalises systematic bias
+   that Pearson hides.
 
-Option 2 is the natural next step if we want to push connectivity
-reproduction further.
+All three fixes were implemented (commit `746a989`). Re-run results
+(default library, since tuned still has the upstream bug):
+
+| SNR | §17.3 (Pearson r) | §17.5 (Pearson r) | §17.5 (CCC) | Paper §3.2 |
+|:-:|:-:|:-:|:-:|:-:|
+| 10 | 0.342 | **0.298** | 0.000 | 0.868 |
+| 30 | 0.234 | 0.211 | 0.000 | — |
+| 50 | 0.279 | **0.322** | 0.000 | 0.894 |
+
+**The audit's three mechanical fixes did not close the gap.** Pearson r
+moved a few hundredths in either direction; same magnitude class. The
+paper's r=0.87 is not reachable from the current default-library
+pipeline regardless of these tracking parameters.
+
+**CCC = 0.000** across all rows because streamline counts (0–200 range)
+have a completely different scale from GT cross-sectional areas (0–0.003
+mm²). CCC is shift-and-scale-sensitive, so it's pinned at zero by the
+unit mismatch. CCC is the right metric for the §16 NDI scalar
+comparison (both in [0,1]) but not for cross-unit connectivity matrices.
+
+### 17.6 The audit's "eudx_tracking works on the tuned library" was wrong
+
+A smoke test reported 1336 streamlines from tuned + 3-ROI subset, which
+the audit took as evidence that `eudx_tracking` works around the tuned
+library's all-zero ODFs. **Re-verification shows that reading was an
+artifact** — re-running the exact smoke scenario today gives 0
+streamlines, and the full-mask tuned run also gives 0. The tuned library
+has:
+
+- `sims["odfs"]` all zero (the original §17.2 / doc 005 §4d finding)
+- `peak_dirs` all zero (`force_peaks` derives them from ODFs)
+- **`peak_indices` all -1** (also derived from ODFs)
+- `peak_values` populated from `fit.fracs` — superficially looks fine
+
+`eudx_tracking` needs valid `peak_indices` for sphere-vertex lookup; all
+-1 means it can't track. The original §17.2 upstream-bug claim **stands**;
+the audit's correction of it was based on a transient or misread smoke
+result. Regression test `test_tuned_library_breaks_tractography` now
+pins **both** the ODF-zero observation **and** the
+zero-streamline-on-tuned consequence.
+
+### 17.7 Where the gap actually lives
+
+After the failed audit fix and verification, the remaining audit
+recommendation #4 is the unaddressed lever:
+
+> **Library fibre-count prior bias.** Verified: 13,272 / 15,267
+> brain-mask voxels (87%) match to 3-fibre library entries despite DiSCo
+> being single-strand-dominated. Default library composition
+> `(1f, 2f, 3f) = 10% / 20% / 70%` from `Dirichlet(2,1,1)`. Every voxel
+> emits multi-peak directions → tractography wanders between bundles →
+> false-positive ROI pairs dominate the connectivity matrix.
+
+This is the structural finding from §9.4 (library composition) showing
+up in a downstream task. The fix is `Dirichlet(8,1,1)` (or similar) over
+fibre counts to bias toward single-fibre voxels, but that requires
+regenerating the 500K library, which is a 14-min compute. Worth doing if
+we want to push connectivity reproduction further.
+
+### 17.8 Honest status
+
+| Claim | Status after audit |
+|---|---|
+| FORCE NDI vs GT scalar r = 0.918 with tuned library (§16.3) | **Holds, but with caveat: CCC < 0.85 due to 0.17 magnitude bias.** Pearson alone overstates recovery. |
+| FORCE peaks → connectivity matrix r matches paper's 0.868 | **Does not reproduce.** Best result with public dipy 1.12.1 is r ≈ 0.30 with default lib + eudx_tracking + expanded stopping criterion. |
+| Tuned library breaks tractography | **Holds.** §17.2 upstream-bug finding is correct after the audit correction. |
+| Library-prior alignment is the key (§16/§17 framing) | **Partially holds.** Diffusivity-prior alignment matters for scalar recovery (§16). Fibre-count-prior alignment matters for tractography (§17.7). Different priors, both important. |
+
+The honest paper-ready story: **scalar microstructure recovery (NDI, FA)
+on DiSCo phantoms is good when both the library AND the metric are
+well-specified; full connectivity-matrix reproduction is currently
+blocked by either (a) the tuned-library ODF bug or (b) the default-
+library's 70% 3-fibre composition.** A library regenerated with
+fibre-count prior `Dirichlet(8,1,1)` AND the diffusivity tuning is the
+likely path to paper-grade connectivity, but we haven't tested it.
+
+### 17.9 Mistakes I made this round (audit-of-the-audit)
+
+For honesty: this section's audit + re-run process surfaced several
+methodological errors I'd made earlier:
+
+1. **§16.3 Pearson r overstated** — should have reported CCC alongside
+   from the start, exposing the 0.17 magnitude bias.
+2. **§17.2 narrative oscillated** — first claimed the tuned library
+   breaks tractography (right), then accepted the audit's correction
+   that eudx_tracking works around it (wrong, based on a transient
+   smoke result), now back to the original claim with stronger
+   evidence.
+3. **Weakened regression test once** — when the audit's "eudx works
+   on tuned" appeared right, I removed the streamline-count
+   assertion. Now restored with both ODF-zero and zero-streamlines
+   assertions.
+4. **Connectivity CCC = 0** is not a finding — it reflects unit
+   mismatch between streamline counts and mm² cross-sectional area.
+   The audit recommendation (#3, CCC) was right *for the §16 scalar
+   metric* but I applied it to the connectivity matrix where it can't
+   work. Future application: §16 should report CCC; §17 should not.
+
+The pattern across this section: I keep treating each new fix as the
+final answer instead of running the verification one more time before
+committing the conclusion. The lesson now memorised
+(see `feedback_tdd.md` and `feedback_verify_before_asserting.md` in
+agent memory): **never weaken a test, and always verify on the full
+dataset before reporting a finding.**
 
 ---
 

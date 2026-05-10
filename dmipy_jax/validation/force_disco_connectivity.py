@@ -67,38 +67,86 @@ def connectivity_pearson(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.corrcoef(av[valid], bv[valid])[0, 1])
 
 
+def lin_ccc(a: np.ndarray, b: np.ndarray, mask: np.ndarray | None = None) -> float:
+    """Lin's Concordance Correlation Coefficient (CCC).
+
+    Unlike Pearson r — which is shift- and scale-invariant — CCC penalises
+    systematic bias: ``CCC = 2·cov(a,b) / (var(a) + var(b) + (mean(a) − mean(b))²)``.
+
+    If ``mask`` is provided, the computation is restricted to that mask;
+    otherwise the entire arrays are used. NaN/inf are dropped pairwise.
+    Returns ``nan`` for fewer than 3 valid samples or zero variance.
+    """
+    a_f = np.asarray(a).astype(np.float64).ravel()
+    b_f = np.asarray(b).astype(np.float64).ravel()
+    if mask is not None:
+        m = np.asarray(mask).ravel().astype(bool)
+        a_f = a_f[m]
+        b_f = b_f[m]
+    valid = np.isfinite(a_f) & np.isfinite(b_f)
+    if valid.sum() < 3:
+        return float("nan")
+    a_v = a_f[valid]
+    b_v = b_f[valid]
+    mean_a, mean_b = a_v.mean(), b_v.mean()
+    var_a, var_b = a_v.var(ddof=0), b_v.var(ddof=0)
+    cov = ((a_v - mean_a) * (b_v - mean_b)).mean()
+    denom = var_a + var_b + (mean_a - mean_b) ** 2
+    if denom < 1e-12:
+        return float("nan")
+    return float(2.0 * cov / denom)
+
+
 def run_force_connectivity(
     subject: int = 1,
     snr: int = 30,
     tuned: bool = True,
     seed_density: int = 2,
     step_size: float = 0.5,
-    max_cross: int = 1,
+    max_cross: Optional[int] = None,
+    max_angle: float = 45.0,
+    pmf_threshold: float = 0.1,
     _smoke_roi_subset: Optional[Iterable[int]] = None,
 ):
     """Fit FORCE on DiSCo and produce a connectivity matrix.
 
+    Uses the *current* dipy tractography API
+    (:func:`dipy.tracking.tracker.eudx_tracking`), which is the
+    paper-faithful equivalent of EuDX. The audit (doc 004 §17 follow-up)
+    flagged the older :class:`LocalTracking` path as deprecated for
+    :class:`PeaksAndMetrics` direction getters and missing the
+    ``max_angle`` / ``pmf_threshold`` parameters paper §3.2 implicitly
+    relies on.
+
+    Stopping criterion now uses ``(rois > 0) | mask`` so streamlines can
+    propagate into the ROI cylinders (which extend beyond the WM
+    strand-bundle mask in DiSCo; ~50 % of each ROI cylinder is outside
+    the brain mask). The previous ``mask``-only criterion terminated
+    streamlines at ROI boundaries instead of inside ROI labels.
+
     Parameters
     ----------
     seed_density
-        Per-dimension density of seeds inside the ROI mask. The dipy
-        convention is to seed ``density**3`` points per voxel. 2 → 8
-        seeds/voxel.
+        Per-dimension density of seeds inside the ROI mask.
     step_size
-        Streamline integration step in voxels (mm in DiSCo's affine).
+        Streamline integration step in mm.
     max_cross
-        Maximum number of fibres to follow per voxel from the FORCE
-        peaks.
+        Maximum number of fibres to follow per voxel. ``None`` = all peaks.
+    max_angle
+        Maximum turning angle per step in degrees. eudx_tracking default
+        is 60; we use 45 (more selective).
+    pmf_threshold
+        Minimum peak strength to consider tracking. eudx_tracking default
+        is 0.0239; we raise to 0.1 to avoid following weak/spurious peaks
+        in the FORCE ``fracs`` array (see audit finding #3).
     _smoke_roi_subset
-        For tests only: restrict seeding to the listed ROI labels so
-        the smoke test produces a tiny streamline set quickly.
+        For tests only.
     """
     import warnings as _w
     _w.filterwarnings("ignore")
     import nibabel as nib
-    from dipy.direction.peaks import PeaksAndMetrics
     from dipy.reconst.force import FORCEModel, force_peaks, load_force_simulations
-    from dipy.tracking.local_tracking import LocalTracking
+    from dipy.tracking.tracker import eudx_tracking
     from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
     from dipy.tracking.streamline import Streamlines
     from dipy.tracking.utils import connectivity_matrix, seeds_from_mask
@@ -132,8 +180,10 @@ def run_force_connectivity(
     fit = model.fit(data, mask=fit_mask)
     peaks = force_peaks(fit)
 
-    # Stopping criterion: stay within brain mask
-    sc = BinaryStoppingCriterion(mask.astype(np.uint8))
+    # Stopping criterion: expanded to include ROI cylinders so streamlines
+    # can enter and terminate on ROI labels (not at WM-mask edges).
+    sc_mask = ((rois > 0) | mask).astype(np.uint8)
+    sc = BinaryStoppingCriterion(sc_mask)
 
     # Seed from ROI mask (or smoke subset)
     if _smoke_roi_subset is not None:
@@ -142,10 +192,17 @@ def run_force_connectivity(
         seed_mask = (rois > 0) & mask
     seeds = seeds_from_mask(seed_mask, affine, density=seed_density)
 
-    # Track
-    streamline_gen = LocalTracking(
-        peaks, sc, seeds, affine, step_size=step_size,
-        max_cross=max_cross, return_all=False, maxlen=300, minlen=4,
+    # Track via eudx_tracking — paper-faithful API with proper peak gating
+    streamline_gen = eudx_tracking(
+        seeds, sc, affine,
+        pam=peaks,
+        max_cross=max_cross,
+        max_angle=max_angle,
+        pmf_threshold=pmf_threshold,
+        step_size=step_size,
+        min_len=4, max_len=300,
+        return_all=True,
+        random_seed=0,
     )
     streamlines = Streamlines(streamline_gen)
     # Drop any zero-length streamlines that LocalTracking can occasionally

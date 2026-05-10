@@ -28,6 +28,7 @@ import numpy as np
 
 from dmipy_jax.validation.force_disco_connectivity import (
     connectivity_pearson,
+    lin_ccc,
     load_gt_connectivity,
     run_force_connectivity,
 )
@@ -37,37 +38,52 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--snrs", type=int, nargs="+", default=[10, 30, 50])
     ap.add_argument("--seed-density", type=int, default=2)
+    ap.add_argument("--library", choices=["tuned", "default"], default="tuned",
+                    help="Which FORCE library to use. tuned = paper §3.2 "
+                         "DiSCo-aligned priors; default = in-vivo priors.")
     args = ap.parse_args()
 
     gt = load_gt_connectivity(subject=1)
     print(f"Ground-truth connectivity: 16×16, "
           f"{int((gt > 0).sum())} nonzero off-diagonal entries.")
+    print(f"Library: {args.library}")
 
     results = {}
+    iu = np.triu_indices(16, k=1)
     for snr in args.snrs:
         print(f"\n=== SNR = {snr} ===")
         res = run_force_connectivity(
-            subject=1, snr=snr, tuned=False,
+            subject=1, snr=snr, tuned=(args.library == "tuned"),
             seed_density=args.seed_density,
         )
         cmat = res["connectivity"]
         r = connectivity_pearson(cmat, gt)
+        # CCC: penalises systematic bias. Use the upper-triangle entries
+        # so it's comparable to Pearson r above.
+        mask_ut = np.zeros_like(gt, dtype=bool)
+        mask_ut[iu] = True
+        ccc = lin_ccc(cmat, gt, mask=mask_ut)
         results[snr] = {
             "cmat": cmat,
             "r": r,
+            "ccc": ccc,
             "n_streamlines": res["streamlines_count"],
             "n_seeds": res["n_seeds"],
         }
         print(f"  n_seeds:        {res['n_seeds']:,}")
         print(f"  n_streamlines:  {res['streamlines_count']:,}")
         print(f"  Pearson r vs GT (upper-triangle): {r:.4f}")
+        print(f"  Lin CCC vs GT (upper-triangle):   {ccc:.4f}")
 
     # Save NPZ
-    out_npz = Path("validation/force_disco_connectivity_results.npz")
+    suffix = f"_{args.library}"
+    out_npz = Path(f"validation/force_disco_connectivity_results{suffix}.npz")
     np.savez(
         out_npz,
         snrs=np.array(args.snrs),
         r=np.array([results[s]["r"] for s in args.snrs]),
+        ccc=np.array([results[s]["ccc"] for s in args.snrs]),
+        n_streamlines=np.array([results[s]["n_streamlines"] for s in args.snrs]),
         gt=gt,
         **{f"cmat_snr{s}": results[s]["cmat"] for s in args.snrs},
     )
@@ -110,19 +126,20 @@ def main():
         fontsize=10,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    out_png = Path("validation/force_disco_connectivity.png")
+    out_png = Path(f"validation/force_disco_connectivity{suffix}.png")
     fig.savefig(out_png, bbox_inches="tight")
     print(f"Wrote {out_png}")
 
     # Print summary table
-    print("\n" + "=" * 60)
-    print("DiSCo connectivity-matrix Pearson r (upper-triangle)")
-    print("=" * 60)
-    print(f"  {'SNR':>4s}  {'r':>8s}  Paper §3.2 reported")
+    print("\n" + "=" * 72)
+    print("DiSCo connectivity-matrix (upper-triangle, 120 ROI pairs)")
+    print("=" * 72)
+    print(f"  {'SNR':>4s}  {'Pearson r':>10s}  {'CCC':>8s}  {'Paper §3.2 r':>14s}")
     paper_vals = {10: 0.868, 50: 0.894}
     for snr in args.snrs:
         paper = f"{paper_vals.get(snr, '—'):.3f}" if snr in paper_vals else "—"
-        print(f"  {snr:>4d}  {results[snr]['r']:>8.4f}  {paper:>20s}")
+        print(f"  {snr:>4d}  {results[snr]['r']:>10.4f}  "
+              f"{results[snr]['ccc']:>8.4f}  {paper:>14s}")
 
 
 if __name__ == "__main__":

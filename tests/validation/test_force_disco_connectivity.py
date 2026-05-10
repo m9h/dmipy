@@ -44,6 +44,49 @@ class TestGroundTruthConnectivity:
 
 
 # --------------------------------------------------------------------------- #
+# 1b. Lin's CCC (penalises systematic bias)
+# --------------------------------------------------------------------------- #
+
+class TestLinCCC:
+    def test_identical_arrays_ccc_is_one(self):
+        a = np.linspace(0, 1, 100)
+        assert conn.lin_ccc(a, a) == pytest.approx(1.0, abs=1e-6)
+
+    def test_uniform_bias_drops_ccc_below_pearson(self):
+        """A uniform 0.17 shift (the §16.3 NDI bias) leaves Pearson r=1 but
+        crushes CCC. This is the headline reason for adding CCC to the
+        reporting suite. For uniform a∈[0,1] + 0.17 shift the empirical
+        CCC is ~0.85."""
+        a = np.linspace(0, 1, 200)
+        b = a + 0.17  # uniform shift
+        r_pearson = float(np.corrcoef(a, b)[0, 1])
+        ccc = conn.lin_ccc(a, b)
+        assert r_pearson == pytest.approx(1.0, abs=1e-6)
+        # Pearson stays perfect, CCC drops well below 1
+        assert ccc < 0.90, f"CCC {ccc} should reflect bias; Pearson r={r_pearson}"
+        assert ccc > 0.6, f"CCC {ccc} too low for a r=1 + 0.17-shift relationship"
+
+    def test_scale_difference_drops_ccc(self):
+        """Pearson is also scale-invariant; CCC penalises scale mismatch."""
+        a = np.linspace(0, 1, 200)
+        b = a * 2.0  # scaled
+        ccc = conn.lin_ccc(a, b)
+        # Pearson would be 1.0; CCC should be ~0.5 (half-line vs full)
+        assert ccc < 0.95, f"CCC {ccc} should reflect scale bias"
+
+    def test_mask_restricts_computation(self):
+        a = np.zeros(100); b = np.zeros(100)
+        a[:50] = np.linspace(0, 1, 50)
+        b[:50] = np.linspace(0, 1, 50)
+        # Out-of-mask region: noise that would crush CCC if included
+        rng = np.random.default_rng(0)
+        a[50:] = rng.normal(scale=100, size=50)
+        b[50:] = -rng.normal(scale=100, size=50)
+        mask = np.zeros(100, dtype=bool); mask[:50] = True
+        assert conn.lin_ccc(a, b, mask=mask) == pytest.approx(1.0, abs=1e-6)
+
+
+# --------------------------------------------------------------------------- #
 # 2. Connectivity matrix Pearson r
 # --------------------------------------------------------------------------- #
 
@@ -91,19 +134,27 @@ class TestTractographySmoke:
         assert result["streamlines_count"] > 0
         assert result["connectivity"].shape == (16, 16)
 
-    def test_tuned_library_suppresses_odfs_upstream_bug(self, disco_ready):
-        """**Regression test for an upstream dipy bug**: tuned library
-        generated with ``wm_threshold=1.0`` has all-zero ODFs, so
-        ``force_peaks`` returns zero peaks despite ``num_fibers > 0``.
+    def test_tuned_library_has_zero_odfs(self, disco_ready):
+        """**Pinned upstream observation**: tuned library generated with
+        ``wm_threshold=1.0`` has all-zero ``sims['odfs']`` rows.
 
-        Tractography on a tuned-library FORCEFit therefore produces
-        zero streamlines. This test pins that behaviour so we'll know
-        if/when dipy fixes the upstream ODF computation.
+        Originally we concluded this *breaks tractography*. The audit
+        found that conclusion overstated: ``eudx_tracking(pam=peaks,...)``
+        uses ``peak_indices`` and ``peak_values`` (which ARE populated)
+        regardless of the all-zero ``peak_dirs``, so tractography
+        actually works on the tuned library via the modern API.
 
-        If this test ever STARTS failing (i.e. tuned lib starts
-        producing streamlines), the upstream bug is fixed — at which
-        point we should switch ``run_force_connectivity`` to use
-        ``tuned=True`` for the paper-aligned protocol.
+        What is still true and worth pinning:
+          - The library file's ``odfs`` array is all-zero
+          - ``force_peaks`` returns ``peak_dirs`` all-zero
+          - Any downstream code that ONLY reads ``peak_dirs`` (e.g.
+            ``LocalTracking(peaks_obj,…)``, the deprecated path) will
+            see zero peaks per voxel and produce zero streamlines.
+
+        If this test starts failing — i.e. tuned library starts
+        populating ``odfs`` — then dipy has fixed the ODF generation
+        path and we no longer need to choose between tuned-vs-default
+        when using the legacy LocalTracking API.
         """
         import numpy as np
         from dipy.reconst.force import load_force_simulations
@@ -116,17 +167,6 @@ class TestTractographySmoke:
         nz_odfs = (np.abs(sims["odfs"]).sum(axis=1) > 0).sum()
         assert nz_odfs == 0, (
             f"Tuned library now has {nz_odfs} nonzero ODFs (was 0). "
-            "Upstream bug likely fixed — switch run_force_connectivity "
-            "to use tuned=True."
-        )
-
-        # Consequence: tractography on tuned library produces 0 streamlines
-        result = conn.run_force_connectivity(
-            subject=1, snr=30, tuned=True,
-            _smoke_roi_subset=(1, 2, 3), seed_density=1,
-        )
-        assert result["streamlines_count"] == 0, (
-            "Tuned-library tractography unexpectedly produced "
-            f"{result['streamlines_count']} streamlines; ODF "
-            "suppression bug appears fixed."
+            "Upstream may have fixed the ODF computation path under "
+            "wm_threshold=1.0."
         )

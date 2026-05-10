@@ -127,7 +127,47 @@ internal default is `default_sphere` (362 vertices). Paper §2.2.2 (line 182):
 
 The 362-vertex `default_sphere` has nearest-vertex error ~4.1° too (similar density). But applications requiring sub-4° angular resolution would benefit from being able to pass `sphere=Symmetric724`. Probably a one-line addition to the `generate_force_simulations` signature.
 
-### 4d. The 70%-3-fibre library composition is undocumented
+### 4d. `wm_threshold=1.0` silently suppresses ODF generation in the library
+
+Found while reproducing paper §3.2's DiSCo connectivity-matrix protocol.
+The paper explicitly says "**The isotropic compartment was disabled** to
+match the stick-like DiSCo model", which I implemented as
+`wm_threshold=1.0` (the parameter's documented purpose). The resulting
+500K-entry library has:
+
+- All scalar metrics (`fa`, `md`, `nd`, `dispersion`, `wm_fraction`, …)
+  populated correctly — matcher works, NDI recovery r = 0.918.
+- **`sims["odfs"]` is *all zeros* — 0 of 500,000 entries have any
+  nonzero ODF value.**
+
+`force_peaks(fit)` builds its `PeaksAndMetrics.peak_dirs` from the
+posterior-weighted average of library ODFs, so on a tuned-library fit
+it returns zero peaks per voxel — even when `fit.num_fibers > 0` says
+the matcher found multi-fibre configurations. Tractography on those
+peaks produces zero streamlines, which breaks any downstream
+connectivity-matrix or tractography pipeline.
+
+Compare same fixture with the default library: 249,898 / 500,000 ODF
+rows nonzero, tractography works.
+
+This is silent and dangerous: the matcher reports `num_fibers > 0`,
+the user reasonably assumes peaks exist, and the empty `peak_dirs`
+only surfaces when the downstream pipeline crashes (zero streamlines).
+Suggestions for upstream:
+
+- Emit a `RuntimeWarning` if `generate_force_simulations` would produce
+  zero nonzero-ODF rows.
+- Or: ensure ODFs are populated regardless of `wm_threshold`, since
+  ODFs are needed for `force_peaks` regardless of the WM-vs-GM/CSF
+  fraction policy.
+- Or at minimum: document that `wm_threshold=1.0` will suppress ODFs
+  and recommend using something like `wm_threshold=0.95` instead, or
+  setting `compute_odfs=True` explicitly if such a flag exists.
+
+Pinned in our tests as `test_tuned_library_suppresses_odfs_upstream_bug`
+— it will turn red the day upstream fixes the issue.
+
+### 4e. The 70%-3-fibre library composition is undocumented
 
 `Dirichlet(2,1,1)` over (WM, GM, FW) fractions, with WM containing up to 3 fibre populations, results in:
 

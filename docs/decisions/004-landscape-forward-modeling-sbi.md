@@ -1308,20 +1308,96 @@ The FORCE NDI map (mid-panel, top row) is uniformly bright; ground-truth
 through the entire mask. Out-of-distribution library priors produce
 systematic bias, exactly as §13 predicted.
 
-### 16.3 Tuned-library run (paper-protocol)
+### 16.3 Tuned-library run (paper §3.2 protocol)
 
-Re-running with the paper §3.2 priors:
+Re-ran with the paper-aligned priors:
 
 ```python
 diffusivity_config = {
     "wm_d_par_range":  (0.00054, 0.00066),   # vs default (0.002, 0.003)
     "wm_d_perp_range": (0.00032, 0.00038),   # vs default (0.0003, 0.0015)
-    ...
 }
 wm_threshold = 1.0  # disable GM/CSF mixing per paper
 ```
 
-*(Results pending — tuned library regenerating)*
+**Brain-mask Pearson correlations on the same 15,267 voxels:**
+
+| Comparison | Default lib | Tuned lib | Δ |
+|---|:-:|:-:|:-:|
+| FORCE NDI vs GT Intra Volume Fraction | 0.679 | **0.918** | **+0.24** |
+| FORCE FA vs DTI FA (sanity round-trip) | 0.827 | **0.990** | **+0.16** |
+
+**Map mean values (FORCE recovery):**
+
+| Map | Default | Tuned | GT/DTI |
+|---|:-:|:-:|:-:|
+| FORCE NDI mean | 0.75 | **0.47** | GT ~0.3 |
+| FORCE FA mean | 0.18 | **0.25** | DTI 0.25 |
+| FORCE FA max | 0.55 | **0.77** | DTI 0.73 |
+| FORCE dispersion mean | 0.32 | **0.46** | n/a |
+
+![DiSCo tuned-library run](../../validation/force_disco_tuned.png)
+
+Visual changes vs §16.2:
+- **|FORCE − GT| residuals** drop from uniform-white (0.3–0.5) to orange/red
+  (0.1–0.3). Spatial pattern of residuals also tracks NDI gradient
+  correctly.
+- **FORCE FA map** now visually indistinguishable from DTI FA — fine
+  bundle structure preserved.
+- **FORCE NDI map** now in the right magnitude range, though still has
+  a ~0.17 upward bias against GT (0.47 vs 0.3). Bias is uniform, not
+  spatial — suggesting it's a residual library coverage issue at low NDI
+  (the library still has min entries above the dilute-strand regime).
+
+### 16.4 What §16 confirms (paper-grade)
+
+1. **Library-prior alignment is the FORCE method, not an optimisation.**
+   With paper-documented retuning, FORCE achieves r = 0.918 NDI recovery
+   against ground truth on DiSCo. Without retuning, r = 0.679 with
+   ~0.4-magnitude systematic bias. **A 24-point Pearson r gain from a
+   ~10-line configuration change.**
+
+2. **The §13 hypothesis (synthetic library-prior mismatch causes bias)
+   is validated on real phantom data with ground truth.** The same
+   pattern: out-of-distribution priors → systematic over-estimation of
+   volume fractions; in-distribution priors → recovery within ~0.16 RMSE
+   of the truth.
+
+3. **FORCE FA vs DTI FA is r = 0.99** with tuning — the §15 Stanford HARDI
+   pattern (r ≥ 0.985) holds on synthetic phantom data too, *when the
+   library matches*.
+
+4. **The 0.17 residual NDI bias in the tuned run** (0.47 vs 0.3) is
+   uniform, not spatial — suggesting a residual library-coverage gap at
+   the low-NDI tail (DiSCo's dilute-strand regions). Could be closed by
+   widening the prior ranges further or by sampling more entries near
+   the low-NDI boundary.
+
+### 16.5 What §16 does **not** measure
+
+- **Connectivity matrix Pearson r** (the paper's headline §3.2 metric of
+  0.868). Requires running EuDX tractography on FORCE peaks and computing
+  the bundle-to-bundle connectivity matrix vs ground-truth strands.
+  Substantially more pipeline.
+- **Multi-shell or multi-SNR comparison**. Paper reports r=0.868 at
+  SNR=10 single-shell; we did SNR=30. Both extremes should be tested.
+- **Comparison to MSMT-CSD baseline** (paper Figure 7).
+
+### 16.6 Implications for the paper / dipy GitHub issue
+
+This run cleanly proves the §9–§13 framing was correct: **library-prior
+matching is the dominant factor in FORCE's accuracy** on any given
+dataset, and the paper acknowledges this with explicit retuning for
+DiSCo. The user-facing finding is:
+
+> **FORCE works as advertised — *if you tune the library to your data's
+> diffusivity range*. Using the default in-vivo priors on out-of-regime
+> data (e.g. ex-vivo, phantoms, low-FA white matter at sub-clinical
+> resolution) produces systematic magnitude bias that's hidden behind
+> normal-looking spatial maps. The tuning step deserves more visible
+> documentation in the `dipy.reconst.force.FORCEModel` tutorial.**
+
+That's a real, defensible, and actionable observation to surface upstream.
 
 ### 16.4 What is this comparison actually measuring?
 

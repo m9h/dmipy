@@ -75,6 +75,112 @@ def build_disco_tuned_two_stick_simulator(acq: JaxAcquisition) -> ModelSimulator
     )
 
 
+def build_disco_tuned_3d_two_stick_simulator(acq: JaxAcquisition) -> ModelSimulator:
+    """Full 3D-orientation 2-stick + Bingham + iso simulator (Option B2).
+
+    Extends the 6-param planar simulator (§20) to 8 params with
+    independent (θ, φ) per fibre:
+
+        ``[d_par, theta1, phi1, theta2, phi2, odi, f1, f_iso]``
+
+    ``mu_i = [sin θ_i cos φ_i, sin θ_i sin φ_i, cos θ_i]``.
+
+    The §20 simulator constrained all fibres to y=0 (φ=0 implicit),
+    which works for scalar microstructure recovery but fundamentally
+    breaks tractography since streamlines can only move in the +x/+z
+    plane.
+    """
+    bingham = BinghamNODDI(grid_points=120)
+
+    def forward_fn(params, acq):
+        d_par = params[0]
+        t1, p1 = params[1], params[2]
+        t2, p2 = params[3], params[4]
+        odi = params[5]
+        f1, f_iso = params[6], params[7]
+        f2 = 1.0 - f1 - f_iso
+        kappa = 1.0 / jnp.tan(jnp.pi * odi / 2.0)
+        mu1 = jnp.array([
+            jnp.sin(t1) * jnp.cos(p1),
+            jnp.sin(t1) * jnp.sin(p1),
+            jnp.cos(t1),
+        ])
+        mu2 = jnp.array([
+            jnp.sin(t2) * jnp.cos(p2),
+            jnp.sin(t2) * jnp.sin(p2),
+            jnp.cos(t2),
+        ])
+        s1 = bingham(acq.bvalues, acq.gradient_directions,
+                     mu=mu1, kappa1=kappa, kappa2=kappa, lambda_par=d_par)
+        s2 = bingham(acq.bvalues, acq.gradient_directions,
+                     mu=mu2, kappa1=kappa, kappa2=kappa, lambda_par=d_par)
+        s_iso = jnp.exp(-acq.bvalues * 3.0e-9)
+        return f1 * s1 + f2 * s2 + f_iso * s_iso
+
+    return ModelSimulator(
+        forward_fn=forward_fn,
+        parameter_names=[
+            "d_par", "theta1", "phi1", "theta2", "phi2", "odi", "f1", "f_iso",
+        ],
+        parameter_ranges={
+            "d_par": (0.54e-9, 0.66e-9),
+            "theta1": (0.0, float(jnp.pi)),
+            "phi1": (0.0, float(2 * jnp.pi)),
+            "theta2": (0.0, float(jnp.pi)),
+            "phi2": (0.0, float(2 * jnp.pi)),
+            "odi": (0.01, 0.30),
+            "f1": (0.1, 0.8),
+            "f_iso": (0.0, 0.95),
+        },
+        acquisition=acq,
+    )
+
+
+def _spherical_to_cartesian(theta: float, phi: float) -> np.ndarray:
+    return np.array([
+        np.sin(theta) * np.cos(phi),
+        np.sin(theta) * np.sin(phi),
+        np.cos(theta),
+    ])
+
+
+def dmipy_params_to_pam_single(
+    params: np.ndarray,
+    sphere,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Convert a single voxel's 3D-2-stick params to (peak_dirs,
+    peak_values, peak_indices) — the three fields ``PeaksAndMetrics``
+    needs for tractography.
+
+    Parameter layout: ``[d_par, θ1, φ1, θ2, φ2, ODI, f1, f_iso]``.
+    Returns 5-slot arrays (dipy convention), with positions 2..4 zero.
+    """
+    p = np.asarray(params, dtype=np.float64)
+    t1, p1, t2, p2 = p[1], p[2], p[3], p[4]
+    f1, f_iso = float(p[6]), float(p[7])
+    f2 = 1.0 - f1 - f_iso
+
+    mu1 = _spherical_to_cartesian(t1, p1)
+    mu2 = _spherical_to_cartesian(t2, p2)
+
+    peak_dirs = np.zeros((5, 3), dtype=np.float64)
+    peak_values = np.zeros(5, dtype=np.float64)
+    peak_indices = -np.ones(5, dtype=np.int32)
+
+    peak_dirs[0] = mu1
+    peak_dirs[1] = mu2
+    peak_values[0] = max(f1, 0.0)
+    peak_values[1] = max(f2, 0.0)
+
+    # Snap each peak direction to its nearest sphere vertex (antipodal-aware)
+    vertices = sphere.vertices  # (N, 3)
+    for k in (0, 1):
+        if peak_values[k] > 0:
+            dots = np.abs(vertices @ peak_dirs[k])
+            peak_indices[k] = int(np.argmax(dots))
+    return peak_dirs, peak_values, peak_indices
+
+
 def fit_dmipy_dict_on_disco(
     subject: int = 1,
     snr: int = 30,

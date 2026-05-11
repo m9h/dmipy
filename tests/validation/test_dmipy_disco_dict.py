@@ -95,3 +95,95 @@ class TestFitDmipyDictOnDiSCo:
         assert ndi.shape == mask.shape
         ndi_in = ndi[mask]
         assert (ndi_in >= 0).all() and (ndi_in <= 1.0 + 1e-3).all()
+
+
+# --------------------------------------------------------------------------- #
+# 3. 3D-orientation simulator (Option B2)
+# --------------------------------------------------------------------------- #
+
+class TestBuild3DTwoStickSimulator:
+    def test_parameter_layout(self):
+        """3D simulator has 8 params: d_par, θ1, φ1, θ2, φ2, ODI, f1, f_iso."""
+        from dmipy_jax.acquisition import JaxAcquisition
+        import jax.numpy as jnp
+        acq = JaxAcquisition(
+            bvalues=jnp.array([0.0, 1.9e9]),
+            gradient_directions=jnp.array([[1, 0, 0], [0, 0, 1]], dtype=float),
+        )
+        sim = _helper.build_disco_tuned_3d_two_stick_simulator(acq)
+        assert sim.parameter_names == [
+            "d_par", "theta1", "phi1", "theta2", "phi2", "odi", "f1", "f_iso",
+        ]
+
+    def test_phi_spans_full_azimuth(self):
+        """phi1/phi2 must cover [0, 2π] for full sphere coverage."""
+        from dmipy_jax.acquisition import JaxAcquisition
+        import jax.numpy as jnp
+        import math
+        acq = JaxAcquisition(
+            bvalues=jnp.array([0.0, 1.9e9]),
+            gradient_directions=jnp.array([[1, 0, 0], [0, 0, 1]], dtype=float),
+        )
+        sim = _helper.build_disco_tuned_3d_two_stick_simulator(acq)
+        for axis in ("phi1", "phi2"):
+            lo, hi = sim.parameter_ranges[axis]
+            assert abs(lo - 0.0) < 1e-9
+            assert abs(hi - 2 * math.pi) < 1e-6
+
+
+# --------------------------------------------------------------------------- #
+# 4. params → PeaksAndMetrics adapter
+# --------------------------------------------------------------------------- #
+
+class TestDmipyParamsToPAM:
+    def test_unit_norm_peaks_from_2_fibre_params(self):
+        """Convert a single voxel's [d_par, θ1, φ1, θ2, φ2, ODI, f1, f_iso]
+        to a PAM-compatible (peak_dirs, peak_values, peak_indices) triple
+        and assert peak directions are unit norm."""
+        import numpy as np
+        from dipy.data import default_sphere
+
+        params = np.array([0.6e-9, np.pi / 2, 0.0, np.pi / 2, np.pi / 2,
+                           0.1, 0.5, 0.1])  # 2 orthogonal in-plane fibres
+        peak_dirs, peak_values, peak_indices = _helper.dmipy_params_to_pam_single(
+            params, sphere=default_sphere,
+        )
+        # 5 slots in dipy convention, but only first 2 should be populated
+        assert peak_dirs.shape == (5, 3)
+        assert peak_values.shape == (5,)
+        assert peak_indices.shape == (5,)
+        # Norms: first 2 should be ~1, rest 0
+        norms = np.linalg.norm(peak_dirs, axis=-1)
+        assert abs(norms[0] - 1.0) < 1e-6
+        assert abs(norms[1] - 1.0) < 1e-6
+        assert (norms[2:] == 0).all()
+
+    def test_in_plane_fibres_at_z_axis(self):
+        """θ=0 → mu = +z regardless of φ."""
+        import numpy as np
+        from dipy.data import default_sphere
+
+        params = np.array([0.6e-9, 0.0, 0.0, 0.0, 1.5, 0.1, 0.5, 0.1])
+        peak_dirs, _, _ = _helper.dmipy_params_to_pam_single(
+            params, sphere=default_sphere,
+        )
+        # Both peaks should point along z (or -z under antipodal)
+        for k in range(2):
+            assert abs(abs(peak_dirs[k, 2]) - 1.0) < 1e-6
+
+    def test_phi_pi_over_2_gives_y_axis(self):
+        """θ=π/2, φ=π/2 → mu = +y. Verifies 3D parameterisation actually
+        uses the φ parameter (the §20 bug was φ-collapsed-to-zero)."""
+        import math
+        import numpy as np
+        from dipy.data import default_sphere
+
+        params = np.array([0.6e-9, math.pi / 2, math.pi / 2,
+                           math.pi / 2, 0.0, 0.1, 0.5, 0.1])
+        peak_dirs, _, _ = _helper.dmipy_params_to_pam_single(
+            params, sphere=default_sphere,
+        )
+        # First peak should be along +y
+        assert abs(peak_dirs[0, 1] - 1.0) < 1e-3, f"got {peak_dirs[0]}"
+        # Second peak should be along +x (φ=0, θ=π/2)
+        assert abs(peak_dirs[1, 0] - 1.0) < 1e-3, f"got {peak_dirs[1]}"

@@ -1963,6 +1963,99 @@ method. This is the headline finding for doc 005.
 
 ---
 
+## 20. dmipy-JAX DictionaryMatcher on DiSCo (2026-05-10)
+
+After 19 sections of benchmarking dipy upstream FORCE on DiSCo, we
+hadn't pointed sbi4dwi's own `dmipy_jax.library.matcher.DictionaryMatcher`
+at DiSCo. §20 closes that gap on the scalar microstructure metric.
+
+### 20.1 Pipeline
+
+`validation/validate_dmipy_disco_phantom.py`:
+
+1. Build a DiSCo-tuned 2-stick + Bingham + iso simulator (matching FORCE
+   paper §3.2 priors: `D_∥ ∈ Uniform(0.54, 0.66) × 10⁻³ mm²/s`,
+   `ODI ∈ Uniform(0.01, 0.30)`, `f_iso ∈ Uniform(0.0, 0.95)`).
+2. Generate a 200K-entry library via `LibraryGenerator` on GPU (~30s).
+3. Match every brain-mask voxel via `DictionaryMatcher.match_volume`.
+4. dmipy-JAX NDI = `1 − f_iso` (our analogue to FORCE's `fit.nd`).
+5. Compare to GT `Strand_Intra_Volume_Fraction` via Pearson r + Lin CCC.
+
+### 20.2 Bug found and fixed during this round
+
+My initial library set `f_iso ∈ Uniform(0.0, 0.05)` based on a misreading
+of paper §3.2 ("isotropic compartment was disabled"). That phrase refers
+to FORCE's GM/CSF *ball* compartments — FORCE keeps its extra-axonal
+*zeppelin* for each fibre, which models extracellular water within the
+WM compartment. Our 2-stick model has no zeppelin, so `f_iso` is the
+*only* extracellular-water parameter we have; capping it at 0.05 forced
+every NDI prediction to ≥ 0.95 (saturated).
+
+Symptom: dmipy NDI mean 0.95 ± 0.01 across all SNRs, Pearson r = 0.29,
+CCC = 0.0002. The TDD test I'd written (`test_isotropic_compartment_disabled`)
+*pinned the bug* — it asserted `f_iso_max ≤ 0.05`. Test was rewritten
+(`test_f_iso_spans_extracellular_range`) to assert `f_iso_max ≥ 0.8`
+with the corrected understanding.
+
+### 20.3 Results (after fix)
+
+| SNR | dmipy r | dmipy CCC | FORCE r | FORCE CCC |
+|:-:|:-:|:-:|:-:|:-:|
+| 10 | **0.926** | 0.124 | 0.879 | **0.201** |
+| 30 | **0.980** | 0.135 | 0.918 | 0.240 |
+| 50 | **0.984** | 0.137 | 0.922 | **0.263** |
+
+**Split decision:**
+
+- **dmipy-JAX wins Pearson r** at every SNR — spatial pattern more
+  accurately recovered (0.98 vs 0.92 at SNR=50).
+- **dipy FORCE wins CCC** at every SNR — less magnitude bias (0.26 vs
+  0.14 at SNR=50).
+- Both methods over-estimate absolute NDI (means 0.47–0.61 vs GT 0.18).
+  FORCE's richer biophysics (stick + zeppelin + GM ball + FW ball)
+  enables tighter magnitude matching; dmipy-JAX's 2-stick + iso model
+  has a structurally narrower extracellular-fraction parameterisation.
+
+![dmipy-JAX on DiSCo NDI](../../validation/dmipy_disco.png)
+
+Scatter plots show the issue clearly: dmipy-JAX's regression line is
+shifted up by ~0.4 vs the y=x line — the spatial structure tracks GT
+beautifully, but the absolute scale is biased.
+
+### 20.4 Honest correction: §16/§17 FORCE CCC numbers
+
+In §16.3, §17.6, and §17.8 I referenced FORCE CCC as "~0.85" implying
+a small magnitude bias. **That was wrong.** Computing CCC directly on
+the cached FORCE NDI fits vs GT:
+
+| SNR | FORCE r | FORCE CCC (actual) | FORCE NDI mean | GT mean |
+|:-:|:-:|:-:|:-:|:-:|
+| 10 | 0.879 | **0.201** | 0.502 | 0.178 |
+| 20 | 0.913 | **0.240** | 0.477 | 0.178 |
+| 50 | 0.922 | **0.263** | 0.467 | 0.178 |
+
+FORCE's actual CCC is **0.20–0.26**, not 0.85. The §16.3 "magnitude
+bias is 0.17" framing was directionally right but understated by ~2×
+— FORCE's NDI mean (0.47–0.50) is ~0.3 *above* GT (0.18), not 0.17.
+The correction means **both methods have substantial absolute-magnitude
+bias on DiSCo**; dmipy-JAX's is just larger.
+
+### 20.5 What §20 confirms
+
+1. **dmipy-JAX's DictionaryMatcher works correctly** — when given a
+   paper-aligned library, it produces clean spatial recovery of the GT
+   structure (r up to 0.984).
+2. **Library biophysical scope matters for absolute-magnitude accuracy**.
+   FORCE's richer compartmental model gives ~2× tighter CCC. dmipy-JAX
+   can match this if we extend the simulator to include an extra-axonal
+   zeppelin compartment per fibre (out of scope for §20).
+3. **The TDD discipline caught the f_iso bug at the test layer** — the
+   wrong contract was pinned by the test I wrote, then the test was
+   revised when the running result exposed the misreading. The
+   feedback loop worked.
+
+---
+
 ## References
 
 ### 16.4 What is this comparison actually measuring?

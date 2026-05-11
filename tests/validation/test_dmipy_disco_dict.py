@@ -48,9 +48,19 @@ class TestBuildDiSCoTunedSimulator:
         assert abs(d_par_lo - 0.54e-9) < 1e-12
         assert abs(d_par_hi - 0.66e-9) < 1e-12
 
-    def test_isotropic_compartment_disabled(self):
-        """Paper §3.2 says 'isotropic compartment was disabled' for DiSCo.
-        Our DiSCo-tuned simulator should have f_iso_max small (≤0.05)."""
+    def test_f_iso_spans_extracellular_range(self):
+        """DiSCo has sparse strands → GT Intra Volume Fraction mean ≈ 0.18,
+        so per-voxel extracellular volume is roughly 0.4–0.95. Our 2-stick
+        model has no extra-axonal zeppelin (FORCE does), so the `f_iso`
+        parameter doubles as the extracellular water proxy and must span
+        a wide range to recover GT NDI values across the dataset.
+
+        (Original version of this test asserted ``f_iso_max ≤ 0.05`` based
+        on a misreading of paper §3.2 "isotropic compartment was disabled".
+        That phrase refers to FORCE's GM/CSF ball compartments — FORCE
+        keeps its extra-axonal zeppelin. Our 2-stick model has nothing
+        analogous, so we widen f_iso to cover the extracellular range
+        directly.)"""
         from dmipy_jax.acquisition import JaxAcquisition
         import jax.numpy as jnp
         acq = JaxAcquisition(
@@ -59,7 +69,11 @@ class TestBuildDiSCoTunedSimulator:
         )
         sim = _helper.build_disco_tuned_two_stick_simulator(acq)
         _, f_iso_max = sim.parameter_ranges["f_iso"]
-        assert f_iso_max <= 0.05
+        assert f_iso_max >= 0.8, (
+            f"f_iso_max={f_iso_max} too narrow to recover DiSCo's GT "
+            "Intra Volume Fraction range; 2-stick model needs f_iso as "
+            "the extracellular proxy."
+        )
 
 
 # --------------------------------------------------------------------------- #

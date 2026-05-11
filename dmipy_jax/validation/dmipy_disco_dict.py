@@ -62,9 +62,14 @@ def build_disco_tuned_two_stick_simulator(acq: JaxAcquisition) -> ModelSimulator
             "theta1": (0.0, float(jnp.pi)),
             "theta2": (0.0, float(jnp.pi)),
             "odi": (0.01, 0.30),
+            # f1 = primary stick fraction within the (1 - f_iso) WM volume
             "f1": (0.1, 0.8),
-            # Paper §3.2: "isotropic compartment was disabled"
-            "f_iso": (0.0, 0.05),
+            # f_iso = extracellular volume fraction. DiSCo strands are sparse:
+            # GT Strand Intra Volume Fraction mean ≈ 0.18, so the per-voxel
+            # extracellular fraction ranges roughly 0.4–0.95. Our pure-stick
+            # WM compartment has no extra-axonal zeppelin (which FORCE uses),
+            # so f_iso here doubles as the extracellular water proxy.
+            "f_iso": (0.0, 0.95),
         },
         acquisition=acq,
     )

@@ -1857,6 +1857,112 @@ true regardless of which deterministic streamline tool is used.
 
 ---
 
+## 19. Connectivity-metric flag + variant sweep (2026-05-10)
+
+To close out the §18 hypothesis ("gap is in `tck2connectome` flags"):
+
+### 19.1 `tck2connectome` flag sweep at SNR=30, 100K streamlines
+
+`validation/validate_mrtrix_tck2connectome_flags.py` re-runs
+`tck2connectome` with 8 flag combinations on the same MRtrix
+SD_STREAM streamlines:
+
+| flag combo | Pearson r |
+|---|:-:|
+| raw (baseline §18) | 0.066 |
+| `-scale_invnodevol` | 0.053 |
+| `-scale_length` | 0.072 |
+| `-scale_invlength` | 0.068 |
+| `-scale_invnodevol -scale_invlength` (SIFT-proxy) | 0.054 |
+| `-scale_invnodevol -scale_length` | 0.058 |
+| `-stat_edge mean` | 0.059 |
+| `-stat_edge max` | nan |
+
+**All flag combinations cluster at r = 0.05–0.07.** The best variant
+(`-scale_length`) moves r by 0.006 — sampling noise. **None close the
+gap.**
+
+### 19.2 Matrix-level transforms
+
+Tested on three different streamline sets (FORCE-default+audit-fixes,
+MRtrix SD_STREAM, MRtrix SD_STREAM raw):
+
+| Transform | FORCE r | MRtrix r |
+|:--|:-:|:-:|
+| raw counts vs GT mm² | 0.211 | 0.081 |
+| raw vs GT-binary (presence/absence) | 0.269 | 0.097 |
+| our-binary vs GT-binary | 0.166 | 0.086 |
+| log(counts) vs log(GT) | 0.216 | 0.110 |
+| ≥50th-percentile threshold | 0.209 | 0.085 |
+| ≥75th-percentile threshold | 0.190 | 0.071 |
+| ≥90th-percentile threshold | 0.167 | 0.052 |
+
+Best variant lands at r = 0.269 (FORCE × GT-binary). Still 0.6 below
+the paper.
+
+### 19.3 What this leaves
+
+After eliminating tractography algorithm (§18), library composition
+(§17.10), and connectivity-metric definition (§19.1–§19.2), the
+candidate causes for the 0.55+ gap are reduced to:
+
+1. **Seeding strategy fundamentally different** — paper may use
+   ROI-pair-conditional seeding (seed from each ROI separately, count
+   streamlines reaching each other ROI), not a single global seed mask.
+   We seed from all ROI voxels once and use `tck2connectome` to
+   aggregate. The difference is meaningful: the former biases toward
+   inter-ROI tracks; the latter weights every track equally.
+2. **Different DiSCo subject** — DiSCo has 3 subjects; the paper §3.2
+   doesn't specify which. Subject 2 or 3 might give different geometry.
+   But the gap is 0.6+; subject variance is typically < 0.1 on these
+   benchmarks.
+3. **Author-private pipeline** — the §3.2 protocol explicitly
+   references "Euler Delta Crossings (EuDX)" implementation in DIPY,
+   but provides no further details (seed density, step size, angle,
+   length filters). The original FORCE GitHub repo
+   (`Atharva-Shah-2298/FORCE`) does not contain the §3.2 connectivity
+   pipeline (audit finding #6).
+4. **Reported number is incorrect** — possible with a preprint that
+   hasn't been peer-reviewed.
+
+### 19.4 Final verdict on §3.2 reproducibility
+
+After 19 sections of testing across:
+
+- 3 tractography tools (FORCE+force_peaks, MRtrix Tensor_Det, MRtrix
+  SD_STREAM)
+- 4 library variants (default, tuned, rebalanced, paper-protocol)
+- 8 `tck2connectome` flag combinations
+- 7 matrix-level transforms (binary, log, threshold variants)
+
+**The FORCE paper §3.2 connectivity-matrix r=0.868 (or its CSD baseline
+r=0.847) is not reproducible from public software with the methods
+text alone.** Best result achieved: r = 0.32 (FORCE @ SNR=50, default
+library + audit fixes). The 0.55 residual gap requires either author
+contact or substantial additional reverse-engineering not justified at
+this stage.
+
+### 19.5 What scales: the doc 005 developer feedback
+
+This re-run confirms and sharpens the §4 recommendations to the FORCE
+authors. The §3.2 protocol needs, at minimum:
+
+- Specific tractography parameters: seed density, step size, max angle,
+  pmf threshold, min/max length, max_cross.
+- Specific seeding/stopping scheme: seed mask + stopping criterion +
+  whether streamlines terminate at ROI labels vs WM mask boundary.
+- Specific connectivity metric: which `tck2connectome` normalisation
+  flag, any pre-Pearson transformation (log, threshold, etc).
+- A code release accompanying the paper that runs the §3.2 pipeline
+  end-to-end on the DiSCo data. The current repo
+  (`Atharva-Shah-2298/FORCE`) covers §3.1 and §3.3 but not §3.2.
+
+Without these, §3.2 is **not independently verifiable**, regardless
+of whether we use FORCE, CSD, or any other deterministic streamline
+method. This is the headline finding for doc 005.
+
+---
+
 ## References
 
 ### 16.4 What is this comparison actually measuring?

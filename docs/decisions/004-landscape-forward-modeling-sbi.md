@@ -1777,6 +1777,86 @@ guards.**
 
 ---
 
+## 18. MRtrix3 SD_STREAM independent reference (2026-05-10)
+
+To test whether the §17 reproduction gap is FORCE-specific or
+structural, I ran an independent MRtrix3 SD_STREAM pipeline on the same
+DiSCo data + same connectivity metric.
+
+### 18.1 Pipeline
+
+`validation/validate_mrtrix_disco_connectivity.py` — all C++ binaries
+(system MRtrix's `dwi2response` Python wrapper is broken under
+Python 3.12, so we replace that step with an in-script equivalent):
+
+1. Extract single-shell b=1900 from DiSCo highRes DWI.
+2. `dwi2tensor` + `tensor2metric -fa -vector` → FA + V1.
+3. Threshold FA ≥ 80th-percentile-in-mask → 4,231 single-fibre voxels.
+4. `amp2response -shells 1900` → SH response coefficients.
+5. `dwi2fod csd` → FOD.
+6. `tckgen -algorithm SD_STREAM` → 100,000 deterministic streamlines.
+7. `tck2connectome -symmetric -zero_diagonal` → 16×16 matrix.
+8. `connectivity_pearson` vs GT (upper-triangle).
+
+Seed mask, stopping criterion, and connectivity metric match the §17
+FORCE pipeline exactly so the only variable is the tractography tool.
+
+### 18.2 Results
+
+| SNR | FORCE best (§17) | MRtrix SD_STREAM | Paper §3.2 |
+|:-:|:-:|:-:|:-:|
+| 10 | 0.298 | **0.142** | 0.868 |
+| 30 | 0.232 | **0.081** | — |
+| 50 | 0.322 | **0.131** | 0.894 |
+
+MRtrix SD_STREAM lands in r = 0.08–0.14, **consistently below** the
+FORCE results. Combined with the Tensor_Det smoke (r = 0.120 at SNR=30),
+all three deterministic-streamline references on the same data cluster
+in **r ≈ 0.08–0.32**. The paper's reported r ≈ 0.87 is **0.6+ above**
+every public-tool result.
+
+### 18.3 What this proves
+
+The §17 reproduction gap is **structural to the benchmark setup**, not
+specific to FORCE's peak extraction or dipy's tractography:
+
+1. Switching from FORCE → CSD (paper's stated baseline) makes results
+   **worse**, not better.
+2. None of the three different deterministic streamline algorithms
+   (FORCE+force_peaks, Tensor_Det, SD_STREAM) gets within 0.5 of the
+   paper's reported numbers.
+3. Non-monotone in SNR for all three methods — same signature as §17.5,
+   suggesting a shared confounder (likely the brain mask vs ROI
+   cylinder geometry, or undocumented preprocessing).
+
+The remaining unknown — and the one that *could* close the gap — is
+the connectivity-metric definition. We use raw streamline counts; the
+paper may normalise (by ROI volume, total streamlines, length-weighted,
+or thresholded). `tck2connectome` supports `-scale_invnodevol`,
+`-scale_length`, `-scale_invlength`, `-stat_edge`, etc. The paper §3.2
+doesn't specify which.
+
+### 18.4 Honest conclusion
+
+> **The FORCE paper's §3.2 connectivity-matrix r=0.87 result on DiSCo
+> is unreachable from public software (dipy 1.12.1 OR MRtrix3 3.0.4)
+> using the methods as described in the paper.** All three deterministic
+> streamline references land at r ≤ 0.32. The 0.55+ gap must live in
+> connectivity-metric normalisation, seeding strategy, or other
+> preprocessing details not captured in §3.2's text.
+
+This is the strongest case yet for the doc 005 developer feedback:
+**the §3.2 protocol needs methodological detail** (specifically:
+`tck2connectome` flag set, exact seeding scheme, any pre-Pearson
+normalisation) for reproducibility.
+
+The negative finding stands. doc 004's overall narrative is unchanged:
+scalar microstructure metrics on FORCE are reproducible (§14–§16.7);
+connectivity-matrix headline result is not, and now we know that's
+true regardless of which deterministic streamline tool is used.
+
+---
+
 ## References
 
 ### 16.4 What is this comparison actually measuring?

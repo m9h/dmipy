@@ -2446,6 +2446,152 @@ later:
 
 ---
 
+## §23 Cross-package diagnosis: Microstructure.jl points at the acquisition
+
+### 23.1 Why we looked at Microstructure.jl
+
+§22 ruled out compartment-richness as the cause of the ~0.07 r-gap to
+the FORCE paper. The remaining candidates listed in §21.10 / §22.5 were
+library scaling, acquisition, and dispersion-distribution choice — but
+"acquisition" was a placeholder; we had not actually inspected the
+DiSCo gradient scheme to confirm what data we were using vs what was
+available. Walking through Tinggong/Microstructure.jl as a reference
+package (different paradigm, but built around well-curated examples)
+surfaced an obvious omission.
+
+### 23.2 What Microstructure.jl is and isn't
+
+**It is** an SMT (spherical-mean-technique) toolbox. All compartments
+in `Microstructure.jl/src/compartments.jl` (Stick, Zeppelin, Cylinder,
+Sphere, Iso) are evaluated through `smt_signals(prot, dpara, dperp)` —
+direction-averaged signal expressions. Models (SANDI, SANDIdot,
+ExCaliber, MTE_SMT) have **no per-fibre orientation parameters**;
+crossing fibres are collapsed into the spherical-mean. Orientation
+recovery is expected to come from a separate FOD/CSD step
+(FreeSurfer.jl).
+
+**It isn't** a direct alternative to FORCE / dmipy-JAX for the DiSCo
+connectivity benchmark. The methodologies are not interchangeable —
+SMT discards orientation; FORCE / dmipy-JAX fit it in the dictionary.
+
+So the comparison isn't "what model would Microstructure.jl use" but
+"what does its acquisition design implicitly assume about where
+microstructure information lives?".
+
+### 23.3 The Microstructure.jl tutorial acquisition
+
+From `Microstructure.jl/docs/src/tutorials/1_build_models.md` and
+`Microstructure.jl/test/test_compartment.jl`:
+
+```
+bval = [1000, 2500, 5000, 7500, 11100, 18100, 25000, 43000] × 10⁶ s/m²
+techo = 40 ms × ones(8)
+```
+
+Eight b-shells spanning **b = 1000 s/mm² to 43,000 s/mm²**. The high-b
+shells are deliberately included to resolve compartmental contrasts —
+stick vs zeppelin diverges at high b, axon-diameter information lives
+near the b → ∞ limit. This is the ExCaliber acquisition (axon-diameter
+estimation in ex vivo tissue).
+
+The takeaway is not the absolute scale (b=43k is ex-vivo-only) but the
+**design principle**: compartmental microstructure modelling lives at
+high b. Single-shell low-b acquisitions cannot disambiguate
+compartments.
+
+### 23.4 What DiSCo actually offers vs what §17-§22 used
+
+Auditing `/home/mhough/.dipy/disco/disco_1/DiSCo_gradients.bvals`:
+
+| Shell    | b-value (s/mm²) | Directions |
+|---------:|----------------:|-----------:|
+| b=0      |             0   |          4 |
+| Shell 1  |          1000   |         90 |
+| Shell 2  |          1925   |         90 |
+| Shell 3  |          3094   |         90 |
+| Shell 4  |        13192    |         90 |
+| **Total**|             —   |    **364** |
+
+§17-§22 all ran on `load_disco_subject(..., single_shell_b=1900)`,
+which filters to `b=0 + b≈1925` — **94 of 364 volumes**. The two
+information-rich shells (b=3094 and b=13192) were discarded, plus the
+lower b=1000 shell that improves tensor-fit conditioning.
+
+The single-shell choice was made on §17 to mirror the FORCE paper's
+stated b=2000 protocol, but: (a) the paper uses b=2000 with 150
+directions, not 90 — i.e., it samples more densely on one shell — and
+(b) the §17.5 setup did not test whether multi-shell would matter for
+the dmipy-JAX side. We never actually challenged that assumption.
+
+### 23.5 Why this likely explains the §22 negative finding too
+
+The stick and zeppelin signal forms are **near-identical at b=1925**
+for plausible diffusivities. Their divergence grows with b:
+
+- At b=1925, a stick (d_⊥ = 0) and a zeppelin with d_⊥ = 0.3·d_par
+  differ by less than 5% in perpendicular signal attenuation.
+- At b=13192, the same comparison differs by ~30-40%.
+
+§22 forced the matcher to fit `v_ic` ∈ [0.3, 0.95] using only b=1925
+data — a b-value where the stick / zeppelin contrast is washed out by
+Rician noise (especially at SNR=10). The matcher recovered `v_ic` with
+mean 0.55 and std 0.19 not because it was identifying a real
+biophysical quantity but because the likelihood surface was flat in
+that dimension. The extra parameter then competed with orientation and
+ODI for library coverage, costing the 0.055 r-drop at SNR=50.
+
+The b=13192 shell is exactly where a zeppelin should *earn its keep*.
+We never gave §22 a chance to use it.
+
+### 23.6 What to do next
+
+The hypothesis to test directly:
+
+> Re-running §21 (3D stick-only) and §22 (stick + zeppelin) on the
+> **full 4-shell DiSCo acquisition** should: (a) close some of the
+> 0.07 gap to FORCE paper r=0.89 even with sticks; (b) reverse §22's
+> negative finding because the zeppelin now has an information-rich
+> b-shell to fit.
+
+Action items:
+
+1. Drop the `single_shell_b=1900` filter in the DiSCo loader for §23
+   benchmarks (keep §17.5 / §18 / §21 / §22 single-shell numbers as
+   the baselines they were).
+2. Re-tune library priors if needed — d_par range, d_⊥/d_par tortuosity
+   prior, ODI prior — for the multi-shell regime.
+3. Re-run the 3-method comparison (dmipy-JAX 3D-stick / FORCE / MRtrix)
+   on full multi-shell. FORCE itself may not handle multi-shell out of
+   the box; check `dipy.reconst.force.FORCEModel` accepts arbitrary
+   gtab.
+4. Update §23 with the new numbers, and revisit doc 005 §4 (FORCE
+   developer feedback) — add "the public API silently runs on
+   single-shell when fed multi-shell, but performance is qualitatively
+   different" if that turns out to be the case.
+
+This is a free experiment from §22's perspective: we already have all
+the infrastructure (load_disco_subject, dmipy-JAX library generator,
+the 3D 2-stick simulator). The only change needed is
+`single_shell_b=None` in the loader and re-generating the library
+against the full 364-direction gradient table.
+
+### 23.7 What §23 confirms
+
+- **The §17-§22 negative findings are conditioned on the single-shell
+  acquisition we chose**, not on intrinsic limits of dictionary
+  matching, the FORCE method, or dmipy-JAX.
+- **Microstructure.jl's value here was as a reference acquisition
+  design**, not as a directly comparable implementation. Inspecting a
+  package that lives at the high-b end of the spectrum made the
+  low-b limitation of our setup visible.
+- **The lesson generalises beyond FORCE.** Any compartmental model
+  comparison fit to a single shell at clinical b-values is, by
+  construction, blind to the compartmental contrasts the models claim
+  to recover. Multi-shell or at least one high-b shell is a
+  prerequisite — see CLAUDE.md "Check design envelope" memory.
+
+---
+
 ## References
 
 ### 16.4 What is this comparison actually measuring?

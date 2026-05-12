@@ -27,7 +27,10 @@ import numpy as np
 
 from dmipy_jax.acquisition import JaxAcquisition
 from dmipy_jax.pipeline.simulator import ModelSimulator
-from dmipy_jax.signal_models.bingham import BinghamNODDI
+from dmipy_jax.signal_models.bingham import (
+    BinghamNODDI, get_rotation_matrix_from_z_to_vector,
+)
+from dmipy_jax.signal_models import g2_zeppelin
 
 
 def build_disco_tuned_two_stick_simulator(acq: JaxAcquisition) -> ModelSimulator:
@@ -136,6 +139,131 @@ def build_disco_tuned_3d_two_stick_simulator(acq: JaxAcquisition) -> ModelSimula
     )
 
 
+def _bingham_dispersed_zeppelin(
+    bingham: BinghamNODDI,
+    bvalues, gradient_directions,
+    mu, kappa1, kappa2,
+    lambda_par, lambda_perp,
+):
+    """Bingham-averaged extra-axonal zeppelin signal.
+
+    Mirrors :py:meth:`BinghamNODDI.__call__` but integrates a
+    cylindrically symmetric tensor (zeppelin) over the same Bingham
+    orientation grid instead of a stick. Lets the §22 simulator share
+    one dispersion distribution between intra (stick) and extra
+    (zeppelin) compartments per fibre — the standard NODDI / Bingham-
+    NODDI convention.
+    """
+    mu_vec = mu / jnp.linalg.norm(mu)
+    R = get_rotation_matrix_from_z_to_vector(mu_vec)
+    grid_vectors_rotated = jnp.dot(bingham.grid_vectors_canonical, R.T)
+
+    nx = bingham.grid_vectors_canonical[:, 0]
+    ny = bingham.grid_vectors_canonical[:, 1]
+    pdf_vals = jnp.exp(-kappa1 * nx ** 2 - kappa2 * ny ** 2)
+    normalization = jnp.sum(pdf_vals * bingham.grid_weights)
+    pdf_normalized = pdf_vals / normalization
+
+    def signal_for_orientation(n_mu):
+        return g2_zeppelin(
+            bvalues, gradient_directions, n_mu, lambda_par, lambda_perp,
+        )
+
+    grid_signals = jax.vmap(signal_for_orientation)(grid_vectors_rotated)
+    total_weights = bingham.grid_weights * pdf_normalized
+    return jnp.sum(grid_signals * total_weights[:, None], axis=0)
+
+
+def build_disco_tuned_3d_stick_zeppelin_simulator(
+    acq: JaxAcquisition,
+) -> ModelSimulator:
+    """3D-orientation stick + zeppelin simulator (§22).
+
+    Adds an extra-axonal zeppelin per fibre with NODDI-style tortuosity
+    coupling on top of the §21 3D-stick-only simulator. The motivation
+    is §20.5 / §21.10: FORCE's richer compartmental model produced a
+    ~2× tighter scalar CCC; the analogous improvement here is whether
+    the extra-axonal compartment closes the remaining 0.07 Pearson r
+    gap between dmipy-JAX (r=0.82) and the FORCE paper (r=0.89) on
+    DiSCo connectivity.
+
+    Parameters: ``[d_par, θ1, φ1, θ2, φ2, ODI, v_ic, f1, f_iso]``.
+
+    - ``v_ic`` ∈ (0.3, 0.95): per-fibre intra-axonal volume fraction.
+      Same value for both fibres (NODDI shared-tortuosity convention).
+    - ``d_perp = d_par * (1 - v_ic)`` (Szafer-Stanisz tortuosity).
+    - Total signal: ``f1 [v_ic·stick(μ1) + (1-v_ic)·zep(μ1, d⊥)]``
+      ``+ f2 [v_ic·stick(μ2) + (1-v_ic)·zep(μ2, d⊥)]``
+      ``+ f_iso · ball(d_iso=3e-9)``.
+    """
+    bingham = BinghamNODDI(grid_points=120)
+
+    def forward_fn(params, acq):
+        d_par = params[0]
+        t1, p1 = params[1], params[2]
+        t2, p2 = params[3], params[4]
+        odi = params[5]
+        v_ic = params[6]
+        f1, f_iso = params[7], params[8]
+        f2 = 1.0 - f1 - f_iso
+        kappa = 1.0 / jnp.tan(jnp.pi * odi / 2.0)
+        d_perp = d_par * (1.0 - v_ic)
+
+        mu1 = jnp.array([
+            jnp.sin(t1) * jnp.cos(p1),
+            jnp.sin(t1) * jnp.sin(p1),
+            jnp.cos(t1),
+        ])
+        mu2 = jnp.array([
+            jnp.sin(t2) * jnp.cos(p2),
+            jnp.sin(t2) * jnp.sin(p2),
+            jnp.cos(t2),
+        ])
+
+        # Intra-axonal (sticks) — d_perp implicitly 0 for sticks
+        s1_intra = bingham(acq.bvalues, acq.gradient_directions,
+                            mu=mu1, kappa1=kappa, kappa2=kappa,
+                            lambda_par=d_par)
+        s2_intra = bingham(acq.bvalues, acq.gradient_directions,
+                            mu=mu2, kappa1=kappa, kappa2=kappa,
+                            lambda_par=d_par)
+        # Extra-axonal (zeppelins) — same Bingham distribution
+        s1_extra = _bingham_dispersed_zeppelin(
+            bingham, acq.bvalues, acq.gradient_directions,
+            mu1, kappa, kappa, d_par, d_perp,
+        )
+        s2_extra = _bingham_dispersed_zeppelin(
+            bingham, acq.bvalues, acq.gradient_directions,
+            mu2, kappa, kappa, d_par, d_perp,
+        )
+
+        s_iso = jnp.exp(-acq.bvalues * 3.0e-9)
+
+        s1 = v_ic * s1_intra + (1.0 - v_ic) * s1_extra
+        s2 = v_ic * s2_intra + (1.0 - v_ic) * s2_extra
+        return f1 * s1 + f2 * s2 + f_iso * s_iso
+
+    return ModelSimulator(
+        forward_fn=forward_fn,
+        parameter_names=[
+            "d_par", "theta1", "phi1", "theta2", "phi2",
+            "odi", "v_ic", "f1", "f_iso",
+        ],
+        parameter_ranges={
+            "d_par": (0.54e-9, 0.66e-9),
+            "theta1": (0.0, float(jnp.pi)),
+            "phi1": (0.0, float(2 * jnp.pi)),
+            "theta2": (0.0, float(jnp.pi)),
+            "phi2": (0.0, float(2 * jnp.pi)),
+            "odi": (0.01, 0.30),
+            "v_ic": (0.3, 0.95),
+            "f1": (0.1, 0.8),
+            "f_iso": (0.0, 0.95),
+        },
+        acquisition=acq,
+    )
+
+
 def _spherical_to_cartesian(theta: float, phi: float) -> np.ndarray:
     return np.array([
         np.sin(theta) * np.cos(phi),
@@ -179,6 +307,23 @@ def dmipy_params_to_pam_single(
             dots = np.abs(vertices @ peak_dirs[k])
             peak_indices[k] = int(np.argmax(dots))
     return peak_dirs, peak_values, peak_indices
+
+
+def dmipy_zeppelin_params_to_pam_single(
+    params: np.ndarray,
+    sphere,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """§22 PAM adapter: 9-param stick+zeppelin layout to PAM triple.
+
+    Layout: ``[d_par, θ1, φ1, θ2, φ2, ODI, v_ic, f1, f_iso]``. The
+    zeppelin compartment does not contribute additional peaks — it
+    shares the orientation of its matching stick — so peak_dirs and
+    peak_indices are computed identically to the §21 8-param case,
+    with v_ic skipped.
+    """
+    p = np.asarray(params, dtype=np.float64)
+    eight = np.array([p[0], p[1], p[2], p[3], p[4], p[5], p[7], p[8]])
+    return dmipy_params_to_pam_single(eight, sphere)
 
 
 def fit_dmipy_dict_on_disco(

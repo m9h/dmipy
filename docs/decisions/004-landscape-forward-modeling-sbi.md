@@ -2300,6 +2300,152 @@ doc 005 §4d.)
 
 ---
 
+## §22 dmipy-JAX with extra-axonal zeppelin: negative finding
+
+### 22.1 Motivation and hypothesis
+
+§21.10 listed the extra-axonal zeppelin compartment as the most likely
+candidate for closing the residual 0.07 Pearson-r gap between dmipy-JAX
+3D-stick-only (§21 r=0.82 @ SNR=50) and the FORCE paper (r=0.89). The
+reasoning was direct:
+
+- §20.5 had already shown that FORCE's ~2× tighter scalar CCC on DiSCo
+  came from its richer compartmental model.
+- The §21 dmipy-JAX simulator was 2-stick + Bingham + isotropic ball
+  only — no extra-axonal compartment, so any tortuosity-coupled
+  perpendicular attenuation had to be absorbed by the `f_iso`
+  ball compartment as a hack.
+- Adding a per-fibre zeppelin with NODDI tortuosity should let the
+  extracellular signal land on the correct compartment, freeing the
+  isotropic compartment to model genuine free water and tightening
+  the orientation estimate.
+
+### 22.2 Implementation
+
+**New simulator** (`build_disco_tuned_3d_stick_zeppelin_simulator`):
+9 parameters `[d_par, θ1, φ1, θ2, φ2, ODI, v_ic, f1, f_iso]`. Per fibre
+i: `f_i [v_ic · BinghamStick(μᵢ, d_par) + (1 − v_ic) · BinghamZeppelin
+(μᵢ, d_par, d_⊥)]` with the standard Szafer-Stanisz tortuosity
+`d_⊥ = d_par · (1 − v_ic)`. Shared `v_ic` across both fibres (NODDI
+convention). Other priors identical to §21.
+
+**Bingham-dispersed zeppelin** (`_bingham_dispersed_zeppelin`): reuses
+the same Fibonacci grid as `BinghamNODDI` but integrates `g2_zeppelin`
+instead of `C1Stick`, so intra and extra share one dispersion
+distribution per fibre.
+
+**PAM adapter** (`dmipy_zeppelin_params_to_pam_single`): the zeppelin
+shares the stick's orientation; peak_dirs / peak_values / peak_indices
+are computed by stripping `v_ic` and reusing the §21 8-param adapter.
+
+**Library**: 500K entries (same as §21 to isolate the model-form effect
+from library-size effects).
+
+**TDD coverage** (4 new tests pinned before pipeline ran):
+parameter layout includes `v_ic`; range spans (0.3, 0.95); v_ic = 1
+collapses to the §21 stick-only simulator (validates the new compartment
+is layered additively); v_ic = 0.5 with a perpendicular gradient
+attenuates more than pure sticks (validates the zeppelin is doing
+perpendicular-attenuation work).
+
+### 22.3 Headline result — adding the zeppelin did *not* close the gap
+
+| SNR | §22 r | §21 r | Δ      | §22 CCC | §22 Dice | rec  | TP/FP/FN | v̄_ic ± σ |
+|----:|------:|------:|-------:|--------:|---------:|-----:|---------:|----------:|
+| 10  | 0.750 | 0.761 | −0.011 | 0.749   | 0.390    | 0.96 | 24/74/1  | 0.60 ± 0.19 |
+| 30  | 0.794 | 0.791 | +0.003 | 0.780   | 0.403    | 0.96 | 24/70/1  | 0.56 ± 0.19 |
+| 50  | 0.768 | 0.823 | **−0.055** | 0.758 | 0.417 | 1.00 | 25/70/0  | 0.55 ± 0.20 |
+
+Two things are worth pinning:
+
+1. **The zeppelin is not collapsing.** v_ic was recovered with mean
+   0.55-0.60 and standard deviation 0.19, spanning the full prior range
+   [0.3, 0.95]. The matcher *is* actively using the new parameter — it
+   isn't being driven to a degenerate value.
+2. **It still does not help.** Pearson r is roughly flat at SNR=10/30
+   and substantially *worse* at SNR=50 (Δ = −0.055). CCC and Dice
+   mirror the pattern: §22 sits at or below §21 across all SNRs.
+
+### 22.4 Why this is the right diagnosis
+
+DiSCo is a **pure-cylinder phantom**. Its ground-truth signal has no
+extra-axonal water inside strands — every water molecule is either
+intra-cylinder, in the bulk extracellular volume between strands, or
+in completely empty space. The bulk-extracellular signal is already
+captured by the isotropic `f_iso` compartment in both §21 and §22.
+
+The zeppelin in §22 therefore has no biophysical target to fit. The
+matcher uses `v_ic` because the library forces it to — every dictionary
+entry has a (1 − v_ic) fraction of zeppelin signal — but the recovered
+`v_ic` distribution is just absorbing modelling slack rather than
+recovering a physical quantity. Two consequences:
+
+1. **Library sparsity penalty.** 500K entries in a 9-d parameter space
+   gives lower per-axis density than 500K entries in 8-d. At SNR=50
+   (the highest-information regime), the loss of effective resolution
+   in the orientation and dispersion axes appears to be what's costing
+   the 0.055 Pearson-r drop.
+2. **No bias to correct.** §22's CCC_norm vs Pearson r is the same
+   ~0.02 spread as §21's. The §21 result was already free of systematic
+   scale bias, so there was no remaining bias for the zeppelin to fix.
+
+### 22.5 What this means for the FORCE-paper gap
+
+The remaining ~0.07 Pearson-r gap between dmipy-JAX 3D-stick-only and
+the FORCE paper r=0.89 is **not** explained by a missing extra-axonal
+compartment on the dmipy-JAX side. §22 rules that hypothesis out.
+
+Two remaining candidates carry over from §21.10:
+
+- **Library scaling.** Paper protocols use 1M+ entries in some
+  configurations; §21/§22 used 500K. The drop at SNR=50 in §22 is
+  consistent with library-density limits, which would benefit from
+  more entries.
+- **Acquisition.** §21/§22 use single-shell b=1900. The paper may use
+  multi-shell HARDI; this would matter much more for the zeppelin
+  (which produces b-value-dependent perpendicular attenuation) than
+  for sticks.
+
+A third candidate worth raising:
+
+- **Dispersion-distribution choice.** Bingham assumes elliptical fibre
+  dispersion. DiSCo strands are nearly straight; the dispersion model
+  may be over-parameterising orientation uncertainty and absorbing
+  noise into ODI rather than keeping the stick orientation crisp.
+
+### 22.6 Operational stance going forward
+
+Keep the §21 3D-stick-only simulator as the dmipy-JAX DiSCo baseline
+(`build_disco_tuned_3d_two_stick_simulator`). Do not promote
+stick+zeppelin to default. Revisit if either of the following holds
+later:
+
+- Library is scaled to 1M+ entries and a side-by-side stick-only vs
+  stick+zeppelin run shows the gap re-emerging in favour of the
+  zeppelin model.
+- The benchmark moves off DiSCo onto an in-vivo dataset, where the
+  zeppelin has a genuine biophysical target (real WM extracellular
+  water).
+
+### 22.7 What §22 confirms
+
+- **dmipy-JAX 3D-stick-only is the right operating point on DiSCo.**
+  Adding biophysical compartments without a corresponding biophysical
+  signal degrades the match, not improves it.
+- **TDD discipline caught a quiet regression.** The 4 zeppelin tests
+  (parameter layout, v_ic range, collapse-to-stick-only, perpendicular-
+  attenuation) all pass — the model is *correctly implemented* and
+  *incorrectly motivated for this phantom*. Pinning the collapse-to-
+  stick-only test (`test_v_ic_equal_one_reduces_to_stick_only`) was the
+  one that lets us trust this comparison is apples-to-apples; without
+  it the negative result could plausibly be a bug.
+- **The §21 result was already operating at the model's ceiling** for
+  this library size on this phantom. Further gains require library
+  scaling, acquisition changes, or a different phantom — not a richer
+  forward model.
+
+---
+
 ## References
 
 ### 16.4 What is this comparison actually measuring?

@@ -11,15 +11,27 @@ import numpy as np
 
 def main():
     snrs = np.array([10, 30, 50])
-    dmipy   = np.array([0.7611, 0.7905, 0.8228])
+    dmipy_stick    = np.array([0.7611, 0.7905, 0.8228])
+    # §22 stick+zeppelin numbers loaded from results npz when present
+    zep_path = Path("validation/dmipy_disco_connectivity_zeppelin_results.npz")
+    dmipy_zep = None
+    if zep_path.exists():
+        d = np.load(zep_path)
+        if (np.asarray(d["snrs"]) == snrs).all():
+            dmipy_zep = np.asarray(d["r"])
     force   = np.array([0.298, 0.211, 0.322])
     mrtrix  = np.array([0.142, 0.081, 0.131])
     paper_snrs = np.array([10, 50])
     paper_r    = np.array([0.868, 0.894])
 
     fig, ax = plt.subplots(figsize=(8, 5.5), dpi=140)
-    ax.plot(snrs, dmipy, "o-", lw=2, ms=10, label="dmipy-JAX (Option B, 3D)",
+    ax.plot(snrs, dmipy_stick, "o-", lw=2, ms=10,
+            label="dmipy-JAX 3D stick (§21)",
             color="#1f77b4")
+    if dmipy_zep is not None:
+        ax.plot(snrs, dmipy_zep, "v-", lw=2, ms=10,
+                label="dmipy-JAX 3D stick+zeppelin (§22)",
+                color="#17becf")
     ax.plot(snrs, force, "s-", lw=2, ms=8, label="dipy FORCE (§17.5)",
             color="#d62728")
     ax.plot(snrs, mrtrix, "^-", lw=2, ms=8, label="MRtrix SD_STREAM (§18)",

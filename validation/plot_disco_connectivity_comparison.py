@@ -9,28 +9,50 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def _load_r(path: Path, snrs: np.ndarray) -> np.ndarray | None:
+    if not path.exists():
+        return None
+    d = np.load(path)
+    if (np.asarray(d["snrs"]) == snrs).all():
+        return np.asarray(d["r"])
+    return None
+
+
 def main():
     snrs = np.array([10, 30, 50])
     dmipy_stick    = np.array([0.7611, 0.7905, 0.8228])
-    # §22 stick+zeppelin numbers loaded from results npz when present
-    zep_path = Path("validation/dmipy_disco_connectivity_zeppelin_results.npz")
-    dmipy_zep = None
-    if zep_path.exists():
-        d = np.load(zep_path)
-        if (np.asarray(d["snrs"]) == snrs).all():
-            dmipy_zep = np.asarray(d["r"])
+    dmipy_stick_ms = _load_r(
+        Path("validation/dmipy_disco_connectivity_results_multishell.npz"),
+        snrs,
+    )
+    dmipy_zep = _load_r(
+        Path("validation/dmipy_disco_connectivity_zeppelin_results.npz"),
+        snrs,
+    )
+    dmipy_zep_ms = _load_r(
+        Path("validation/dmipy_disco_connectivity_zeppelin_results_multishell.npz"),
+        snrs,
+    )
     force   = np.array([0.298, 0.211, 0.322])
     mrtrix  = np.array([0.142, 0.081, 0.131])
     paper_snrs = np.array([10, 50])
     paper_r    = np.array([0.868, 0.894])
 
-    fig, ax = plt.subplots(figsize=(8, 5.5), dpi=140)
-    ax.plot(snrs, dmipy_stick, "o-", lw=2, ms=10,
-            label="dmipy-JAX 3D stick (§21)",
-            color="#1f77b4")
+    fig, ax = plt.subplots(figsize=(9, 5.5), dpi=140)
+    ax.plot(snrs, dmipy_stick, "o-", lw=2, ms=9,
+            label="dmipy-JAX 3D stick, single-shell (§21)",
+            color="#1f77b4", alpha=0.5)
+    if dmipy_stick_ms is not None:
+        ax.plot(snrs, dmipy_stick_ms, "o-", lw=2.5, ms=10,
+                label="dmipy-JAX 3D stick, multi-shell (§24)",
+                color="#1f77b4")
     if dmipy_zep is not None:
-        ax.plot(snrs, dmipy_zep, "v-", lw=2, ms=10,
-                label="dmipy-JAX 3D stick+zeppelin (§22)",
+        ax.plot(snrs, dmipy_zep, "v-", lw=2, ms=9,
+                label="dmipy-JAX stick+zeppelin, single-shell (§22)",
+                color="#17becf", alpha=0.5)
+    if dmipy_zep_ms is not None:
+        ax.plot(snrs, dmipy_zep_ms, "v-", lw=2.5, ms=10,
+                label="dmipy-JAX stick+zeppelin, multi-shell (§24)",
                 color="#17becf")
     ax.plot(snrs, force, "s-", lw=2, ms=8, label="dipy FORCE (§17.5)",
             color="#d62728")

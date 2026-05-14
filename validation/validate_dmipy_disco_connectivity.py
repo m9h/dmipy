@@ -89,6 +89,7 @@ def run_dmipy_connectivity(
     step_size: float = 0.5,
     max_angle: float = 45.0,
     pmf_threshold: float = 0.1,
+    single_shell_b: float | None = 1900,
 ) -> dict:
     """End-to-end dmipy-JAX dict → tractography → connectivity pipeline."""
     import warnings as _w
@@ -99,7 +100,8 @@ def run_dmipy_connectivity(
     from dipy.tracking.streamline import Streamlines
     from dipy.tracking.utils import connectivity_matrix, seeds_from_mask
 
-    out = load_disco_subject(subject=subject, snr=snr, single_shell_b=1900)
+    out = load_disco_subject(subject=subject, snr=snr,
+                              single_shell_b=single_shell_b)
     data = out["data"]
     mask = out["mask"]
     rois = out["rois"]
@@ -174,24 +176,35 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--snrs", type=int, nargs="+", default=[10, 30, 50])
     ap.add_argument("--library-size", type=int, default=500_000)
+    ap.add_argument("--multi-shell", action="store_true",
+                    help="Use all 4 DiSCo shells (b=0/1000/1925/3094/13192) "
+                         "instead of single-shell b=1925. §23 follow-up.")
     args = ap.parse_args()
 
+    shell_tag = "multi-shell (all 4)" if args.multi_shell else "single-shell b=1925"
+    suffix = "_multishell" if args.multi_shell else ""
     print("=" * 78)
-    print("dmipy-JAX connectivity on DiSCo (Option B2 — 3D 2-stick)")
+    print(f"dmipy-JAX connectivity on DiSCo (Option B2 — 3D 2-stick, {shell_tag})")
     print("=" * 78)
 
     gt = load_gt_connectivity(subject=1)
     print(f"GT: 16×16, {int((gt > 0).sum())} nonzero off-diagonal entries.")
 
     results = {}
+    single_shell_b = None if args.multi_shell else 1900
     for snr in args.snrs:
         print(f"\n=== SNR = {snr} ===")
-        res = run_dmipy_connectivity(snr=snr, library_size=args.library_size)
+        res = run_dmipy_connectivity(
+            snr=snr, library_size=args.library_size,
+            single_shell_b=single_shell_b,
+        )
         r = connectivity_pearson(res["connectivity"], gt)
         results[snr] = {**res, "r": float(r)}
         print(f"  Pearson r vs GT (upper-triangle): {r:.4f}")
 
-    out_npz = Path("validation/dmipy_disco_connectivity_results.npz")
+    out_npz = Path(
+        f"validation/dmipy_disco_connectivity_results{suffix}.npz"
+    )
     np.savez(
         out_npz,
         snrs=np.array(args.snrs),

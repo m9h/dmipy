@@ -47,7 +47,6 @@ autodoc_mock_imports = [
     "e3nn_jax",
     "ttax",
     "gpjax",
-    "vbjax",
     # Deep learning
     "torch",
     "torchvision",
